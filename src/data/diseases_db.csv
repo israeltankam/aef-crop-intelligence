@@ -1,0 +1,13 @@
+Disease_ID,Target_Crop_Name,Disease_Name,Type,Vector_Type,Opt_Temp,Opt_Humidity,Beta_Infection,Dispersal_Sigma_m,Yield_Retained_Infected,Control_Methods
+D_CAS_01,Cassava,Cassava Mosaic Disease (CMD),Viral,Whitefly,28.0,60.0,0.06,50.0,0.60,"Plant resistant TME varieties, rogue infected plants weekly."
+D_CAS_02,Cassava,Cassava Brown Streak (CBSD),Viral,Whitefly,26.0,70.0,0.08,40.0,0.10,"Strict quarantine, use certified clean stems, control whitefly."
+D_MAI_01,Maize,Maize Streak Virus (MSV),Viral,Leafhopper,25.0,50.0,0.12,80.0,0.40,"Seed dressing with imidacloprid, remove grassy weeds, early planting."
+D_MAI_02,Maize,Northern Corn Leaf Blight,Fungal,Wind,20.0,85.0,0.18,150.0,0.65,"Foliar fungicides at tasseling, crop rotation, resistant hybrids."
+D_COT_01,Cotton,Cotton Leaf Curl (CLCuD),Viral,Whitefly,28.0,60.0,0.15,50.0,0.50,"Use resistant varieties, manage alternative hosts, systemic insecticides."
+D_COT_02,Cotton,Bacterial Blight,Bacterial,Rain/Wind,30.0,85.0,0.20,20.0,0.50,"Acid-delinted seeds, copper sprays, avoid overhead irrigation."
+D_COC_01,Cocoa,Black Pod (Phytophthora),Fungal,Rain/Splash,25.0,90.0,0.25,15.0,0.20,"Frequent harvest, canopy pruning for airflow, copper fungicides."
+D_COC_02,Cocoa,Swollen Shoot Virus (CSSV),Viral,Mealybug,26.0,50.0,0.05,15.0,0.00,"Cordon sanitaire (culling), plant barrier crops, vector control."
+D_WHT_01,Wheat,Yellow Rust (Stripe Rust),Fungal,Wind,15.0,90.0,0.30,500.0,0.70,"Plant resistant cultivars, apply triazole fungicides at first sign."
+D_RIC_01,Rice,Rice Blast (Magnaporthe),Fungal,Wind,25.0,90.0,0.22,200.0,0.40,"Avoid excess Nitrogen, keep water level steady, use resistant seeds."
+D_SOY_01,Soybean,Asian Soybean Rust,Fungal,Wind,22.0,95.0,0.28,1000.0,0.30,"Sentinel plot monitoring, early fungicide application."
+D_COF_01,Coffee,Coffee Leaf Rust (Hemileia),Fungal,Wind,22.0,80.0,0.10,40.0,0.50,"Copper fungicides, plant resistant Catimor varieties, pruning."

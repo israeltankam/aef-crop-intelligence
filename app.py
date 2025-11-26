@@ -1,51 +1,75 @@
-#!/usr/bin/env python
-# coding: utf-8
-
-# In[ ]:
-
 #app.py
-
 import streamlit as st
 import hydralit_components as hc
-from pages.main.get_start import setup_page
-from pages.main.simulation import run_simulation_page
-from pages.main.results import show_results
-from pages.about import about
+from src.models.state_manager import StateManager
+from pages.main import setup_page
+from pages.main import dashboard
+from pages.main import report 
 
-
-# Set page layout to centered and responsive
-# st.set_page_config(layout="wide")
-st.set_page_config(layout='wide',initial_sidebar_state='collapsed')
-
-# specify the primary menu definition
-menu_data = [
-    {'icon': "fa fa-desktop", 'label':"Setup"},
-    {'icon': "fas fa-chart-area", 'label':"Simulation"},
-    {'icon': "fa fa-calculator", 'label':"Results"},
-    {'icon': "fa fa-book", 'label':"About"},
-]
-
-over_theme = {'txc_inactive': '#FFFFFF', 'menu_background':'#bac96b'}
-logo_path = "src/images/logo/logo.png"
-st.image(logo_path, width=164)
-main_tab= hc.nav_bar(
-    menu_definition=menu_data,
-    override_theme=over_theme,
-    hide_streamlit_markers=False, #will show the st hamburger as well as the navbar now!
-    sticky_nav=True, #at the top or not
-    sticky_mode='pinned', #jumpy or not-jumpy, but sticky or pinned
+# 1. App Config
+st.set_page_config(
+    page_title="AEF Crop Intelligence",
+    page_icon="🛰️",
+    layout="wide",
+    initial_sidebar_state="collapsed"
 )
 
+# 2. Initialize State Manager
+# This handles all data loading and defaults automatically
+if 'step' not in st.session_state:
+    StateManager.initialize()
 
-def dummy():
-    st.markdown("## Under construction")
-    
-# Page router
-if main_tab == "Setup":
-    setup_page()  
-if main_tab == "About":
-    about()
-elif main_tab == "Simulation":
-    run_simulation_page() 
-elif main_tab == "Results":
-    show_results()
+# 3. Navigation Definition
+menu_data = [
+    {'icon': "fa fa-map-marker", 'label': "Site Setup"},
+    {'icon': "fas fa-satellite", 'label': "Intelligence Dashboard"},
+    {'icon': "fa fa-file-pdf", 'label': "Report"},
+]
+
+over_theme = {'txc_inactive': '#FFFFFF', 'menu_background': '#2C3E50'}
+
+# --- PROGRAMMATIC NAVIGATION LOGIC ---
+# Check if a specific target tab was requested (e.g., from Step 5 in Setup)
+nav_index = 0 # Default to 0 ("Site Setup")
+
+if st.session_state.get('nav_target'):
+    try:
+        # Find the index of the requested label (e.g., "Intelligence Dashboard" -> 1)
+        target_label = st.session_state['nav_target']
+        nav_index = [m['label'] for m in menu_data].index(target_label)
+        
+        # CRITICAL: Reset target to None so we don't keep jumping back on every reload
+        st.session_state['nav_target'] = None 
+    except ValueError:
+        pass # Target not found, stay on default
+
+# Render Navigation Bar
+menu_id = hc.nav_bar(
+    menu_definition=menu_data,
+    override_theme=over_theme,
+    sticky_nav=True,
+    sticky_mode='pinned',
+    hide_streamlit_markers=False,
+    first_select=nav_index # <--- Apply the calculated index here
+)
+
+# 4. Routing Logic
+if menu_id == "Site Setup":
+    setup_page.app()
+
+elif menu_id == "Intelligence Dashboard":
+    if not st.session_state.get('setup_complete'):
+        st.warning("⚠️ Please complete the configuration in 'Site Setup' first.")
+    else:
+        dashboard.app()
+
+elif menu_id == "Report":
+    # Check for simulation results before showing report
+    if 'sim_results' not in st.session_state:
+        st.warning("⚠️ No intelligence generated yet. Please run the simulation in the Dashboard tab.")
+    else:
+        report.app()
+
+# Footer
+st.sidebar.markdown("---")
+st.sidebar.caption("Powered by **AlphaEarth Foundations**")
