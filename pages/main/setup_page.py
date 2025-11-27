@@ -300,14 +300,33 @@ def app():
         rel_d = df_d[df_d['Target_Crop_Name'] == c_row['Crop_Name']]
         
         c_dis, c_date = st.columns([2, 1])
+        selected_d_type = ""
+
         with c_dis:
-            if rel_d.empty: st.warning("No specific diseases.")
+            if rel_d.empty: 
+                st.warning("No specific diseases.")
+                st.session_state['selected_disease_id'] = None
             else:
                 d_name = st.selectbox("Select Threat", rel_d['Disease_Name'].unique())
-                st.session_state['selected_disease_id'] = rel_d[rel_d['Disease_Name'] == d_name].iloc[0]['Disease_ID']
+                dis_row = rel_d[rel_d['Disease_Name'] == d_name].iloc[0]
+                st.session_state['selected_disease_id'] = dis_row['Disease_ID']
+                selected_d_type = dis_row['Type']
+
         with c_date:
             st.session_state['detection_date'] = st.date_input("Detection Date", value=st.session_state['detection_date'])
-            st.session_state['insect_pressure'] = st.slider("Vector Pressure", 0.0, 5.0, st.session_state.get('insect_pressure', 1.0))
+            
+            # --- CONDITIONAL SLIDER LOGIC (MODIFIED HERE) ---
+            if 'fungal' in str(selected_d_type).lower() or 'bacterial' in str(selected_d_type).lower():
+                st.info(f"💨 **Wind/Rain Driven:** {selected_d_type}")
+                st.caption("Spread is modeled using Wind Field vectors from Earth Engine.")
+                st.session_state['insect_pressure'] = 1.0 # Default for non-vector
+            else:
+                st.info(f"🦟 **Vector Driven:** {selected_d_type}")
+                st.session_state['insect_pressure'] = st.slider(
+                    "Vector Pressure (Observed)", 0.0, 5.0, 
+                    st.session_state.get('insect_pressure', 1.0),
+                    help="Relative abundance of the vector (e.g., Whitefly count)."
+                )
         
         st.divider()
         col_map, col_list = st.columns([2, 1])

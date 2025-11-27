@@ -1,4 +1,4 @@
-#src\models\state_manager.py
+#src/models/state_manager.py
 import streamlit as st
 import pandas as pd
 import json
@@ -26,14 +26,14 @@ class StateManager:
         # --- Step 2: Crop ---
         'selected_crop_id': None,
         'planting_date': date.today(),
-        'planting_density': 10000, # Will be overwritten by crop default
+        'planting_density': 10000, 
         'sowing_depth': 5,
         
         # --- Step 3: Disease ---
         'selected_disease_id': None,
         'disease_spots': [],
         'detection_date': date.today(),
-        'insect_pressure': 1.0,
+        'insect_pressure': 1.0, 
         
         # --- Step 4: Soil ---
         'soil_type': 'loam',
@@ -46,11 +46,17 @@ class StateManager:
 
     @staticmethod
     def initialize():
+        # 1. Primitives
         for key, value in StateManager.DEFAULTS.items():
             if key not in st.session_state:
                 st.session_state[key] = value
+        
+        # 2. Complex State
         StateManager._initialize_complex_state()
-        StateManager._ensure_knowledge_base()
+        
+        # 3. Knowledge Base (Crucial Fix: ensure DF exists even if 'step' is set)
+        if 'df_diseases' not in st.session_state or 'df_crops' not in st.session_state:
+            StateManager._ensure_knowledge_base()
 
     @staticmethod
     def _initialize_complex_state():
@@ -71,58 +77,44 @@ class StateManager:
 
     @staticmethod
     def _ensure_knowledge_base():
-        """Generates the crops_db.csv with Default Density included."""
+        """Generates the databases ONLY if they are missing."""
         if not os.path.exists("src/data"): os.makedirs("src/data")
 
-        # --- 1. CROPS DB (UPDATED) ---
+        # --- 1. CROPS DB ---
         crops_path = "src/data/crops_db.csv"
         
-        # We force overwrite if it exists to ensure new columns apply (optional, usually check exists)
-        # For this update, assume we overwrite or file is missing.
-        
-        # Data Format: ..., Critical_N, Resistance, Default_Density
-        data = [
-            ["C_CAS_01","Cassava","TME 419 (Improved)","Perennial",365,0,18.0,26.0,35.0,1.8,4.5,0.65,1.1,1.5,100,0.2, 10000],
-            ["C_CAS_02","Cassava","Local White (Landrace)","Perennial",365,0,18.0,26.0,35.0,1.6,4.0,0.60,1.1,1.5,100,1.0, 10000],
-            ["C_MAI_01","Maize","Pioneer P1197 (Hybrid)","Annual",120,1600,8.0,30.0,35.0,3.9,6.5,0.52,1.2,1.5,180,0.3, 60000],
-            ["C_MAI_02","Maize","Local Open Pollinated","Annual",130,1700,8.0,30.0,36.0,3.2,5.0,0.40,1.15,1.1,160,0.9, 55000],
-            ["C_COT_01","Cotton","DeltaPine (Bt)","Annual",150,2200,12.0,28.0,38.0,2.4,3.5,0.42,1.2,1.8,150,0.4, 80000],
-            ["C_COT_02","Cotton","Conventional Local","Annual",160,2300,12.0,28.0,38.0,2.1,3.0,0.35,1.2,1.6,140,0.9, 70000],
-            ["C_COC_01","Cocoa","Forastero (Amelonado)","Perennial",365,0,20.0,25.0,32.0,1.5,5.0,0.35,1.1,2.0,120,0.6, 1100],
-            ["C_COC_02","Cocoa","Trinitario (Hybrid)","Perennial",365,0,20.0,25.0,32.0,1.6,5.5,0.38,1.1,2.0,130,0.4, 1100],
-            ["C_WHT_01","Wheat","Winter Red (Intensive)","Annual",240,2000,0.0,20.0,30.0,2.8,6.0,0.48,1.15,1.5,150,0.4, 3000000],
-            ["C_RIC_01","Rice","IR64 (Indica)","Annual",115,1500,10.0,30.0,38.0,2.2,6.0,0.50,1.2,0.8,120,0.5, 250000],
-            ["C_SOY_01","Soybean","Roundup Ready","Annual",110,1400,10.0,28.0,35.0,1.8,4.5,0.38,1.1,1.2,50,0.3, 300000],
-            ["C_COF_01","Coffee","Arabica (Typica)","Perennial",365,0,15.0,20.0,25.0,1.2,4.0,0.30,0.95,1.5,100,0.8, 1600],
-            ["C_COF_02","Coffee","Robusta (Nganda)","Perennial",365,0,20.0,26.0,34.0,1.4,4.5,0.35,1.0,2.0,120,0.3, 1100]
-        ]
-        
-        cols = ["Crop_ID","Crop_Name","Variety","Type","Cycle_Days","GDD_Maturity",
-                "T_Base","T_Opt","T_Max","RUE_g_MJ","Max_LAI","Harvest_Index","Kc_Mid",
-                "Root_Depth_Max_m","Critical_Soil_N_kg_ha","Resistance_Score", "Default_Density"]
-                
-        # Only write if missing (OR you can delete the file manually to force update)
+        # Only write if file doesn't exist
         if not os.path.exists(crops_path):
+            data = [
+                ["C_CAS_01","Cassava","TME 419 (Improved)","Perennial",365,0,18.0,26.0,35.0,1.8,4.5,0.65,1.1,1.5,100,0.2, 10000],
+                ["C_CAS_02","Cassava","Local White (Landrace)","Perennial",365,0,18.0,26.0,35.0,1.6,4.0,0.60,1.1,1.5,100,1.0, 10000],
+                ["C_MAI_01","Maize","Pioneer P1197 (Hybrid)","Annual",120,1600,8.0,30.0,35.0,3.9,6.5,0.52,1.2,1.5,180,0.3, 60000],
+                ["C_MAI_02","Maize","Local Open Pollinated","Annual",130,1700,8.0,30.0,36.0,3.2,5.0,0.40,1.15,1.1,160,0.9, 55000],
+                ["C_COT_01","Cotton","DeltaPine (Bt)","Annual",150,2200,12.0,28.0,38.0,2.4,3.5,0.42,1.2,1.8,150,0.4, 80000],
+                ["C_COT_02","Cotton","Conventional Local","Annual",160,2300,12.0,28.0,38.0,2.1,3.0,0.35,1.2,1.6,140,0.9, 70000],
+                ["C_COC_01","Cocoa","Forastero (Amelonado)","Perennial",365,0,20.0,25.0,32.0,1.5,5.0,0.35,1.1,2.0,120,0.6, 1100],
+                ["C_COC_02","Cocoa","Trinitario (Hybrid)","Perennial",365,0,20.0,25.0,32.0,1.6,5.5,0.38,1.1,2.0,130,0.4, 1100],
+                ["C_WHT_01","Wheat","Winter Red (Intensive)","Annual",240,2000,0.0,20.0,30.0,2.8,6.0,0.48,1.15,1.5,150,0.4, 3000000],
+                ["C_RIC_01","Rice","IR64 (Indica)","Annual",115,1500,10.0,30.0,38.0,2.2,6.0,0.50,1.2,0.8,120,0.5, 250000],
+                ["C_SOY_01","Soybean","Roundup Ready","Annual",110,1400,10.0,28.0,35.0,1.8,4.5,0.38,1.1,1.2,50,0.3, 300000],
+                ["C_COF_01","Coffee","Arabica (Typica)","Perennial",365,0,15.0,20.0,25.0,1.2,4.0,0.30,0.95,1.5,100,0.8, 1600],
+                ["C_COF_02","Coffee","Robusta (Nganda)","Perennial",365,0,20.0,26.0,34.0,1.4,4.5,0.35,1.0,2.0,120,0.3, 1100]
+            ]
+            cols = ["Crop_ID","Crop_Name","Variety","Type","Cycle_Days","GDD_Maturity",
+                    "T_Base","T_Opt","T_Max","RUE_g_MJ","Max_LAI","Harvest_Index","Kc_Mid",
+                    "Root_Depth_Max_m","Critical_Soil_N_kg_ha","Resistance_Score", "Default_Density"]
             pd.DataFrame(data, columns=cols).to_csv(crops_path, index=False)
             
         st.session_state['df_crops'] = pd.read_csv(crops_path)
 
-        # --- 2. DISEASES DB (Same as before) ---
+        # --- 2. DISEASES DB ---
         dis_path = "src/data/diseases_db.csv"
+        
+        # Only write if file doesn't exist. This prevents the PermissionError.
         if not os.path.exists(dis_path):
+             # Fallback data if user hasn't pasted the CSV yet
             data = [
-                ["D_CAS_01","Cassava","Cassava Mosaic Disease (CMD)","Viral","Whitefly",28.0,60.0,0.06,50.0,0.60,"Plant resistant TME varieties, rogue infected plants weekly."],
-                ["D_CAS_02","Cassava","Cassava Brown Streak (CBSD)","Viral","Whitefly",26.0,70.0,0.08,40.0,0.10,"Strict quarantine, use certified clean stems, control whitefly."],
-                ["D_MAI_01","Maize","Maize Streak Virus (MSV)","Viral","Leafhopper",25.0,50.0,0.12,80.0,0.40,"Seed dressing with imidacloprid, remove grassy weeds, early planting."],
-                ["D_MAI_02","Maize","Northern Corn Leaf Blight","Fungal","Wind",20.0,85.0,0.18,150.0,0.65,"Foliar fungicides at tasseling, crop rotation, resistant hybrids."],
-                ["D_COT_01","Cotton","Cotton Leaf Curl (CLCuD)","Viral","Whitefly",28.0,60.0,0.15,50.0,0.50,"Use resistant varieties, manage alternative hosts, systemic insecticides."],
-                ["D_COT_02","Cotton","Bacterial Blight","Bacterial","Rain/Wind",30.0,85.0,0.20,20.0,0.50,"Acid-delinted seeds, copper sprays, avoid overhead irrigation."],
-                ["D_COC_01","Cocoa","Black Pod (Phytophthora)","Fungal","Rain/Splash",25.0,90.0,0.25,15.0,0.20,"Frequent harvest, canopy pruning for airflow, copper fungicides."],
-                ["D_COC_02","Cocoa","Swollen Shoot Virus (CSSV)","Viral","Mealybug",26.0,50.0,0.05,15.0,0.00,"Cordon sanitaire (culling), plant barrier crops, vector control."],
-                ["D_WHT_01","Wheat","Yellow Rust (Stripe Rust)","Fungal","Wind",15.0,90.0,0.30,500.0,0.70,"Plant resistant cultivars, apply triazole fungicides at first sign."],
-                ["D_RIC_01","Rice","Rice Blast (Magnaporthe)","Fungal","Wind",25.0,90.0,0.22,200.0,0.40,"Avoid excess Nitrogen, keep water level steady, use resistant seeds."],
-                ["D_SOY_01","Soybean","Asian Soybean Rust","Fungal","Wind",22.0,95.0,0.28,1000.0,0.30,"Sentinel plot monitoring, early fungicide application."],
-                ["D_COF_01","Coffee","Coffee Leaf Rust (Hemileia)","Fungal","Wind",22.0,80.0,0.10,40.0,0.50,"Copper fungicides, plant resistant Catimor varieties, pruning."]
+                 ["D_CAS_01","Cassava","Cassava Mosaic Disease (CMD)","Viral","Whitefly",28.0,60.0,0.12,50.0,0.60,"Rogue infected plants."]
             ]
             cols = ["Disease_ID","Target_Crop_Name","Disease_Name","Type","Vector_Type",
                     "Opt_Temp","Opt_Humidity","Beta_Infection","Dispersal_Sigma_m",
@@ -135,7 +127,6 @@ class StateManager:
     def save_config_to_json():
         """Exports current configuration to a JSON string."""
         config = {
-            # Primitive types
             'field_name': st.session_state['field_name'],
             'center_lat': st.session_state['center_lat'],
             'center_lon': st.session_state['center_lon'],
@@ -156,7 +147,6 @@ class StateManager:
             'initial_nitrogen': st.session_state['initial_nitrogen'],
             'use_expert_soil': st.session_state['use_expert_soil'],
             
-            # Complex types (DataFrames to records)
             'soil_layers': st.session_state['soil_layers'].to_dict('records') if st.session_state['soil_layers'] is not None else [],
             'fert_schedule': st.session_state['fert_schedule'].astype(str).to_dict('records') if st.session_state['fert_schedule'] is not None else [],
             'irr_schedule': st.session_state['irr_schedule'].astype(str).to_dict('records') if st.session_state['irr_schedule'] is not None else []
@@ -169,7 +159,6 @@ class StateManager:
         try:
             data = json.load(json_file)
             
-            # Primitives
             st.session_state['field_coords'] = data.get('field_coords', [])
             st.session_state['center_lat'] = data.get('center_lat', 9.30)
             st.session_state['center_lon'] = data.get('center_lon', 13.40)
@@ -191,7 +180,6 @@ class StateManager:
             st.session_state['initial_nitrogen'] = data.get('initial_nitrogen', 70.0)
             st.session_state['use_expert_soil'] = data.get('use_expert_soil', False)
             
-            # Complex Objects
             if data.get('soil_layers'):
                 st.session_state['soil_layers'] = pd.DataFrame(data['soil_layers'])
             
