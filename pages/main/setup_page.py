@@ -368,7 +368,7 @@ def app():
         if c_next.button("Next ➡️"): st.session_state['step'] = 4; st.rerun()
 
     # ==========================================================================
-    # STEP 4: SOIL & MANAGEMENT (UPDATED WITH AUTO-SOIL)
+    # STEP 4: SOIL & MANAGEMENT (UPDATED WITH NPK)
     # ==========================================================================
     elif st.session_state['step'] == 4:
         st.subheader("🪨 Step 4: Soil & Management Operations")
@@ -383,11 +383,14 @@ def app():
                 if tex:
                     st.session_state['soil_type'] = tex
                     # Estimating N from Organic Carbon (Simple heuristic)
-                    # 10 g/kg Carbon approx suggests fertile soil -> higher initial N
                     est_n = min(150.0, max(40.0, carbon * 5.0))
                     st.session_state['initial_nitrogen'] = est_n
+                    
+                    # Assume P and K scale somewhat with fertility/carbon for defaults (very rough heuristic)
+                    st.session_state['initial_phosphorus'] = max(10.0, carbon * 2.0)
+                    st.session_state['initial_potassium'] = max(50.0, carbon * 8.0)
+                    
                     st.success(f"Detected: **{tex.title()}** | Organic Carbon: **{carbon:.1f} g/kg**")
-                    # Wait a moment so user sees the success
                     import time; time.sleep(1.5); st.rerun()
                 else:
                     st.error(f"Detection failed: {carbon}")
@@ -402,7 +405,6 @@ def app():
             if not expert_mode:
                 # STANDARD MODE: Simple Dropdown
                 soils = list(_SOIL_TABLE.keys())
-                # Ensure current selection is valid
                 curr_soil = st.session_state.get('soil_type', 'loam').lower()
                 if curr_soil not in soils: curr_soil = 'loam'
                 
@@ -413,7 +415,6 @@ def app():
                 )
                 st.session_state['soil_type'] = selected_soil.lower()
                 
-                # Update hidden layer dataframe for simulation consistency
                 props = _SOIL_TABLE[st.session_state['soil_type']]
                 st.session_state['soil_layers'] = pd.DataFrame([{
                     'depth_top': 0.0, 
@@ -423,19 +424,33 @@ def app():
                     'wilting_point': props['wilting_point'] 
                 }])
             
-            # Initial Nitrogen Input
-            st.session_state['initial_nitrogen'] = st.number_input(
-                "Initial Soil Nitrate (kg N/ha)", 
-                value=float(st.session_state.get('initial_nitrogen', 70.0)), 
-                step=5.0
-            )
+            # NUTRIENT INPUTS (UPDATED FOR NPK)
+            st.markdown("###### Initial Soil Nutrient Status (kg/ha)")
+            c_n, c_p, c_k = st.columns(3)
+            with c_n:
+                st.session_state['initial_nitrogen'] = st.number_input(
+                    "Nitrogen (N)", 
+                    value=float(st.session_state.get('initial_nitrogen', 70.0)), 
+                    step=5.0, help="Available Nitrate-N"
+                )
+            with c_p:
+                st.session_state['initial_phosphorus'] = st.number_input(
+                    "Phosphorus (P)", 
+                    value=float(st.session_state.get('initial_phosphorus', 30.0)), 
+                    step=5.0, help="Available P (Olsen/Bray)"
+                )
+            with c_k:
+                st.session_state['initial_potassium'] = st.number_input(
+                    "Potassium (K)", 
+                    value=float(st.session_state.get('initial_potassium', 100.0)), 
+                    step=5.0, help="Exchangeable K"
+                )
 
         with c_soil_info:
             if expert_mode:
                 st.info("🔧 **Expert Mode Active**")
                 st.caption("Define custom soil horizons below.")
             else:
-                # Show properties of selected soil
                 props = _SOIL_TABLE[st.session_state['soil_type']]
                 st.info(f"**Standard Properties ({st.session_state['soil_type'].title()})**")
                 st.write(f"- Field Capacity: **{props['field_capacity']*100:.0f}%**")
@@ -458,10 +473,24 @@ def app():
         # --- 2. MANAGEMENT SCHEDULES ---
         c_fert, c_irr = st.columns(2)
         with c_fert:
-            st.markdown("##### 🧪 Fertilization Schedule")
+            st.markdown("##### 🧪 Fertilizer Schedule (NPK)")
             df_fert = st.session_state['fert_schedule']
             if not df_fert.empty: df_fert['date'] = pd.to_datetime(df_fert['date']).dt.date
-            st.session_state['fert_schedule'] = st.data_editor(df_fert, num_rows="dynamic", column_config={"date": st.column_config.DateColumn("Date"), "amount": st.column_config.NumberColumn("Amount (kg N/ha)")}, key="editor_fert")
+            
+            # Updated Column Config for N, P, K
+            st.session_state['fert_schedule'] = st.data_editor(
+                df_fert, 
+                num_rows="dynamic", 
+                column_config={
+                    "date": st.column_config.DateColumn("Date"), 
+                    "amount_n": st.column_config.NumberColumn("N (kg/ha)", min_value=0, max_value=500),
+                    "amount_p": st.column_config.NumberColumn("P (kg/ha)", min_value=0, max_value=500),
+                    "amount_k": st.column_config.NumberColumn("K (kg/ha)", min_value=0, max_value=500)
+                }, 
+                key="editor_fert"
+            )
+            st.caption("Enter amounts for Nitrogen, Phosphorus, and Potassium separately.")
+            
         with c_irr:
             st.markdown("##### 💧 Irrigation Schedule")
             df_irr = st.session_state['irr_schedule']

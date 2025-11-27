@@ -342,8 +342,19 @@ def app():
                 elif peak_stress_w > 0.3:
                     recs.append("**! Moderate water stress.** Consider increasing irrigation.")
                     
+                # Nutrient Recommendations
                 if peak_stress_n > 0.5:
-                    recs.append("**! Nitrogen deficiency.** Apply side-dressing of N fertilizer.")
+                    recs.append("**! Nitrogen Deficiency:** Apply Urea or N-rich fertilizer at vegetative stage.")
+                
+                # We need to calculate peak P and K from history since they aren't in 'stats' dict by default
+                peak_stress_p = df_hist['Avg_P_Stress'].max()
+                peak_stress_k = df_hist['Avg_K_Stress'].max()
+                
+                if peak_stress_p > 0.5:
+                    recs.append("**! Phosphorus Deficiency:** Limit root growth. Apply DAP/TSP at planting.")
+                
+                if peak_stress_k > 0.5:
+                    recs.append("**! Potassium Deficiency:** Risk of lower drought tolerance. Apply MOP/SOP.")
 
                 if not recs:
                     recs.append("✅ Crop status is healthy.")

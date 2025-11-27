@@ -38,7 +38,11 @@ class StateManager:
         # --- Step 4: Soil ---
         'soil_type': 'loam',
         'use_expert_soil': False,
+        # Nutrients (kg/ha)
         'initial_nitrogen': 70.0,
+        'initial_phosphorus': 30.0, # NEW
+        'initial_potassium': 100.0, # NEW
+        
         'soil_layers': None, 
         'fert_schedule': None, 
         'irr_schedule': None   
@@ -54,7 +58,7 @@ class StateManager:
         # 2. Complex State
         StateManager._initialize_complex_state()
         
-        # 3. Knowledge Base (Crucial Fix: ensure DF exists even if 'step' is set)
+        # 3. Knowledge Base
         if 'df_diseases' not in st.session_state or 'df_crops' not in st.session_state:
             StateManager._ensure_knowledge_base()
 
@@ -69,20 +73,17 @@ class StateManager:
         d1 = st.session_state['planting_date'] + timedelta(days=20)
         d2 = st.session_state['planting_date'] + timedelta(days=45)
         
+        # UPDATED: Fertilizer schedule now handles N, P, K columns
         if st.session_state['fert_schedule'] is None:
-            st.session_state['fert_schedule'] = pd.DataFrame({'date': [d1, d2], 'amount': [0.0, 0.0]})
+            st.session_state['fert_schedule'] = pd.DataFrame({
+                'date': [d1, d2], 
+                'amount_n': [0.0, 0.0],
+                'amount_p': [0.0, 0.0],
+                'amount_k': [0.0, 0.0]
+            })
             
         if st.session_state['irr_schedule'] is None:
             st.session_state['irr_schedule'] = pd.DataFrame({'date': [d1, d2], 'amount': [0.0, 0.0]})
-            
-        if st.session_state['soil_layers'] is None:
-            st.session_state['soil_layers'] = pd.DataFrame([{
-                'depth_top': 0.0, 
-                'depth_bottom': 1.5, 
-                'texture': 'loam',
-                'field_capacity': 0.27, 
-                'wilting_point': 0.11 # Ensure this key exists!
-            }])
 
     @staticmethod
     def _ensure_knowledge_base():
@@ -91,8 +92,6 @@ class StateManager:
 
         # --- 1. CROPS DB ---
         crops_path = "src/data/crops_db.csv"
-        
-        # Only write if file doesn't exist
         if not os.path.exists(crops_path):
             data = [
                 ["C_CAS_01","Cassava","TME 419 (Improved)","Perennial",365,0,18.0,26.0,35.0,1.8,4.5,0.65,1.1,1.5,100,0.2, 10000],
@@ -118,13 +117,8 @@ class StateManager:
 
         # --- 2. DISEASES DB ---
         dis_path = "src/data/diseases_db.csv"
-        
-        # Only write if file doesn't exist. This prevents the PermissionError.
         if not os.path.exists(dis_path):
-             # Fallback data if user hasn't pasted the CSV yet
-            data = [
-                 ["D_CAS_01","Cassava","Cassava Mosaic Disease (CMD)","Viral","Whitefly",28.0,60.0,0.12,50.0,0.60,"Rogue infected plants."]
-            ]
+            data = [["D_CAS_01","Cassava","Cassava Mosaic Disease (CMD)","Viral","Whitefly",28.0,60.0,0.12,50.0,0.60,"Rogue infected plants."]]
             cols = ["Disease_ID","Target_Crop_Name","Disease_Name","Type","Vector_Type",
                     "Opt_Temp","Opt_Humidity","Beta_Infection","Dispersal_Sigma_m",
                     "Yield_Retained_Infected","Control_Methods"]
@@ -134,7 +128,6 @@ class StateManager:
 
     @staticmethod
     def save_config_to_json():
-        """Exports current configuration to a JSON string."""
         config = {
             'field_name': st.session_state['field_name'],
             'center_lat': st.session_state['center_lat'],
@@ -154,6 +147,8 @@ class StateManager:
             
             'soil_type': st.session_state['soil_type'],
             'initial_nitrogen': st.session_state['initial_nitrogen'],
+            'initial_phosphorus': st.session_state.get('initial_phosphorus', 30.0),
+            'initial_potassium': st.session_state.get('initial_potassium', 100.0),
             'use_expert_soil': st.session_state['use_expert_soil'],
             
             'soil_layers': st.session_state['soil_layers'].to_dict('records') if st.session_state['soil_layers'] is not None else [],
@@ -164,47 +159,39 @@ class StateManager:
 
     @staticmethod
     def load_config_from_json(json_file):
-        """Loads configuration from a JSON file object."""
         try:
             data = json.load(json_file)
-            
             st.session_state['field_coords'] = data.get('field_coords', [])
             st.session_state['center_lat'] = data.get('center_lat', 9.30)
             st.session_state['center_lon'] = data.get('center_lon', 13.40)
             st.session_state['area_ha'] = data.get('area_ha', 1.0)
             
             st.session_state['selected_crop_id'] = data.get('selected_crop_id')
-            if data.get('planting_date'):
-                st.session_state['planting_date'] = date.fromisoformat(data['planting_date'])
+            if data.get('planting_date'): st.session_state['planting_date'] = date.fromisoformat(data['planting_date'])
             st.session_state['planting_density'] = data.get('planting_density', 10000)
             st.session_state['sowing_depth'] = data.get('sowing_depth', 5)
             
             st.session_state['selected_disease_id'] = data.get('selected_disease_id')
             st.session_state['disease_spots'] = data.get('disease_spots', [])
-            if data.get('detection_date'):
-                st.session_state['detection_date'] = date.fromisoformat(data['detection_date'])
+            if data.get('detection_date'): st.session_state['detection_date'] = date.fromisoformat(data['detection_date'])
             st.session_state['insect_pressure'] = data.get('insect_pressure', 1.0)
             
             st.session_state['soil_type'] = data.get('soil_type', 'loam')
             st.session_state['initial_nitrogen'] = data.get('initial_nitrogen', 70.0)
+            st.session_state['initial_phosphorus'] = data.get('initial_phosphorus', 30.0)
+            st.session_state['initial_potassium'] = data.get('initial_potassium', 100.0)
             st.session_state['use_expert_soil'] = data.get('use_expert_soil', False)
             
-            if data.get('soil_layers'):
-                st.session_state['soil_layers'] = pd.DataFrame(data['soil_layers'])
-            
+            if data.get('soil_layers'): st.session_state['soil_layers'] = pd.DataFrame(data['soil_layers'])
             if data.get('fert_schedule'):
                 df = pd.DataFrame(data['fert_schedule'])
-                if not df.empty and 'date' in df.columns:
-                    df['date'] = pd.to_datetime(df['date']).dt.date
+                if not df.empty and 'date' in df.columns: df['date'] = pd.to_datetime(df['date']).dt.date
                 st.session_state['fert_schedule'] = df
-                
             if data.get('irr_schedule'):
                 df = pd.DataFrame(data['irr_schedule'])
-                if not df.empty and 'date' in df.columns:
-                    df['date'] = pd.to_datetime(df['date']).dt.date
+                if not df.empty and 'date' in df.columns: df['date'] = pd.to_datetime(df['date']).dt.date
                 st.session_state['irr_schedule'] = df
                 
             return True
         except Exception as e:
-            st.error(f"Corrupt file: {e}")
-            return False
+            st.error(f"Corrupt file: {e}"); return False

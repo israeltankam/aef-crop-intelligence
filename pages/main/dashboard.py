@@ -89,7 +89,8 @@ def app():
     # Validate cache keys
     if not should_run:
         try:
-            if 'SWC' not in st.session_state['sim_results']['history'][0]:
+            # Check if new NPK keys exist in history
+            if 'N_kg' not in st.session_state['sim_results']['history'][0]:
                 should_run = True
         except:
             should_run = True
@@ -108,8 +109,17 @@ def app():
             config['soil_water_holding_cap'] = st.session_state.get('soil_water_holding_cap', 150.0)
             config['initial_soil_water'] = st.session_state.get('initial_soil_water', 0.5)
             config['initial_nitrogen'] = st.session_state.get('initial_nitrogen', 100.0)
+            config['initial_phosphorus'] = st.session_state.get('initial_phosphorus', 30.0)
+            config['initial_potassium'] = st.session_state.get('initial_potassium', 100.0)
+            
             config['insect_pressure'] = st.session_state.get('insect_pressure', 1.0)
             config['planting_date'] = st.session_state.get('planting_date', date.today())
+            
+            # Ensure complex soil layers are passed
+            if st.session_state.get('soil_layers') is not None:
+                config['soil_layers'] = st.session_state['soil_layers'].to_dict('records')
+            else:
+                config['soil_layers'] = []
             
             st.session_state['sim_results'] = engine.run_simulation(config)
             if st.session_state['sim_results'] is None:
@@ -149,7 +159,7 @@ def app():
     
     st.divider()
     
-    # --- 4. SPATIAL MAP (NOW ACTIVE) ---
+    # --- 4. SPATIAL MAP ---
     st.subheader("🗺️ Spatial Epidemiology & Yield")
     
     col_controls, col_map = st.columns([1, 3])
@@ -160,19 +170,13 @@ def app():
         st.info("Red zones indicate high stress or infection. Green zones indicate healthy biomass.")
         
     with col_map:
-        # Setup Matplotlib Figure
         fig, ax = plt.subplots(figsize=(10, 7))
-        
-        # Retrieve triangulation from simulation engine
         triang_source = res['triangulation']
         
-        # COORDINATE FIX: Swap Lat/Lon for Plotting
-        # The engine uses [Lat, Lon] for calculation, but maps need [Lon, Lat] (X, Y)
         x_plot = triang_source.y  # Longitude
         y_plot = triang_source.x  # Latitude
         triang_plot = Triangulation(x_plot, y_plot, triang_source.triangles)
         
-        # Determine Data & Scale
         if map_mode == "Disease Severity":
             vals = day_data['Grid_Incidence']
             cmap = 'Reds'
@@ -182,39 +186,30 @@ def app():
             vals = day_data['Grid_Yield']
             cmap = 'Greens'
             title = f"Yield Accumulation (t/ha)"
-            # Dynamic scale based on max yield in history
             max_yield_hist = np.max([h['Grid_Yield'].max() for h in history])
             vmax = max(1.0, max_yield_hist)
         
-        # Plot Triangular Mesh
         trip = ax.tripcolor(triang_plot, vals, cmap=cmap, shading='gouraud', vmin=0, vmax=vmax)
-        
-        # Add Colorbar
         cbar = fig.colorbar(trip, ax=ax, fraction=0.03, pad=0.04)
         cbar.set_label(title)
         
-        # Overlay Field Boundary
         if 'field_poly' in res:
-            poly = res['field_poly'] # [Lat, Lon]
-            # Plot as [Lon, Lat]
+            poly = res['field_poly']
             poly_plot = np.vstack([poly, poly[0]])
             ax.plot(poly_plot[:, 1], poly_plot[:, 0], 'k-', linewidth=1.5, label="Boundary")
         
-        # Overlay Patient Zero Spots
         spots = st.session_state.get('disease_spots', [])
         if spots:
             sdf = pd.DataFrame(spots)
-            # Spots are {'lat': ..., 'lon': ...}
             ax.scatter(sdf['lon'], sdf['lat'], c='blue', marker='x', s=80, label="Observed Foci", zorder=5)
             ax.legend(loc='upper right', fontsize='small')
             
         ax.set_xlabel("Longitude")
         ax.set_ylabel("Latitude")
-        ax.axis('equal') # Ensure 1 meter North = 1 meter East
+        ax.axis('equal')
         ax.grid(True, linestyle='--', alpha=0.3)
-        
         st.pyplot(fig)
-        plt.close(fig) # Important to free memory
+        plt.close(fig)
     
     st.divider()
     
@@ -223,10 +218,9 @@ def app():
     df_plot = pd.DataFrame(history)
     df_plot['Date'] = pd.to_datetime(df_plot['Date'])
     
-    # Common Rule for Selected Date
     rule = alt.Chart(pd.DataFrame({'Date': [pd.to_datetime(selected_date)]})).mark_rule(color='black').encode(x='Date:T')
     
-    tabs = st.tabs(["LAI & Biomass", "Soil Water & Nmin", "Disease Incidence", "Daily Stress", "🛰️ Reality Check (NDVI)"])
+    tabs = st.tabs(["LAI & Biomass", "Soil Nutrients", "Disease Incidence", "Nutrient Stress", "🛰️ Reality Check (NDVI)"])
     
     # --- TAB 1: LAI & BIOMASS ---
     with tabs[0]:
@@ -244,21 +238,29 @@ def app():
         c = alt.layer(line_lai, line_bio).resolve_scale(y='independent').properties(height=350)
         st.altair_chart((c + rule).interactive(), use_container_width=True)
         
-    # --- TAB 2: SOIL WATER & NMIN ---
+    # --- TAB 2: SOIL WATER & NUTRIENTS (FIXED) ---
     with tabs[1]:
-        df_soil = df_plot[['Date', 'SWC', 'Nmin']].copy()
-        base = alt.Chart(df_soil).encode(x='Date:T')
+        # Using N_kg, P_kg, K_kg instead of Nmin
+        df_soil = df_plot[['Date', 'SWC', 'N_kg', 'P_kg', 'K_kg']].copy()
         
-        line_swc = base.transform_calculate(Metric="'Soil Water (mm)'").mark_line().encode(
-            y=alt.Y('SWC:Q', title='Soil Water Content (mm)', axis=alt.Axis(titleColor='#3498db')),
-            color=alt.Color('Metric:N', scale=alt.Scale(domain=['Soil Water (mm)', 'Mineral N (kg/ha)'], range=['#3498db', '#e67e22']), legend=alt.Legend(title="Soil Status"))
+        # Melt for multi-line chart
+        df_soil_melt = df_soil.melt('Date', var_name='Parameter', value_name='Value')
+        
+        base = alt.Chart(df_soil_melt).encode(x='Date:T')
+        
+        lines = base.mark_line().encode(
+            y=alt.Y('Value:Q', title='Amount (mm or kg/ha)'),
+            color=alt.Color('Parameter:N', 
+                            scale=alt.Scale(
+                                domain=['SWC', 'N_kg', 'P_kg', 'K_kg'], 
+                                range=['#3498db', '#e67e22', '#9b59b6', '#f1c40f']
+                            ),
+                            legend=alt.Legend(title="Soil Status")
+            ),
+            tooltip=['Date', 'Parameter', 'Value']
         )
-        line_n = base.transform_calculate(Metric="'Mineral N (kg/ha)'").mark_line().encode(
-            y=alt.Y('Nmin:Q', title='Mineral Nitrogen (kg/ha)', axis=alt.Axis(titleColor='#e67e22')),
-            color=alt.Color('Metric:N')
-        )
-        c = alt.layer(line_swc, line_n).resolve_scale(y='independent').properties(height=350)
-        st.altair_chart((c + rule).interactive(), use_container_width=True)
+        
+        st.altair_chart((lines + rule).interactive(), use_container_width=True)
 
     # --- TAB 3: DISEASE ---
     with tabs[2]:
@@ -275,16 +277,30 @@ def app():
         c = alt.layer(area_inc, line_env).resolve_scale(y='independent').properties(height=350)
         st.altair_chart((c + rule).interactive(), use_container_width=True)
 
-    # --- TAB 4: DAILY STRESS ---
+    # --- TAB 4: DAILY STRESS (UPDATED NPK) ---
     with tabs[3]:
-        df_stress = df_plot.melt('Date', value_vars=['Avg_Stress', 'Avg_N_Stress'], var_name='Stress Type', value_name='Index')
-        df_stress['Stress Type'] = df_stress['Stress Type'].replace({'Avg_Stress': 'Water Stress', 'Avg_N_Stress': 'Nitrogen Stress'})
+        # Melt water plus N, P, K stresses
+        df_stress = df_plot.melt(
+            'Date', 
+            value_vars=['Avg_Stress', 'Avg_N_Stress', 'Avg_P_Stress', 'Avg_K_Stress'], 
+            var_name='Stress Type', 
+            value_name='Index'
+        )
+        
+        df_stress['Stress Type'] = df_stress['Stress Type'].replace({
+            'Avg_Stress': 'Water', 
+            'Avg_N_Stress': 'Nitrogen (N)',
+            'Avg_P_Stress': 'Phosphorus (P)',
+            'Avg_K_Stress': 'Potassium (K)'
+        })
+        
         c = alt.Chart(df_stress).mark_area(opacity=0.5).encode(
             x='Date:T',
             y=alt.Y('Index:Q', title='Stress Index (0=None, 1=Severe)'),
             color=alt.Color('Stress Type:N', scale=alt.Scale(scheme='category10')),
             tooltip=['Date', 'Stress Type', 'Index']
         ).properties(height=350)
+        
         st.altair_chart((c + rule).interactive(), use_container_width=True)
 
     # --- TAB 5: REALITY CHECK (NDVI) ---

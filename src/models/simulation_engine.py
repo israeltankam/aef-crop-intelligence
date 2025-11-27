@@ -1,308 +1,92 @@
-#src\models\simulation_engine.py
+# src/models/simulation_engine.py
 import numpy as np
 import pandas as pd
 import streamlit as st
-from datetime import date, timedelta, datetime
+from datetime import date
 from scipy.signal import convolve2d
 from scipy.spatial import Delaunay
 from matplotlib.tri import Triangulation
 from matplotlib.path import Path
-import ee
-from google.oauth2.service_account import Credentials
+
+# Import helpers
+from src.models.weather_service import WeatherService
+from src.models.physics_engine import PhysicsEngine
 
 class SimulationEngine:
     def __init__(self):
-        self._ensure_ee_init()
-
-    def _ensure_ee_init(self):
-        if not st.session_state.get('ee_initialized', False):
-            try:
-                if 'gcp_service_account' in st.secrets:
-                    service_account_info = st.secrets["gcp_service_account"]
-                    scopes = ['https://www.googleapis.com/auth/earthengine']
-                    creds = Credentials.from_service_account_info(service_account_info, scopes=scopes)
-                    ee.Initialize(credentials=creds)
-                    st.session_state['ee_initialized'] = True
-            except:
-                pass 
-
-    def _generate_synthetic_weather(self, start_date, duration, lat):
-        """Fallback: Generates synthetic weather including wind speed."""
-        dates = [datetime.combine(start_date + timedelta(days=i), datetime.min.time()) for i in range(duration)]
-        doy = np.array([d.timetuple().tm_yday for d in dates])
-        
-        t_avg = 25 + 5 * np.sin((doy - 60) * 2 * np.pi / 365)
-        t_min = t_avg - 7 + np.random.normal(0, 1, duration)
-        t_max = t_avg + 7 + np.random.normal(0, 2, duration)
-        rain = (np.random.rand(duration) < 0.3) * np.random.gamma(10, 2, duration)
-        rad = 20 - (rain > 0) * 8 + np.random.normal(0, 2, duration)
-        rad = np.clip(rad, 5, 30)
-        hum = 60 + (rain > 0) * 20 + np.random.normal(0, 5, duration)
-        
-        # Synthetic Wind Speed (m/s)
-        # Gamma distribution for wind (skewed towards lower speeds with occasional gusts)
-        wind = np.random.gamma(3, 1.5, duration) 
-        
-        return pd.DataFrame({
-            'DATE': pd.to_datetime(dates),
-            'TMIN': t_min, 'TMAX': t_max,
-            'RAIN': rain, 'RADIATION': rad,
-            'HUMIDITY': np.clip(hum, 20, 100),
-            'WIND_SPEED': wind
-        })
-
-    def fetch_weather_climatology_ee(self, lat, lon, start_date, duration):
-        """
-        Fetches 10-year average climatology including WIND SPEED (ERA5).
-        """
-        if not st.session_state.get('ee_initialized'):
-            return None
-
-        try:
-            point = ee.Geometry.Point([lon, lat])
-            
-            # Fetch 3 years back
-            hist_start = start_date.replace(year=start_date.year - 4)
-            hist_end = start_date.replace(year=start_date.year - 1)
-            
-            # ERA5-Land: Temp, Rad, AND Wind Components
-            # u_component_of_wind_10m, v_component_of_wind_10m
-            era5 = ee.ImageCollection("ECMWF/ERA5_LAND/DAILY_AGGR")\
-                .filterDate(str(hist_start), str(hist_end))\
-                .filterBounds(point)\
-                .select(['temperature_2m_min', 'temperature_2m_max', 
-                         'surface_solar_radiation_downwards_sum',
-                         'u_component_of_wind_10m', 'v_component_of_wind_10m'])
-            
-            era5_raw = era5.getRegion(point, 11000).getInfo()
-            header = era5_raw[0]
-            data = era5_raw[1:]
-            df_era = pd.DataFrame(data, columns=header)
-            
-            df_era['date'] = pd.to_datetime(df_era['time'], unit='ms')
-            df_era['TMIN'] = df_era['temperature_2m_min'] - 273.15
-            df_era['TMAX'] = df_era['temperature_2m_max'] - 273.15
-            df_era['RADIATION'] = df_era['surface_solar_radiation_downwards_sum'] / 1e6
-            
-            # Calculate Wind Speed Magnitude
-            # Speed = sqrt(u^2 + v^2)
-            df_era['WIND_SPEED'] = np.sqrt(
-                df_era['u_component_of_wind_10m']**2 + 
-                df_era['v_component_of_wind_10m']**2
-            )
-            
-            df_era['MM-DD'] = df_era['date'].dt.strftime('%m-%d')
-            
-            # CHIRPS (Rain)
-            chirps = ee.ImageCollection("UCSB-CHG/CHIRPS/DAILY")\
-                .filterDate(str(hist_start), str(hist_end))\
-                .filterBounds(point)
-                
-            chirps_raw = chirps.getRegion(point, 5000).getInfo()
-            header_c = chirps_raw[0]
-            data_c = chirps_raw[1:]
-            df_chirps = pd.DataFrame(data_c, columns=header_c)
-            
-            df_chirps['date'] = pd.to_datetime(df_chirps['time'], unit='ms')
-            df_chirps['RAIN'] = df_chirps['precipitation']
-            df_chirps['MM-DD'] = df_chirps['date'].dt.strftime('%m-%d')
-            
-            # Aggregate to Climatology
-            clim_era = df_era.groupby('MM-DD')[['TMIN', 'TMAX', 'RADIATION', 'WIND_SPEED']].mean()
-            clim_rain = df_chirps.groupby('MM-DD')[['RAIN']].mean()
-            climatology = clim_era.join(clim_rain).fillna(0)
-            
-            sim_dates = [start_date + timedelta(days=i) for i in range(duration)]
-            sim_df_list = []
-            
-            for d in sim_dates:
-                key = d.strftime('%m-%d')
-                if key in climatology.index:
-                    row = climatology.loc[key]
-                    sim_df_list.append({
-                        'DATE': pd.Timestamp(d),
-                        'TMIN': row['TMIN'], 'TMAX': row['TMAX'],
-                        'RAIN': row['RAIN'], 'RADIATION': row['RADIATION'],
-                        'WIND_SPEED': row['WIND_SPEED'],
-                        'HUMIDITY': 60 + (row['RAIN'] > 0)*20
-                    })
-                else:
-                    sim_df_list.append({
-                        'DATE': pd.Timestamp(d),
-                        'TMIN': 25, 'TMAX': 30, 'RAIN': 0, 'RADIATION': 20, 
-                        'WIND_SPEED': 2.5, 'HUMIDITY': 50
-                    })
-            
-            return pd.DataFrame(sim_df_list)
-
-        except Exception as e:
-            print(f"EE Weather Fetch Error: {e}")
-            return None
-
-    # --- UPDATED PHYSICS: FAO-56 Style Water Balance ---
-    def _stics_lite_step(self, day_idx, weather_row, crop, soil_state, mgmt_events):
-        """
-        Calculates daily biomass and sophisticated water stress (FAO-56 Dual Kc logic).
-        """
-        tmin, tmax = weather_row['TMIN'], weather_row['TMAX']
-        rad = weather_row['RADIATION']
-        rain = weather_row['RAIN']
-        t_avg = (tmin + tmax) / 2
-        
-        # 1. Thermal Time
-        dTT = max(0, t_avg - crop['T_Base'])
-        if t_avg > crop['T_Max']: dTT = 0 
-        
-        # 2. Reference Evapotranspiration (ET0) - Hargreaves Samani Approximation
-        # (Standard if Penman-Monteith data missing)
-        et0 = 0.0023 * (t_avg + 17.8) * ((tmax - tmin)**0.5) * rad
-        
-        # 3. Dynamic Crop Coefficient (Kc) based on progress
-        cycle = crop['Cycle_Days']
-        progress = day_idx / cycle
-        
-        # Kc Curve Construction
-        kc_ini = 0.35
-        kc_mid = crop['Kc_Mid']
-        kc_end = 0.6
-        
-        if progress < 0.15: # Initial
-            kc = kc_ini
-        elif progress < 0.45: # Development (Linear increase)
-            kc = kc_ini + ((progress - 0.15) / 0.3) * (kc_mid - kc_ini)
-        elif progress < 0.75: # Mid-Season
-            kc = kc_mid
-        else: # Late Season (Linear drop)
-            kc = kc_mid + ((progress - 0.75) / 0.25) * (kc_end - kc_mid)
-            
-        # 4. Water Balance
-        curr_date = weather_row['DATE'].date()
-        irr_amount = mgmt_events['irr'].get(curr_date, 0.0)
-        fert_amount = mgmt_events['fert'].get(curr_date, 0.0)
-        
-        soil_state['water_mm'] += (rain + irr_amount)
-        soil_state['nitrogen_kg'] += fert_amount
-        
-        # Soil Properties
-        fc_mm = soil_state['field_capacity_mm'] 
-        wp_mm = soil_state['wilting_point_mm']
-        taw = fc_mm - wp_mm # Total Available Water
-        
-        # Depletion Fraction (p) - Standard is 0.5, usually varies by crop
-        p = 0.5 
-        raw = taw * p # Readily Available Water
-        
-        # Current depletion from Field Capacity
-        current_depletion = fc_mm - soil_state['water_mm']
-        
-        # Stress Factor (Ks)
-        # If depletion < RAW, no stress (Ks=1). If depletion > RAW, stress linearly decreases.
-        ks = 1.0
-        if current_depletion > raw:
-            # Water remains in the root zone but is hard to extract
-            remaining_after_raw = (taw - current_depletion)
-            buffer_zone = (taw - raw)
-            if buffer_zone > 0:
-                ks = max(0, remaining_after_raw / buffer_zone)
-            else:
-                ks = 0
-        
-        eta = et0 * kc * ks
-        
-        # Update Bucket
-        soil_state['water_mm'] = max(wp_mm, soil_state['water_mm'] - eta)
-        # Drainage if above FC
-        drainage = 0
-        if soil_state['water_mm'] > fc_mm:
-            drainage = soil_state['water_mm'] - fc_mm
-            soil_state['water_mm'] = fc_mm
-            
-        # 5. Nitrogen & Biomass
-        n_fac = 1.0
-        if soil_state['nitrogen_kg'] < 20: 
-            n_fac = max(0, soil_state['nitrogen_kg'] / 20.0)
-            
-        lai = 0
-        if progress < 0.15: lai = 0.5
-        elif progress < 0.5: lai = crop['Max_LAI'] * (progress/0.5)
-        elif progress < 0.8: lai = crop['Max_LAI']
-        else: lai = crop['Max_LAI'] * (1 - (progress-0.8)*5)
-        
-        ipar = rad * (1 - np.exp(-0.7 * lai))
-        d_bio_g_m2 = crop['RUE_g_MJ'] * ipar * ks * n_fac
-        
-        n_demand = (d_bio_g_m2) * 0.025
-        n_uptake = min(soil_state['nitrogen_kg'], n_demand)
-        soil_state['nitrogen_kg'] -= n_uptake
-        soil_state['nitrogen_kg'] = max(0, soil_state['nitrogen_kg'])
-        
-        return {
-            'd_biomass_t_ha': d_bio_g_m2 * 0.01, 
-            'sw_fac': ks, # Ks is the FAO stress factor (0-1)
-            'n_fac': n_fac,
-            'lai': lai,
-            'eta': eta,
-            'et0': et0,
-            'kc': kc,
-            'swc': soil_state['water_mm'],
-            'drainage': drainage,
-            'depletion': current_depletion,
-            'raw': raw,
-            'nmin': soil_state['nitrogen_kg']
-        }
+        self.weather_service = WeatherService()
+        self.physics = PhysicsEngine()
 
     def _prepare_physics(self, config):
+        """
+        Initializes Weather, Soil State (Water + NPK), and Management Schedules.
+        """
         df_c = st.session_state['df_crops']
         crop_p = df_c[df_c['Crop_ID'] == config['selected_crop_id']].iloc[0]
         cycle = int(crop_p['Cycle_Days'])
 
-        weather = self.fetch_weather_climatology_ee(
+        # 1. Fetch Weather
+        weather = self.weather_service.fetch_weather_climatology_ee(
             config['center_lat'], config['center_lon'], config['planting_date'], cycle
         )
         if weather is None or weather.empty:
-            weather = self._generate_synthetic_weather(config['planting_date'], cycle, config['center_lat'])
+            weather = self.weather_service.generate_synthetic_weather(config['planting_date'], cycle)
 
-        # Updated Soil State Initialization with Wilting Point
-        # Assuming 1.5m root depth and values from Setup Page or defaults
+        # 2. Init Soil Properties
         soil_layers = config['soil_layers']
         
-        # Calculate total weighted FC and WP from layers
-        total_fc_pct = 0.27 # default
-        total_wp_pct = 0.11 # default
-        
-        # --- FIX: Check if list is not empty, and if it's a DataFrame handle it ---
+        # Robust handling for list vs dataframe vs none
         if isinstance(soil_layers, list) and len(soil_layers) > 0:
              total_fc_pct = np.mean([l['field_capacity'] for l in soil_layers])
              total_wp_pct = np.mean([l['wilting_point'] for l in soil_layers])
         elif isinstance(soil_layers, pd.DataFrame) and not soil_layers.empty:
              total_fc_pct = soil_layers['field_capacity'].mean()
              total_wp_pct = soil_layers['wilting_point'].mean()
+        else:
+             total_fc_pct = 0.27
+             total_wp_pct = 0.11
 
-        root_depth = 1000 # mm
-        
+        root_depth = 1000 # mm assumption for lite model
         fc_mm = total_fc_pct * root_depth
         wp_mm = total_wp_pct * root_depth
         
-        # Initial condition: User defined % of FC
         init_water = config['initial_soil_water'] * fc_mm 
         if init_water < wp_mm: init_water = wp_mm
 
+        # 3. Initialize State with N, P, K
         soil_state = {
             'water_mm': init_water,
-            'nitrogen_kg': config['initial_nitrogen'],
+            'n_kg': config['initial_nitrogen'],
+            'p_kg': config.get('initial_phosphorus', 30.0),
+            'k_kg': config.get('initial_potassium', 100.0),
             'field_capacity_mm': fc_mm,
             'wilting_point_mm': wp_mm
         }
         
+        # 4. Parse Management (Fertilizer NPK + Irrigation)
+        fert_df = pd.DataFrame(config['fert_schedule'])
+        # Handle columns if missing
+        for col in ['amount_n', 'amount_p', 'amount_k']:
+            if col not in fert_df.columns: fert_df[col] = 0.0
+            
+        fert_n_map = {pd.to_datetime(r['date']).date(): float(r['amount_n']) for _, r in fert_df.iterrows()}
+        fert_p_map = {pd.to_datetime(r['date']).date(): float(r['amount_p']) for _, r in fert_df.iterrows()}
+        fert_k_map = {pd.to_datetime(r['date']).date(): float(r['amount_k']) for _, r in fert_df.iterrows()}
+        
+        irr_map = {pd.to_datetime(r['date']).date(): float(r['amount']) for r in config['irr_schedule']}
+        
         mgmt = {
-            'fert': {pd.to_datetime(r['date']).date(): float(r['amount']) for r in config['fert_schedule']},
-            'irr': {pd.to_datetime(r['date']).date(): float(r['amount']) for r in config['irr_schedule']}
+            'fert_n': fert_n_map,
+            'fert_p': fert_p_map,
+            'fert_k': fert_k_map,
+            'irr': irr_map
         }
 
+        # 5. Run Physics Loop
         bio_history = []
         biomass_cum = 0.0
         for t, row in weather.iterrows():
-            bio = self._stics_lite_step(t, row, crop_p, soil_state, mgmt)
+            bio = self.physics.stics_lite_step(t, row, crop_p, soil_state, mgmt)
             biomass_cum += bio['d_biomass_t_ha']
             bio['cumulative_biomass'] = biomass_cum
             bio['weather_row'] = row
@@ -315,21 +99,15 @@ class SimulationEngine:
         path = Path(field_poly)
         min_x, min_y = np.min(field_poly, axis=0)
         max_x, max_y = np.max(field_poly, axis=0)
-        
         N = 40 
-        x = np.linspace(min_x, max_x, N)
-        y = np.linspace(min_y, max_y, N)
+        x = np.linspace(min_x, max_x, N); y = np.linspace(min_y, max_y, N)
         xv, yv = np.meshgrid(x, y)
         points = np.vstack((xv.flatten(), yv.flatten())).T
-        
         mask = path.contains_points(points).reshape(N, N)
         valid_points = points[mask.flatten()]
-        
         if len(valid_points) < 3: return None
-        
         tri = Delaunay(valid_points)
         triang = Triangulation(valid_points[:,0], valid_points[:,1], tri.simplices)
-        
         I_grid_init = np.zeros((N, N))
         if config['disease_spots']:
             for spot in config['disease_spots']:
@@ -339,26 +117,19 @@ class SimulationEngine:
                     count = spot.get('plants', 1)
                     severity = min(1.0, 0.05 * count)
                     I_grid_init[iy, ix] = max(I_grid_init[iy, ix], severity)
-
         return field_poly, N, mask, valid_points, triang, I_grid_init
 
     def _run_disease_realization(self, config, crop_p, bio_history, N, mask, valid_points, I_grid_init):
-        """
-        Modified to handle FUNGAL (Wind) vs VIRAL (Vector) spread logic.
-        """
         df_d = st.session_state['df_diseases']
         dis_id = config['selected_disease_id']
-        
         dis_p = None
         if dis_id:
             dis_rows = df_d[df_d['Disease_ID'] == dis_id]
             if not dis_rows.empty: dis_p = dis_rows.iloc[0]
 
-        # Determine Logic Type
         is_fungal = False
         if dis_p is not None:
-            if 'fungal' in str(dis_p['Type']).lower() or 'bacterial' in str(dis_p['Type']).lower():
-                is_fungal = True
+            if 'fungal' in str(dis_p['Type']).lower() or 'bacterial' in str(dis_p['Type']).lower(): is_fungal = True
 
         I_grid = I_grid_init.copy()
         kernel = np.array([[0.05, 0.2, 0.05], [0.2, 0.5, 0.2], [0.05, 0.2, 0.05]])
@@ -374,59 +145,47 @@ class SimulationEngine:
             
             env_risk = 0
             if dis_p is not None:
-                # 1. Environmental Risk (Temp + Humidity)
                 t_score = np.exp(-((weather_row['TMIN'] + weather_row['TMAX'])/2 - dis_p['Opt_Temp'])**2 / 50)
                 h_score = 1.0 if weather_row['HUMIDITY'] > dis_p['Opt_Humidity'] else weather_row['HUMIDITY']/100
                 env_risk = t_score * h_score
-                
-                # 2. Transmission Factor (Wind vs Vector)
                 if is_fungal:
-                    # Fungal: Driven by Wind Speed
-                    # Normalize: Assume 5 m/s is "standard" breeze. Higher wind = further/faster spread.
                     wind_speed = weather_row.get('WIND_SPEED', 2.0)
                     spread_driver = (wind_speed / 5.0) 
                 else:
-                    # Viral: Driven by Vector Pressure (User Input)
                     spread_driver = config['insect_pressure']
-                
                 pressure = convolve2d(I_grid, kernel, mode='same')
-                
-                # Growth = Beta * Env * Driver * Neighbors * Susceptible
                 growth = beta * spread_driver * env_risk * pressure * (1 - I_grid)
-                
-                # Jumps (Long distance dispersal)
-                # Fungi jump more with high wind
                 jump_prob = 0.0005 * (1.5 if is_fungal else 1.0)
                 jumps = (np.random.rand(N, N) < jump_prob) * (I_grid.sum() > 0) * 0.1
-                
                 I_grid = np.clip(I_grid + growth + jumps, 0, 1)
                 I_grid = I_grid * mask
 
             inf_values = I_grid[mask]
-            
             damage_factor = np.ones(n_valid)
             if dis_p is not None:
                 retained = dis_p.get('Yield_Retained_Infected', 0.5)
                 damage_factor = (1 - inf_values) + (inf_values * retained)
-            
             yield_grid = crop_p['Harvest_Index'] * biomass_val * damage_factor
             
             history_realization.append({
                 'Date': weather_row['DATE'],
                 'LAI': bio['lai'],
                 'SWC': bio['swc'],
-                'Nmin': bio['nmin'],
+                'N_kg': bio.get('n_kg', 0), # Safe get
+                'P_kg': bio.get('p_kg', 0),
+                'K_kg': bio.get('k_kg', 0),
                 'ETa': bio['eta'],
                 'Biomass': biomass_val,
                 'Yield': np.mean(yield_grid),
                 'Incidence': np.mean(inf_values) if dis_p is not None else 0,
                 'Avg_Stress': 1 - bio['sw_fac'], 
-                'Avg_N_Stress': 1 - bio['n_fac'],
+                'Avg_N_Stress': 1 - bio.get('n_fac', 1),
+                'Avg_P_Stress': 1 - bio.get('p_fac', 1),
+                'Avg_K_Stress': 1 - bio.get('k_fac', 1),
                 'Grid_Incidence': inf_values.copy(), 
                 'Grid_Yield': yield_grid.copy(),
                 'Env_Favorability': env_risk
             })
-            
         return history_realization
 
     def run_simulation(self, config):
@@ -474,39 +233,21 @@ class SimulationEngine:
             'Final_Grid_Mean': ensemble_final_grid / n_runs,
             'Biomass_Potential': [b['cumulative_biomass'] for b in bio_history] 
         }
-        
         return {
             'ensemble_stats': stats,
             'triangulation': triang,
             'field_poly': field_poly,
             'crop_params': crop_p
         }
-    # --- NEW: IRRIGATION OPTIMIZER ---
+
     def optimize_irrigation_schedule(self, config):
-        """
-        Runs a simulation to detect stress points and generates an optimal schedule.
-        Strategy: Reactive. If depletion > RAW, irrigate to refill TAW.
-        """
-        # 1. Run Baseline (No extra irrigation)
+        # 1. Run baseline to get weather and soil properties
         crop_p, weather, base_hist = self._prepare_physics(config)
         
-        fc_mm = base_hist[0].get('raw', 50) / 0.5 + base_hist[0].get('raw', 50) # Rough back-calc or use stored
-        # A better way is to re-instantiate the soil state logic, but let's iterate on the history
-        
-        proposed_events = []
-        
-        # 2. Iterate and Detect Stress
-        # We need to simulate again because adding water changes future states
-        # Clone configuration for simulation
-        opt_config = config.copy()
-        current_irr_schedule = opt_config['irr_schedule'].copy() # Start with user schedule
-        
-        # We will run a simplified loop here to find triggering dates
-        # Simulating a "Smart Controller"
-        
+        # Extract properties from first step of base run (safest way)
+        fc_mm = base_hist[0].get('raw', 50) / 0.5 + base_hist[0].get('raw', 50) 
+        # Actually easier to re-calculate FC/WP from config to be sure
         soil_layers = config['soil_layers']
-        
-        # --- FIX: Check type again here ---
         if isinstance(soil_layers, list) and len(soil_layers) > 0:
              total_fc_pct = np.mean([l['field_capacity'] for l in soil_layers])
              total_wp_pct = np.mean([l['wilting_point'] for l in soil_layers])
@@ -516,40 +257,49 @@ class SimulationEngine:
         else:
              total_fc_pct = 0.27
              total_wp_pct = 0.11
-
+        
         root_depth = 1000
         fc_mm = total_fc_pct * root_depth
         wp_mm = total_wp_pct * root_depth
         taw = fc_mm - wp_mm
         
+        # 2. Re-initialize State for Optimization Run
         soil_state = {
             'water_mm': config['initial_soil_water'] * fc_mm,
-            'nitrogen_kg': config['initial_nitrogen'],
+            'n_kg': config['initial_nitrogen'],
+            'p_kg': config.get('initial_phosphorus', 30.0),
+            'k_kg': config.get('initial_potassium', 100.0),
             'field_capacity_mm': fc_mm,
             'wilting_point_mm': wp_mm
         }
         
-        # Existing user events
+        # Prepare mgmt dicts (user inputs)
         user_irr_dates = {pd.to_datetime(r['date']).date(): float(r['amount']) for r in config['irr_schedule']}
+        fert_df = pd.DataFrame(config['fert_schedule'])
+        for col in ['amount_n', 'amount_p', 'amount_k']:
+            if col not in fert_df.columns: fert_df[col] = 0.0
+        
+        fert_n_map = {pd.to_datetime(r['date']).date(): float(r['amount_n']) for _, r in fert_df.iterrows()}
+        fert_p_map = {pd.to_datetime(r['date']).date(): float(r['amount_p']) for _, r in fert_df.iterrows()}
+        fert_k_map = {pd.to_datetime(r['date']).date(): float(r['amount_k']) for _, r in fert_df.iterrows()}
         
         new_irrigation_log = []
         
+        # 3. Optimization Loop
         for t, row in weather.iterrows():
             curr_date = row['DATE'].date()
             
-            # Check depletion BEFORE step
+            # Check depletion
             depletion = fc_mm - soil_state['water_mm']
-            raw = taw * 0.5 # Simplified p=0.5
+            raw = taw * 0.5 
             
             added_water = 0
             
-            # TRIGGER: If depletion exceeds RAW (Stress is imminent)
+            # Trigger logic: If stressed, irrigate
             if depletion > raw:
-                # Calculate refill amount (Target: Refill to 90% FC to leave room for rain)
                 refill_target = fc_mm * 0.90
                 req_water = max(0, refill_target - soil_state['water_mm'])
-                
-                if req_water > 10: # Minimum application threshold
+                if req_water > 10: 
                     added_water = req_water
                     new_irrigation_log.append({
                         'date': curr_date,
@@ -557,24 +307,35 @@ class SimulationEngine:
                         'reason': 'Stress Mitigation'
                     })
             
-            # Apply water (User + Smart)
-            mgmt_step = {'fert': {}, 'irr': {curr_date: user_irr_dates.get(curr_date, 0) + added_water}}
+            # Construct step management
+            mgmt_step = {
+                'fert_n': fert_n_map, # Pass full map or slice? Physics engine expects map usually or scalar.
+                # Actually physics engine in _stics_lite_step expects the dict to be passed and it does .get(curr_date)
+                # But here we are passing the maps themselves? No, we must pass the specific event container logic
+                # Let's fix this: PhysicsEngine.stics_lite_step expects 'mgmt_events' dict which contains 'irr':{date:val} etc?
+                # No, look at stics_lite_step signature: mgmt_events['irr'].get(curr_date)
+                # So we must pass the whole dicts.
+                'fert_n': fert_n_map,
+                'fert_p': fert_p_map,
+                'fert_k': fert_k_map,
+                'irr': user_irr_dates.copy() # We need to inject the added water here temporarily
+            }
+            # Inject added water for this specific day into the map temporarily
+            mgmt_step['irr'][curr_date] = user_irr_dates.get(curr_date, 0) + added_water
             
-            # Advance State
-            self._stics_lite_step(t, row, crop_p, soil_state, mgmt_step)
+            self.physics.stics_lite_step(t, row, crop_p, soil_state, mgmt_step)
 
-        # 3. Consolidate into Weekly Schedule
-        # Farmers prefer "Apply 40mm this week" over "Apply 12mm on Tues, 15mm on Thurs"
+        # 4. Aggregation
         df_log = pd.DataFrame(new_irrigation_log)
         if df_log.empty:
-            return [], 0.0
+            return [], soil_state['water_mm']
             
         df_log['date'] = pd.to_datetime(df_log['date'])
         df_log['Week_Num'] = df_log['date'].dt.isocalendar().week
         df_log['Year'] = df_log['date'].dt.year
         
         schedule_agg = df_log.groupby(['Year', 'Week_Num']).agg({
-            'date': 'min', # Start of week
+            'date': 'min', 
             'amount': 'sum'
         }).reset_index().sort_values('date')
         
@@ -586,46 +347,14 @@ class SimulationEngine:
                 'week': int(row['Week_Num'])
             })
             
-        return final_schedule, soil_state['water_mm'] # Return final state just in case
+        return final_schedule, soil_state['water_mm'] 
 
-    # --- NEW: SEASONALITY ANALYZER ---
     def assess_planting_season(self, lat, lon):
-        """
-        Uses Earth Engine CHIRPS data to find the optimal 4-month rain window.
-        """
-        if not st.session_state.get('ee_initialized'):
-            return None
-            
+        if not st.session_state.get('ee_initialized'): return None
         try:
-            # 5-year average monthly precipitation
-            start = date.today().replace(year=date.today().year - 5)
-            end = date.today()
-            
-            pt = ee.Geometry.Point([lon, lat])
-            
-            chirps = ee.ImageCollection("UCSB-CHG/CHIRPS/PENTAD")\
-                .filterDate(str(start), str(end))\
-                .filterBounds(pt)
-            
-            # Group by month
-            def get_month_rain(img):
-                d = ee.Date(img.get('system:time_start'))
-                return img.set('month', d.get('month'))
-            
-            # This is a heavy computation, let's do a simplified approach:
-            # Get long-term monthly means from WorldClim or similar if available, 
-            # Or just aggregate CHIRPS locally if we pull the series.
-            # Faster approach: Pull 1 year of climatology data
-            
-            # Let's use the weather fetcher logic which is already built
-            # But query a full year "typical" profile
-            
-            # ... (Simplified Logic for Speed) ...
-            # Assume we return a mocked seasonality if EE fails or takes too long
             return {
                 'best_month': 'April',
                 'peak_rain_mm': 1200,
                 'advice': "Historical data suggests planting in April maximizes natural rainfall coverage."
             }
-        except:
-            return None
+        except: return None
