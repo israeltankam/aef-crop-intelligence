@@ -74,6 +74,15 @@ class StateManager:
             
         if st.session_state['irr_schedule'] is None:
             st.session_state['irr_schedule'] = pd.DataFrame({'date': [d1, d2], 'amount': [0.0, 0.0]})
+            
+        if st.session_state['soil_layers'] is None:
+            st.session_state['soil_layers'] = pd.DataFrame([{
+                'depth_top': 0.0, 
+                'depth_bottom': 1.5, 
+                'texture': 'loam',
+                'field_capacity': 0.27, 
+                'wilting_point': 0.11 # Ensure this key exists!
+            }])
 
     @staticmethod
     def _ensure_knowledge_base():
