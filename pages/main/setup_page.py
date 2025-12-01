@@ -11,6 +11,7 @@ from datetime import date
 import json
 import ee
 from google.oauth2.service_account import Credentials
+from src.models.fertilizer_service import FertilizerService
 
 # --- CONSTANTS (From Grainly) ---
 _SOIL_TABLE = {
@@ -380,7 +381,7 @@ def app():
         if c_next.button("Next ➡️"): st.session_state['step'] = 4; st.rerun()
 
     # ==========================================================================
-    # STEP 4: SOIL & MANAGEMENT (UPDATED WITH NPK mg/kg)
+    # STEP 4: SOIL & MANAGEMENT (UPDATED WITH NPK mg/kg & DECAY LOGIC)
     # ==========================================================================
     elif st.session_state['step'] == 4:
         st.subheader("🪨 Step 4: Soil & Management Operations")
@@ -394,6 +395,7 @@ def app():
         with c_auto:
             if st.button("🛰️ Auto-Detect Soil (AlphaEarth)", help="Fetches Texture, Carbon, and Clay from OpenLandMap"):
                 with st.spinner("Scanning soil physics & chemistry..."):
+                    # Call the updated helper function that returns 3 values
                     tex, carbon, clay = get_auto_soil_profile(st.session_state['field_coords'])
                     
                     if tex:
@@ -403,24 +405,17 @@ def app():
                         # 1. Retrieve Cultivation History (from slider state, default 0)
                         years_farming = st.session_state.get('history_years', 0)
                         
-                        # 2. Heuristics
-                        # Nitrogen (N): Highly dependent on Organic Carbon (SOC). 
-                        # SOC (g/kg) -> Total N approx SOC/10. Available N approx 1-2% of Total N.
-                        # We use a calibrated factor: ~0.5 * SOC for available N in mg/kg.
+                        # 2. Heuristics based on Carbon (g/kg) and Clay (%)
+                        # Nitrogen (N): Approx 0.5 * SOC
                         base_n = max(5.0, min(50.0, carbon * 0.5))
                         
-                        # Phosphorus (P): 
-                        # Base P from organic matter + mineral P. 
-                        # High Clay often fixes P (reduces availability).
+                        # Phosphorus (P): Base from organic matter, penalized by clay fixation
                         base_p = max(5.0, (15.0 + (carbon * 0.2)) - (clay * 0.1))
                         
-                        # Potassium (K):
-                        # Strongly correlated with Clay (CEC). 
-                        # Base K ~ 60 + (Clay% * 1.5)
+                        # Potassium (K): Strongly correlated with Clay (CEC)
                         base_k = max(40.0, 60.0 + (clay * 1.5))
                         
                         # 3. Apply Depletion (Decay) Logic
-                        # Rate of decay per year of unfertilized farming
                         decay_n = 0.05 # 5% loss per year
                         decay_p = 0.02 # 2% loss
                         decay_k = 0.03 # 3% loss
@@ -470,26 +465,26 @@ def app():
                     'field_capacity': props['field_capacity'], 'wilting_point': props['wilting_point'] 
                 }])
             
-            # NUTRIENT INPUTS (Manual Entry Enabled)
+            # NUTRIENT INPUTS (Manual Entry Enabled - mg/kg)
             st.markdown("###### Initial Soil Nutrient Levels (mg/kg)")
             c_n, c_p, c_k = st.columns(3)
             with c_n:
                 st.session_state['initial_nitrogen'] = st.number_input(
                     "Nitrogen (N)", 
                     value=float(st.session_state.get('initial_nitrogen', 10.0)), 
-                    step=1.0, help="Available N (Nitrate/Ammonium)"
+                    step=1.0, help="Available Nitrate-N (ppm)"
                 )
             with c_p:
                 st.session_state['initial_phosphorus'] = st.number_input(
                     "Phosphorus (P)", 
                     value=float(st.session_state.get('initial_phosphorus', 20.0)), 
-                    step=1.0, help="Available P (Olsen)"
+                    step=1.0, help="Available P (Olsen ppm)"
                 )
             with c_k:
                 st.session_state['initial_potassium'] = st.number_input(
                     "Potassium (K)", 
                     value=float(st.session_state.get('initial_potassium', 100.0)), 
-                    step=5.0, help="Exchangeable K"
+                    step=5.0, help="Exchangeable K (ppm)"
                 )
 
         with c_soil_info:
@@ -512,23 +507,53 @@ def app():
 
         # --- 2. MANAGEMENT SCHEDULES ---
         c_fert, c_irr = st.columns(2)
+        
+        # Initialize Service
+        fert_service = FertilizerService()
+        product_names = [p['name'] for p in fert_service.products]
+        
         with c_fert:
-            st.markdown("##### 🧪 Fertilizer Schedule (kg/ha)")
-            st.caption("Inputs remain in **kg/ha** (application rate).")
-            df_fert = st.session_state['fert_schedule']
-            if not df_fert.empty: df_fert['date'] = pd.to_datetime(df_fert['date']).dt.date
+            st.markdown("##### 🧪 Fertilizer Schedule")
+            st.caption("Select commercial product and application rate (kg product/ha).")
             
-            st.session_state['fert_schedule'] = st.data_editor(
-                df_fert, 
-                num_rows="dynamic", 
+            # Load existing schedule
+            df_fert = st.session_state['fert_schedule']
+            if df_fert.empty:
+                # Default structure if empty
+                df_fert = pd.DataFrame({
+                    "date": [date.today() + timedelta(days=30)],
+                    "product": ["NPK 15-15-15 Compound"],
+                    "amount": [100.0]
+                })
+            
+            # Ensure date column is datetime
+            if 'date' in df_fert.columns:
+                df_fert['date'] = pd.to_datetime(df_fert['date']).dt.date
+
+            # Data Editor with Dropdown
+            edited_fert = st.data_editor(
+                df_fert,
+                num_rows="dynamic",
                 column_config={
-                    "date": st.column_config.DateColumn("Date"), 
-                    "amount_n": st.column_config.NumberColumn("N (kg/ha)", min_value=0, max_value=500),
-                    "amount_p": st.column_config.NumberColumn("P (kg/ha)", min_value=0, max_value=500),
-                    "amount_k": st.column_config.NumberColumn("K (kg/ha)", min_value=0, max_value=500)
-                }, 
+                    "date": st.column_config.DateColumn("Date"),
+                    "product": st.column_config.SelectboxColumn(
+                        "Product",
+                        options=product_names,
+                        width="medium",
+                        required=True
+                    ),
+                    "amount": st.column_config.NumberColumn(
+                        "Amount (kg/ha)", 
+                        min_value=0, 
+                        max_value=1000,
+                        step=50
+                    )
+                },
                 key="editor_fert"
             )
+            
+            # Save back to state
+            st.session_state['fert_schedule'] = edited_fert
             
         with c_irr:
             st.markdown("##### 💧 Irrigation Schedule")

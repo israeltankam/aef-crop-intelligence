@@ -76,12 +76,12 @@ class StateManager:
         d1 = st.session_state['planting_date'] + timedelta(days=20)
         d2 = st.session_state['planting_date'] + timedelta(days=45)
         
+        # UPDATED DEFAULT STRUCTURE
         if st.session_state['fert_schedule'] is None:
             st.session_state['fert_schedule'] = pd.DataFrame({
                 'date': [d1, d2], 
-                'amount_n': [0.0, 0.0],
-                'amount_p': [0.0, 0.0],
-                'amount_k': [0.0, 0.0]
+                'product': ["NPK 15-15-15 Compound", "Urea (Granular)"],
+                'amount': [0.0, 0.0]
             })
             
         if st.session_state['irr_schedule'] is None:

@@ -218,7 +218,11 @@ def app():
     df_plot = pd.DataFrame(history)
     df_plot['Date'] = pd.to_datetime(df_plot['Date'])
     
-    rule = alt.Chart(pd.DataFrame({'Date': [pd.to_datetime(selected_date)]})).mark_rule(color='black').encode(x='Date:T')
+    # Common Rules
+    rule_selected = alt.Chart(pd.DataFrame({'Date': [pd.to_datetime(selected_date)]})).mark_rule(color='black').encode(x='Date:T')
+    
+    det_date = st.session_state.get('detection_date')
+    rule_detect = alt.Chart(pd.DataFrame({'Date': [pd.to_datetime(det_date)]})).mark_rule(color='orange', strokeDash=[4,4]).encode(x='Date:T')
     
     tabs = st.tabs(["LAI & Biomass", "Soil Nutrients", "Disease Incidence", "Nutrient Stress", "🛰️ Reality Check (NDVI)"])
     
@@ -236,7 +240,7 @@ def app():
             color=alt.Color('Metric:N')
         )
         c = alt.layer(line_lai, line_bio).resolve_scale(y='independent').properties(height=350)
-        st.altair_chart((c + rule).interactive(), use_container_width=True)
+        st.altair_chart((c + rule_selected).interactive(), use_container_width=True)
         
     # --- TAB 2: SOIL WATER & NUTRIENTS (FIXED) ---
     with tabs[1]:
@@ -260,9 +264,9 @@ def app():
             tooltip=['Date', 'Parameter', 'Value']
         )
         
-        st.altair_chart((lines + rule).interactive(), use_container_width=True)
+        st.altair_chart((lines + rule_selected).interactive(), use_container_width=True)
 
-    # --- TAB 3: DISEASE ---
+    # --- TAB 3: DISEASE (Updated for Detection Line) ---
     with tabs[2]:
         base = alt.Chart(df_plot).encode(x='Date:T')
         
@@ -274,8 +278,10 @@ def app():
             y=alt.Y('Env_Favorability:Q', title='Env. Risk (0-1)', axis=alt.Axis(titleColor='purple')),
             color=alt.Color('Metric:N')
         )
-        c = alt.layer(area_inc, line_env).resolve_scale(y='independent').properties(height=350)
-        st.altair_chart((c + rule).interactive(), use_container_width=True)
+        # Combine: Chart + Selection + Detection Rule
+        chart = alt.layer(area_inc, line_env, rule_detect).resolve_scale(y='independent').properties(height=350)
+        st.altair_chart(chart.interactive(), use_container_width=True)
+        st.caption(f"Orange dashed line indicates Detection Date. Prior to this, only Environmental Risk is shown.")
 
     # --- TAB 4: DAILY STRESS (UPDATED NPK) ---
     with tabs[3]:
@@ -301,7 +307,7 @@ def app():
             tooltip=['Date', 'Stress Type', 'Index']
         ).properties(height=350)
         
-        st.altair_chart((c + rule).interactive(), use_container_width=True)
+        st.altair_chart((c + rule_selected).interactive(), use_container_width=True)
 
     # --- TAB 5: REALITY CHECK (NDVI) ---
     with tabs[4]:

@@ -7,16 +7,17 @@ from scipy.signal import convolve2d
 from scipy.spatial import Delaunay
 from matplotlib.tri import Triangulation
 from matplotlib.path import Path
-import ee
 
 # Import helpers
 from src.models.weather_service import WeatherService
 from src.models.physics_engine import PhysicsEngine
+from src.models.fertilizer_service import FertilizerService
 
 class SimulationEngine:
     def __init__(self):
         self.weather_service = WeatherService()
         self.physics = PhysicsEngine()
+        self.fert_service = FertilizerService()
 
     def _prepare_physics(self, config):
         """
@@ -71,13 +72,34 @@ class SimulationEngine:
         
         # 4. Parse Management (Fertilizer NPK + Irrigation)
         fert_df = pd.DataFrame(config['fert_schedule'])
-        # Handle columns if missing
-        for col in ['amount_n', 'amount_p', 'amount_k']:
-            if col not in fert_df.columns: fert_df[col] = 0.0
-            
-        fert_n_map = {pd.to_datetime(r['date']).date(): float(r['amount_n']) for _, r in fert_df.iterrows()}
-        fert_p_map = {pd.to_datetime(r['date']).date(): float(r['amount_p']) for _, r in fert_df.iterrows()}
-        fert_k_map = {pd.to_datetime(r['date']).date(): float(r['amount_k']) for _, r in fert_df.iterrows()}
+        
+        fert_n_map = {}
+        fert_p_map = {}
+        fert_k_map = {}
+
+        if not fert_df.empty:
+            if 'product' in fert_df.columns:
+                # NEW: Product-based Schedule
+                for _, row in fert_df.iterrows():
+                    d = pd.to_datetime(row['date']).date()
+                    prod_name = row['product']
+                    amount = float(row['amount']) # kg product / ha
+                    
+                    # Lookup product composition
+                    prod_info = next((p for p in self.fert_service.products if p['name'] == prod_name), None)
+                    
+                    if prod_info:
+                        # Convert Product Amount -> Elemental NPK
+                        fert_n_map[d] = fert_n_map.get(d, 0) + (amount * prod_info['N'] / 100.0)
+                        fert_p_map[d] = fert_p_map.get(d, 0) + (amount * prod_info['P'] / 100.0)
+                        fert_k_map[d] = fert_k_map.get(d, 0) + (amount * prod_info['K'] / 100.0)
+            else:
+                # OLD: Direct NPK input (Fallback)
+                for col in ['amount_n', 'amount_p', 'amount_k']:
+                    if col not in fert_df.columns: fert_df[col] = 0.0
+                fert_n_map = {pd.to_datetime(r['date']).date(): float(r['amount_n']) for _, r in fert_df.iterrows()}
+                fert_p_map = {pd.to_datetime(r['date']).date(): float(r['amount_p']) for _, r in fert_df.iterrows()}
+                fert_k_map = {pd.to_datetime(r['date']).date(): float(r['amount_k']) for _, r in fert_df.iterrows()}
         
         irr_map = {pd.to_datetime(r['date']).date(): float(r['amount']) for r in config['irr_schedule']}
         
@@ -137,7 +159,15 @@ class SimulationEngine:
         if dis_p is not None:
             if 'fungal' in str(dis_p['Type']).lower() or 'bacterial' in str(dis_p['Type']).lower(): is_fungal = True
 
-        I_grid = I_grid_init.copy()
+        # START WITH CLEAN SLATE (No infection before detection)
+        I_grid = np.zeros((N, N))
+        
+        # Parse Detection Date
+        try:
+            detect_date = pd.to_datetime(config['detection_date']).date()
+        except:
+            detect_date = bio_history[0]['weather_row']['DATE'].date()
+
         kernel = np.array([[0.05, 0.2, 0.05], [0.2, 0.5, 0.2], [0.05, 0.2, 0.05]])
         beta = dis_p['Beta_Infection'] if dis_p is not None else 0
         if dis_p is not None: beta *= crop_p['Resistance_Score']
@@ -148,29 +178,49 @@ class SimulationEngine:
         for bio in bio_history:
             biomass_val = bio['cumulative_biomass'] 
             weather_row = bio['weather_row']
+            curr_date = weather_row['DATE'].date()
             
+            # 1. Calculate Environmental Risk (Probability of Emergence)
             env_risk = 0
             if dis_p is not None:
                 t_score = np.exp(-((weather_row['TMIN'] + weather_row['TMAX'])/2 - dis_p['Opt_Temp'])**2 / 50)
                 h_score = 1.0 if weather_row['HUMIDITY'] > dis_p['Opt_Humidity'] else weather_row['HUMIDITY']/100
                 env_risk = t_score * h_score
-                if is_fungal:
-                    wind_speed = weather_row.get('WIND_SPEED', 2.0)
-                    spread_driver = (wind_speed / 5.0) 
-                else:
-                    spread_driver = config['insect_pressure']
-                pressure = convolve2d(I_grid, kernel, mode='same')
-                growth = beta * spread_driver * env_risk * pressure * (1 - I_grid)
-                jump_prob = 0.0005 * (1.5 if is_fungal else 1.0)
-                jumps = (np.random.rand(N, N) < jump_prob) * (I_grid.sum() > 0) * 0.1
-                I_grid = np.clip(I_grid + growth + jumps, 0, 1)
-                I_grid = I_grid * mask
+
+            # 2. Disease Dynamics based on Timeline
+            if curr_date < detect_date:
+                # Pre-detection phase: No active disease, just risk monitoring
+                pass 
+            elif curr_date == detect_date:
+                # Outbreak Trigger: Seed the grid with observed spots
+                # We merge existing (zeros) with the init grid derived from spots
+                I_grid = np.maximum(I_grid, I_grid_init)
+            else:
+                # Post-detection: Active Spread
+                if dis_p is not None:
+                    if is_fungal:
+                        wind_speed = weather_row.get('WIND_SPEED', 2.0)
+                        spread_driver = (wind_speed / 5.0) 
+                    else:
+                        spread_driver = config['insect_pressure']
+                    
+                    pressure = convolve2d(I_grid, kernel, mode='same')
+                    growth = beta * spread_driver * env_risk * pressure * (1 - I_grid)
+                    jump_prob = 0.0005 * (1.5 if is_fungal else 1.0)
+                    jumps = (np.random.rand(N, N) < jump_prob) * (I_grid.sum() > 0) * 0.1
+                    
+                    I_grid = np.clip(I_grid + growth + jumps, 0, 1)
+                    I_grid = I_grid * mask
 
             inf_values = I_grid[mask]
+            
+            # 3. Yield Impact
+            # Damage only accumulates if infection exists
             damage_factor = np.ones(n_valid)
-            if dis_p is not None:
+            if dis_p is not None and np.mean(inf_values) > 0:
                 retained = dis_p.get('Yield_Retained_Infected', 0.5)
                 damage_factor = (1 - inf_values) + (inf_values * retained)
+                
             yield_grid = crop_p['Harvest_Index'] * biomass_val * damage_factor
             
             history_realization.append({
@@ -192,6 +242,7 @@ class SimulationEngine:
                 'Grid_Yield': yield_grid.copy(),
                 'Env_Favorability': env_risk
             })
+            
         return history_realization
 
     def run_simulation(self, config):
@@ -286,12 +337,18 @@ class SimulationEngine:
         # Prepare Inputs
         user_irr_dates = {pd.to_datetime(r['date']).date(): float(r['amount']) for r in config['irr_schedule']}
         fert_df = pd.DataFrame(config['fert_schedule'])
-        for col in ['amount_n', 'amount_p', 'amount_k']:
-            if col not in fert_df.columns: fert_df[col] = 0.0
-        
-        fert_n_map = {pd.to_datetime(r['date']).date(): float(r['amount_n']) for _, r in fert_df.iterrows()}
-        fert_p_map = {pd.to_datetime(r['date']).date(): float(r['amount_p']) for _, r in fert_df.iterrows()}
-        fert_k_map = {pd.to_datetime(r['date']).date(): float(r['amount_k']) for _, r in fert_df.iterrows()}
+        fert_n_map, fert_p_map, fert_k_map = {}, {}, {}
+        if not fert_df.empty:
+            if 'product' in fert_df.columns:
+                for _, row in fert_df.iterrows():
+                    d = pd.to_datetime(row['date']).date()
+                    prod_name = row['product']
+                    amount = float(row['amount'])
+                    prod_info = next((p for p in self.fert_service.products if p['name'] == prod_name), None)
+                    if prod_info:
+                        fert_n_map[d] = fert_n_map.get(d, 0) + (amount * prod_info['N'] / 100.0)
+                        fert_p_map[d] = fert_p_map.get(d, 0) + (amount * prod_info['P'] / 100.0)
+                        fert_k_map[d] = fert_k_map.get(d, 0) + (amount * prod_info['K'] / 100.0)
         
         new_irrigation_log = []
         
@@ -300,7 +357,6 @@ class SimulationEngine:
             curr_date = row['DATE'].date()
             
             # --- CRITICAL FIX: Look ahead at today's scheduled inputs ---
-            # Get what the user (or rain) is already providing today
             user_input = user_irr_dates.get(curr_date, 0.0)
             rain_input = row['RAIN']
             
@@ -309,18 +365,15 @@ class SimulationEngine:
             
             # Check depletion based on the PROJECTED water level
             depletion = fc_mm - projected_water_mm
-            raw = taw * 0.5 # p = 0.5
+            raw = taw * 0.5 
             
             added_water = 0
             
             # Trigger ONLY if still stressed *after* user inputs
             if depletion > raw:
-                # Target: Refill to 90% Field Capacity
                 refill_target = fc_mm * 0.90
-                # Calculate strictly the deficit remaining
                 req_water = max(0, refill_target - projected_water_mm)
                 
-                # Minimum viable application threshold
                 if req_water > 10: 
                     added_water = req_water
                     new_irrigation_log.append({
@@ -329,19 +382,15 @@ class SimulationEngine:
                         'reason': 'Stress Mitigation'
                     })
             
-            # Construct MGMT Step (User Inputs + Added Optimization Water)
+            # Construct MGMT Step
             mgmt_step = {
-                'fert_n': fert_n_map,
-                'fert_p': fert_p_map,
-                'fert_k': fert_k_map,
+                'fert_n': fert_n_map, 'fert_p': fert_p_map, 'fert_k': fert_k_map,
                 'irr': user_irr_dates.copy() 
             }
-            
-            # Inject the total water (User + Optimizer) for the physics step
+            # Inject total water
             total_irrigation = user_input + added_water
             mgmt_step['irr'][curr_date] = total_irrigation
             
-            # Run Physics Step to advance state correctly
             self.physics.stics_lite_step(t, row, crop_p, soil_state, mgmt_step)
 
         # 4. Aggregate Results
@@ -366,97 +415,167 @@ class SimulationEngine:
                 'week': int(row['Week_Num'])
             })
             
-        return final_schedule, soil_state['water_mm']
+        return final_schedule, soil_state['water_mm'] 
 
-    # --- UPDATED: SEASONALITY ANALYZER (Rain-Window Matching) ---
-    def assess_planting_season(self, lat, lon):
+    # --- FERTILIZER OPTIMIZER ---
+    # --- FERTILIZER OPTIMIZER (Updated for Usability) ---
+    def optimize_fertilization_schedule(self, config):
         """
-        Finds the optimal planting month by balancing:
-        1. High rainfall during vegetative growth.
-        2. Low rainfall during harvest (quality preservation).
+        Simulates crop growth to identify N-P-K hunger gaps.
+        Aggregates needs into fewer, larger applications (approx. monthly).
         """
-        if not st.session_state.get('ee_initialized'):
-            return None
+        crop_p, weather, base_hist = self._prepare_physics(config)
+        
+        # ... [Soil Init Logic - Same as before] ...
+        soil_layers = config['soil_layers']
+        if isinstance(soil_layers, pd.DataFrame) and not soil_layers.empty:
+             total_fc_pct = soil_layers['field_capacity'].mean()
+             total_wp_pct = soil_layers['wilting_point'].mean()
+        else:
+             total_fc_pct = 0.27
+             total_wp_pct = 0.11
+        
+        fc_mm = total_fc_pct * 1000
+        wp_mm = total_wp_pct * 1000
+        conv_factor = 4.0
+        
+        soil_state = {
+            'water_mm': config['initial_soil_water'] * fc_mm,
+            'n_kg': config['initial_nitrogen'] * conv_factor,
+            'p_kg': config.get('initial_phosphorus', 20.0) * conv_factor,
+            'k_kg': config.get('initial_potassium', 100.0) * conv_factor,
+            'field_capacity_mm': fc_mm,
+            'wilting_point_mm': wp_mm
+        }
+
+        # ... [Input Parsing - Same as before] ...
+        irr_map = {pd.to_datetime(r['date']).date(): float(r['amount']) for r in config['irr_schedule']}
+        fert_df = pd.DataFrame(config['fert_schedule'])
+        fert_n_map, fert_p_map, fert_k_map = {}, {}, {}
+        if not fert_df.empty and 'product' in fert_df.columns:
+            for _, row in fert_df.iterrows():
+                d = pd.to_datetime(row['date']).date()
+                prod_name = row['product']
+                amount = float(row['amount'])
+                prod_info = next((p for p in self.fert_service.products if p['name'] == prod_name), None)
+                if prod_info:
+                    fert_n_map[d] = fert_n_map.get(d, 0) + (amount * prod_info['N'] / 100.0)
+                    fert_p_map[d] = fert_p_map.get(d, 0) + (amount * prod_info['P'] / 100.0)
+                    fert_k_map[d] = fert_k_map.get(d, 0) + (amount * prod_info['K'] / 100.0)
+
+        rec_log = []
+        
+        # --- USABILITY LOGIC CHANGE ---
+        last_fert_day = -45 # Start "fresh"
+        min_interval_days = 45 # Force at least 1.5 months between applications
+        
+        accumulated_deficit_n = 0
+        accumulated_deficit_p = 0
+        accumulated_deficit_k = 0
+
+        for i, (t, row) in enumerate(weather.iterrows()):
+            curr_date = row['DATE'].date()
             
+            mgmt_step = {
+                'fert_n': fert_n_map, 'fert_p': fert_p_map, 'fert_k': fert_k_map,
+                'irr': irr_map
+            }
+            
+            # Check Critical Thresholds
+            stress_n = soil_state['n_kg'] < 15.0
+            stress_p = soil_state['p_kg'] < 8.0
+            stress_k = soil_state['k_kg'] < 12.0
+            
+            progress = i / int(crop_p['Cycle_Days'])
+            is_active_growth = 0.15 < progress < 0.85 
+            
+            # If stressed, we calculate deficit but DO NOT apply yet if too soon
+            if is_active_growth and (stress_n or stress_p or stress_k):
+                # Calculate Deficit to reach "Comfort Zone" (e.g. 40kg N buffer)
+                # We target a higher buffer now because we apply less often
+                def_n = max(0, 40.0 - soil_state['n_kg'])
+                def_p = max(0, 20.0 - soil_state['p_kg'])
+                def_k = max(0, 30.0 - soil_state['k_kg'])
+                
+                # Check timing
+                if (i - last_fert_day) >= min_interval_days:
+                    # Time to apply!
+                    # Get product for the CURRENT deficit
+                    product_name, amount_kg_ha, rationale = self.fert_service.recommend_product(def_n, def_p, def_k)
+                    
+                    if product_name and amount_kg_ha > 10: # Minimum 10kg/ha to be worth the labor
+                        rec_log.append({
+                            'date': curr_date,
+                            'product': product_name,
+                            'amount': amount_kg_ha,
+                            'rationale': rationale
+                        })
+                        
+                        # Update soil state
+                        prod_info = next(p for p in self.fert_service.products if p['name'] == product_name)
+                        soil_state['n_kg'] += amount_kg_ha * (prod_info['N'] / 100)
+                        soil_state['p_kg'] += amount_kg_ha * (prod_info['P'] / 100)
+                        soil_state['k_kg'] += amount_kg_ha * (prod_info['K'] / 100)
+                        
+                        last_fert_day = i
+                else:
+                    # Too soon to apply. The crop suffers a tiny bit today, 
+                    # but the physics loop will naturally reduce the soil stock further,
+                    # making the deficit LARGER for the next allowed date.
+                    # We don't need to manually accumulate; the 'soil_state' naturally drops
+                    # so the calculation at the next valid 'i' will include this accumulated hunger.
+                    pass
+
+            self.physics.stics_lite_step(i, row, crop_p, soil_state, mgmt_step)
+
+        if not rec_log: return []
+        return rec_log
+
+    def assess_planting_season(self, lat, lon):
+        if not st.session_state.get('ee_initialized'): return None
         try:
-            # 1. Get Crop Constraints
             df_c = st.session_state.get('df_crops')
             if df_c is None: return None
-            
-            # Use currently selected crop
             crop_id = st.session_state.get('selected_crop_id')
             if not crop_id: return None
             
             crop = df_c[df_c['Crop_ID'] == crop_id].iloc[0]
             cycle_months = int(crop['Cycle_Days'] / 30)
-            harvest_limit = crop.get('Harvest_Rain_Limit_mm', 50.0) # Default 50mm if missing
+            harvest_limit = crop.get('Harvest_Rain_Limit_mm', 50.0) 
             
-            # 2. Get Climatology (WorldClim)
             point = ee.Geometry.Point([lon, lat])
             wc = ee.ImageCollection('WORLDCLIM/V1/MONTHLY').select('prec')
             months_img = wc.toBands()
             stats = months_img.reduceRegion(reducer=ee.Reducer.mean(), geometry=point, scale=5000).getInfo()
             
-            # Extract and sort data (WorldClim keys are 01_prec, 02_prec...)
             rain_data = []
-            # Robust extraction assuming keys contain '01', '02', etc.
-            # Create a sorted list of values based on key string analysis
             sorted_keys = sorted(stats.keys()) 
-            # Note: sorting works if keys are '01_prec', '02_prec'. 
-            # If WorldClim V1 uses 'prec_01', it also works.
-            for k in sorted_keys:
-                rain_data.append(stats[k])
+            for k in sorted_keys: rain_data.append(stats[k])
                 
             if len(rain_data) != 12: return None
-            
-            # Extend array for circular year (Jan-Dec-Jan...)
-            # We add enough months to cover a crop cycle starting in Dec
             rain_extended = rain_data + rain_data 
             
-            # 3. Optimization Loop
             best_score = -float('inf')
             best_month_idx = 0
             best_harvest_rain = 0
             
-            # Check every possible start month (0 to 11)
             for start_m in range(12):
-                # Define Cycle Window
                 end_m = start_m + cycle_months
-                
-                # Vegetative Phase (Start to End-1)
                 veg_rain = sum(rain_extended[start_m : end_m])
-                
-                # Harvest Month (The last month of the cycle)
                 harvest_rain = rain_extended[end_m]
-                
-                # Scoring Logic:
-                # Reward: Vegetative Rain
-                # Penalty: Harvest Rain (Exponential penalty if above limit)
-                
-                # Binary Constraint: If harvest rain > limit, this window is RISKY.
-                # However, we prefer the "Least Risky" valid window.
-                
                 penalty = 0
-                if harvest_rain > harvest_limit:
-                    penalty = (harvest_rain - harvest_limit) * 10 # Heavy penalty per mm excess
-                
+                if harvest_rain > harvest_limit: penalty = (harvest_rain - harvest_limit) * 10
                 score = veg_rain - penalty
-                
                 if score > best_score:
                     best_score = score
                     best_month_idx = start_m
                     best_harvest_rain = harvest_rain
 
-            # 4. Result Formatting
             month_names = ["January", "February", "March", "April", "May", "June", 
                            "July", "August", "September", "October", "November", "December"]
-            
             rec_month = month_names[best_month_idx]
             harvest_month = month_names[(best_month_idx + cycle_months) % 12]
-            
-            status = "Safe"
-            if best_harvest_rain > harvest_limit:
-                status = "Risk (Wet Harvest)"
+            status = "Safe" if best_harvest_rain <= harvest_limit else "Risk (Wet Harvest)"
                 
             advice = (
                 f"Optimal Planting: **{rec_month}** (Harvest in {harvest_month}).\n"
@@ -464,13 +583,11 @@ class SimulationEngine:
                 f"**{int(best_harvest_rain)}mm** rain (Limit: {int(harvest_limit)}mm). "
                 f"Status: {status}."
             )
-            
             return {
                 'best_month': rec_month,
-                'peak_rain_mm': int(best_score), # Abstract score
+                'peak_rain_mm': int(best_score),
                 'advice': advice
             }
-            
         except Exception as e:
             print(f"Seasonality Error: {e}")
             return None

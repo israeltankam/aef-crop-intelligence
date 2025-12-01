@@ -146,7 +146,11 @@ def app():
                 # Check seasonality (using rough climatology)
                 season_advice = engine.assess_planting_season(st.session_state['center_lat'], st.session_state['center_lon'])
 
-            # --- 4. COMPILE REPORT ---
+            # --- 4. RUN FERTILIZER OPTIMIZER (NEW) ---
+            with st.spinner("🧪 Calculating Precision Nutrition..."):
+                fert_schedule = engine.optimize_fertilization_schedule(config)
+
+            # --- 5. COMPILE REPORT ---
             with st.spinner("Compiling Intelligence..."):
                 pdf = PDFReport()
                 pdf.add_page()
@@ -258,9 +262,84 @@ def app():
                 else:
                     pdf.chapter_body("No additional irrigation is required. Current rainfall and soil moisture retention are sufficient for this crop cycle.")
 
-                # 4. SATELLITE VALIDATION
+                # 4. SMART FERTILIZATION
+                pdf.chapter_title("4. Precision Nutrition Strategy")
+                
+                if not fert_schedule:
+                    pdf.chapter_body("✅ Soil nutrient stocks are sufficient. No additional fertilization required.")
+                else:
+                    intro_fert = (
+                        "Objective: Maintain N-P-K levels above critical thresholds during active growth "
+                        "while minimizing application frequency and environmental leaching."
+                    )
+                    pdf.chapter_body(intro_fert)
+                    
+                    pdf.set_font('Arial', 'B', 10)
+                    pdf.cell(0, 8, "Recommended Product Application Schedule:", 0, 1)
+                    pdf.set_font('Arial', '', 9)
+                    
+                    # Table Header
+                    pdf.set_fill_color(230, 240, 255)
+                    pdf.cell(30, 7, "Date", 1, 0, 'C', 1)
+                    pdf.cell(50, 7, "Product", 1, 0, 'L', 1)
+                    pdf.cell(30, 7, "Rate (kg/ha)", 1, 0, 'C', 1)
+                    pdf.cell(80, 7, "Rationale", 1, 1, 'L', 1)
+                    
+                    # Table Body (With Text Wrapping)
+                    pdf.set_font('Arial', '', 9)
+                    
+                    for event in fert_schedule:
+                        # 1. Prepare data
+                        date_str = str(event['date'])
+                        prod_str = event['product']
+                        rate_str = f"{event['amount']} kg"
+                        rat_str = event['rationale']
+                        
+                        # 2. Calculate Row Height based on Rationale length
+                        # A generic cell width is 80. multi_cell height default is 5.
+                        # We calculate how many lines the rationale needs.
+                        # FPDF's get_string_width doesn't account for word wrapping perfectly, 
+                        # so we use a safe heuristic or FPDF properties if available.
+                        # Simple heuristic: len(text) / chars_per_line
+                        
+                        # Approx 45 chars fit in 80mm width at size 9
+                        num_lines = max(1, len(rat_str) // 45 + 1)
+                        row_height = 6 * num_lines
+                        
+                        # Check page break
+                        if pdf.get_y() + row_height > 270:
+                            pdf.add_page()
+                            # Re-print header
+                            pdf.set_font('Arial', 'B', 9)
+                            pdf.cell(30, 7, "Date", 1, 0, 'C', 1)
+                            pdf.cell(50, 7, "Product", 1, 0, 'L', 1)
+                            pdf.cell(30, 7, "Rate (kg/ha)", 1, 0, 'C', 1)
+                            pdf.cell(80, 7, "Rationale", 1, 1, 'L', 1)
+                            pdf.set_font('Arial', '', 9)
+
+                        # 3. Draw Cells
+                        # Save current position
+                        x_start = pdf.get_x()
+                        y_start = pdf.get_y()
+                        
+                        pdf.cell(30, row_height, date_str, 1, 0, 'C')
+                        pdf.cell(50, row_height, prod_str, 1, 0, 'L')
+                        pdf.cell(30, row_height, rate_str, 1, 0, 'C')
+                        
+                        # Draw Rationale using MultiCell
+                        # Move cursor to the rationale column
+                        pdf.set_xy(x_start + 110, y_start) 
+                        pdf.multi_cell(80, 6, rat_str, 1, 'L')
+                        
+                        # Move cursor back to start of next line
+                        pdf.set_xy(x_start, y_start + row_height)
+
+                    pdf.ln(5)
+                    pdf.chapter_body("**Note:** Application rates refer to the commercial product weight, not the elemental nutrient weight.")
+                
+                # 5. SATELLITE VALIDATION
                 if 'ndvi_data' in st.session_state and st.session_state['ndvi_data'] is not None:
-                    pdf.chapter_title("4. Satellite Reality Check")
+                    pdf.chapter_title("5. Satellite Reality Check")
                     pdf.chapter_body("Comparison of Digital Twin growth model (LAI) vs observed Satellite Vegetation Index (NDVI).")
                     df_ndvi = st.session_state['ndvi_data']
                     fig_sat, ax_sat = plt.subplots(figsize=(8, 4))
@@ -275,9 +354,9 @@ def app():
                     pdf.add_plot_to_pdf(fig_sat)
                     plt.close(fig_sat)
 
-                # 5. EPIDEMIOLOGY
+                # 6. EPIDEMIOLOGY
                 if dis_info is not None:
-                    pdf.chapter_title("5. Epidemiological Risk")
+                    pdf.chapter_title("6. Epidemiological Risk")
                     epi_txt = (
                         f"Pathogen: **{dis_info['Disease_Name']}**\n"
                         f"Final Infection Severity: {final_inf_mean*100:.1f}% +/- {final_inf_ci*100:.1f}% area affected.\n"
@@ -319,8 +398,8 @@ def app():
                     except:
                         pass
 
-                # 6. RECOMMENDATIONS
-                pdf.chapter_title("6. Management Recommendations")
+                # 7. RECOMMENDATIONS
+                pdf.chapter_title("7. Management Recommendations")
                 recs = []
                 
                 if dis_info is not None:
