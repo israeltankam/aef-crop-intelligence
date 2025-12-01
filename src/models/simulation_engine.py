@@ -250,11 +250,11 @@ class SimulationEngine:
     def optimize_irrigation_schedule(self, config):
         """
         Reactive Optimization: Detects daily stress (Depletion > RAW) and prescribes irrigation.
+        Ignores stress if user has ALREADY scheduled irrigation for that day.
         """
         # 1. Run baseline to get weather and determine soil properties
         crop_p, weather, base_hist = self._prepare_physics(config)
         
-        # Soil Properties Setup
         soil_layers = config['soil_layers']
         # Handle formats
         if isinstance(soil_layers, list) and len(soil_layers) > 0:
@@ -299,19 +299,28 @@ class SimulationEngine:
         for t, row in weather.iterrows():
             curr_date = row['DATE'].date()
             
-            # Check depletion before step
-            depletion = fc_mm - soil_state['water_mm']
-            raw = taw * 0.5 # p = 0.5 (standard)
+            # --- CRITICAL FIX: Look ahead at today's scheduled inputs ---
+            # Get what the user (or rain) is already providing today
+            user_input = user_irr_dates.get(curr_date, 0.0)
+            rain_input = row['RAIN']
+            
+            # Calculate what the water level WOULD be after these inputs
+            projected_water_mm = soil_state['water_mm'] + user_input + rain_input
+            
+            # Check depletion based on the PROJECTED water level
+            depletion = fc_mm - projected_water_mm
+            raw = taw * 0.5 # p = 0.5
             
             added_water = 0
             
-            # TRIGGER: If stressed, add water to refill
+            # Trigger ONLY if still stressed *after* user inputs
             if depletion > raw:
                 # Target: Refill to 90% Field Capacity
                 refill_target = fc_mm * 0.90
-                req_water = max(0, refill_target - soil_state['water_mm'])
+                # Calculate strictly the deficit remaining
+                req_water = max(0, refill_target - projected_water_mm)
                 
-                # Minimum viable application (e.g. 10mm)
+                # Minimum viable application threshold
                 if req_water > 10: 
                     added_water = req_water
                     new_irrigation_log.append({
@@ -320,17 +329,19 @@ class SimulationEngine:
                         'reason': 'Stress Mitigation'
                     })
             
-            # Construct MGMT Step with added water
+            # Construct MGMT Step (User Inputs + Added Optimization Water)
             mgmt_step = {
                 'fert_n': fert_n_map,
                 'fert_p': fert_p_map,
                 'fert_k': fert_k_map,
-                'irr': user_irr_dates.copy() # Base schedule
+                'irr': user_irr_dates.copy() 
             }
-            # Add virtual water for physics calculation
-            mgmt_step['irr'][curr_date] = user_irr_dates.get(curr_date, 0) + added_water
             
-            # Run Physics Step
+            # Inject the total water (User + Optimizer) for the physics step
+            total_irrigation = user_input + added_water
+            mgmt_step['irr'][curr_date] = total_irrigation
+            
+            # Run Physics Step to advance state correctly
             self.physics.stics_lite_step(t, row, crop_p, soil_state, mgmt_step)
 
         # 4. Aggregate Results
@@ -355,7 +366,7 @@ class SimulationEngine:
                 'week': int(row['Week_Num'])
             })
             
-        return final_schedule, soil_state['water_mm'] 
+        return final_schedule, soil_state['water_mm']
 
     # --- UPDATED: SEASONALITY ANALYZER (Rain-Window Matching) ---
     def assess_planting_season(self, lat, lon):
