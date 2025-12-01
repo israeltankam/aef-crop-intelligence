@@ -7,6 +7,7 @@ from scipy.signal import convolve2d
 from scipy.spatial import Delaunay
 from matplotlib.tri import Triangulation
 from matplotlib.path import Path
+import ee
 
 # Import helpers
 from src.models.weather_service import WeatherService
@@ -20,6 +21,7 @@ class SimulationEngine:
     def _prepare_physics(self, config):
         """
         Initializes Weather, Soil State (Water + NPK), and Management Schedules.
+        CONVERTS mg/kg inputs to kg/ha for the internal physics engine.
         """
         df_c = st.session_state['df_crops']
         crop_p = df_c[df_c['Crop_ID'] == config['selected_crop_id']].iloc[0]
@@ -53,12 +55,16 @@ class SimulationEngine:
         init_water = config['initial_soil_water'] * fc_mm 
         if init_water < wp_mm: init_water = wp_mm
 
-        # 3. Initialize State with N, P, K
+        # 3. Initialize State with N, P, K (CONVERSION HERE)
+        # Unit Conversion: mg/kg (ppm) -> kg/ha
+        # We use a conservative factor of 4.0 (assuming 1.3 bulk density, ~30cm topsoil effective zone)
+        conv_factor = 4.0 
+        
         soil_state = {
             'water_mm': init_water,
-            'n_kg': config['initial_nitrogen'],
-            'p_kg': config.get('initial_phosphorus', 30.0),
-            'k_kg': config.get('initial_potassium', 100.0),
+            'n_kg': config['initial_nitrogen'] * conv_factor,
+            'p_kg': config.get('initial_phosphorus', 20.0) * conv_factor,
+            'k_kg': config.get('initial_potassium', 100.0) * conv_factor,
             'field_capacity_mm': fc_mm,
             'wilting_point_mm': wp_mm
         }
@@ -171,7 +177,7 @@ class SimulationEngine:
                 'Date': weather_row['DATE'],
                 'LAI': bio['lai'],
                 'SWC': bio['swc'],
-                'N_kg': bio.get('n_kg', 0), # Safe get
+                'N_kg': bio.get('n_kg', 0),
                 'P_kg': bio.get('p_kg', 0),
                 'K_kg': bio.get('k_kg', 0),
                 'ETa': bio['eta'],
@@ -240,14 +246,17 @@ class SimulationEngine:
             'crop_params': crop_p
         }
 
+    # --- IRRIGATION OPTIMIZER ---
     def optimize_irrigation_schedule(self, config):
-        # 1. Run baseline to get weather and soil properties
+        """
+        Reactive Optimization: Detects daily stress (Depletion > RAW) and prescribes irrigation.
+        """
+        # 1. Run baseline to get weather and determine soil properties
         crop_p, weather, base_hist = self._prepare_physics(config)
         
-        # Extract properties from first step of base run (safest way)
-        fc_mm = base_hist[0].get('raw', 50) / 0.5 + base_hist[0].get('raw', 50) 
-        # Actually easier to re-calculate FC/WP from config to be sure
+        # Soil Properties Setup
         soil_layers = config['soil_layers']
+        # Handle formats
         if isinstance(soil_layers, list) and len(soil_layers) > 0:
              total_fc_pct = np.mean([l['field_capacity'] for l in soil_layers])
              total_wp_pct = np.mean([l['wilting_point'] for l in soil_layers])
@@ -263,17 +272,18 @@ class SimulationEngine:
         wp_mm = total_wp_pct * root_depth
         taw = fc_mm - wp_mm
         
-        # 2. Re-initialize State for Optimization Run
+        # 2. Re-initialize Soil State (Correctly including NPK)
+        conv_factor = 4.0
         soil_state = {
             'water_mm': config['initial_soil_water'] * fc_mm,
-            'n_kg': config['initial_nitrogen'],
-            'p_kg': config.get('initial_phosphorus', 30.0),
-            'k_kg': config.get('initial_potassium', 100.0),
+            'n_kg': config['initial_nitrogen'] * conv_factor,
+            'p_kg': config.get('initial_phosphorus', 20.0) * conv_factor,
+            'k_kg': config.get('initial_potassium', 100.0) * conv_factor,
             'field_capacity_mm': fc_mm,
             'wilting_point_mm': wp_mm
         }
         
-        # Prepare mgmt dicts (user inputs)
+        # Prepare Inputs
         user_irr_dates = {pd.to_datetime(r['date']).date(): float(r['amount']) for r in config['irr_schedule']}
         fert_df = pd.DataFrame(config['fert_schedule'])
         for col in ['amount_n', 'amount_p', 'amount_k']:
@@ -289,16 +299,19 @@ class SimulationEngine:
         for t, row in weather.iterrows():
             curr_date = row['DATE'].date()
             
-            # Check depletion
+            # Check depletion before step
             depletion = fc_mm - soil_state['water_mm']
-            raw = taw * 0.5 
+            raw = taw * 0.5 # p = 0.5 (standard)
             
             added_water = 0
             
-            # Trigger logic: If stressed, irrigate
+            # TRIGGER: If stressed, add water to refill
             if depletion > raw:
+                # Target: Refill to 90% Field Capacity
                 refill_target = fc_mm * 0.90
                 req_water = max(0, refill_target - soil_state['water_mm'])
+                
+                # Minimum viable application (e.g. 10mm)
                 if req_water > 10: 
                     added_water = req_water
                     new_irrigation_log.append({
@@ -307,25 +320,20 @@ class SimulationEngine:
                         'reason': 'Stress Mitigation'
                     })
             
-            # Construct step management
+            # Construct MGMT Step with added water
             mgmt_step = {
-                'fert_n': fert_n_map, # Pass full map or slice? Physics engine expects map usually or scalar.
-                # Actually physics engine in _stics_lite_step expects the dict to be passed and it does .get(curr_date)
-                # But here we are passing the maps themselves? No, we must pass the specific event container logic
-                # Let's fix this: PhysicsEngine.stics_lite_step expects 'mgmt_events' dict which contains 'irr':{date:val} etc?
-                # No, look at stics_lite_step signature: mgmt_events['irr'].get(curr_date)
-                # So we must pass the whole dicts.
                 'fert_n': fert_n_map,
                 'fert_p': fert_p_map,
                 'fert_k': fert_k_map,
-                'irr': user_irr_dates.copy() # We need to inject the added water here temporarily
+                'irr': user_irr_dates.copy() # Base schedule
             }
-            # Inject added water for this specific day into the map temporarily
+            # Add virtual water for physics calculation
             mgmt_step['irr'][curr_date] = user_irr_dates.get(curr_date, 0) + added_water
             
+            # Run Physics Step
             self.physics.stics_lite_step(t, row, crop_p, soil_state, mgmt_step)
 
-        # 4. Aggregation
+        # 4. Aggregate Results
         df_log = pd.DataFrame(new_irrigation_log)
         if df_log.empty:
             return [], soil_state['water_mm']
@@ -349,12 +357,109 @@ class SimulationEngine:
             
         return final_schedule, soil_state['water_mm'] 
 
+    # --- UPDATED: SEASONALITY ANALYZER (Rain-Window Matching) ---
     def assess_planting_season(self, lat, lon):
-        if not st.session_state.get('ee_initialized'): return None
+        """
+        Finds the optimal planting month by balancing:
+        1. High rainfall during vegetative growth.
+        2. Low rainfall during harvest (quality preservation).
+        """
+        if not st.session_state.get('ee_initialized'):
+            return None
+            
         try:
+            # 1. Get Crop Constraints
+            df_c = st.session_state.get('df_crops')
+            if df_c is None: return None
+            
+            # Use currently selected crop
+            crop_id = st.session_state.get('selected_crop_id')
+            if not crop_id: return None
+            
+            crop = df_c[df_c['Crop_ID'] == crop_id].iloc[0]
+            cycle_months = int(crop['Cycle_Days'] / 30)
+            harvest_limit = crop.get('Harvest_Rain_Limit_mm', 50.0) # Default 50mm if missing
+            
+            # 2. Get Climatology (WorldClim)
+            point = ee.Geometry.Point([lon, lat])
+            wc = ee.ImageCollection('WORLDCLIM/V1/MONTHLY').select('prec')
+            months_img = wc.toBands()
+            stats = months_img.reduceRegion(reducer=ee.Reducer.mean(), geometry=point, scale=5000).getInfo()
+            
+            # Extract and sort data (WorldClim keys are 01_prec, 02_prec...)
+            rain_data = []
+            # Robust extraction assuming keys contain '01', '02', etc.
+            # Create a sorted list of values based on key string analysis
+            sorted_keys = sorted(stats.keys()) 
+            # Note: sorting works if keys are '01_prec', '02_prec'. 
+            # If WorldClim V1 uses 'prec_01', it also works.
+            for k in sorted_keys:
+                rain_data.append(stats[k])
+                
+            if len(rain_data) != 12: return None
+            
+            # Extend array for circular year (Jan-Dec-Jan...)
+            # We add enough months to cover a crop cycle starting in Dec
+            rain_extended = rain_data + rain_data 
+            
+            # 3. Optimization Loop
+            best_score = -float('inf')
+            best_month_idx = 0
+            best_harvest_rain = 0
+            
+            # Check every possible start month (0 to 11)
+            for start_m in range(12):
+                # Define Cycle Window
+                end_m = start_m + cycle_months
+                
+                # Vegetative Phase (Start to End-1)
+                veg_rain = sum(rain_extended[start_m : end_m])
+                
+                # Harvest Month (The last month of the cycle)
+                harvest_rain = rain_extended[end_m]
+                
+                # Scoring Logic:
+                # Reward: Vegetative Rain
+                # Penalty: Harvest Rain (Exponential penalty if above limit)
+                
+                # Binary Constraint: If harvest rain > limit, this window is RISKY.
+                # However, we prefer the "Least Risky" valid window.
+                
+                penalty = 0
+                if harvest_rain > harvest_limit:
+                    penalty = (harvest_rain - harvest_limit) * 10 # Heavy penalty per mm excess
+                
+                score = veg_rain - penalty
+                
+                if score > best_score:
+                    best_score = score
+                    best_month_idx = start_m
+                    best_harvest_rain = harvest_rain
+
+            # 4. Result Formatting
+            month_names = ["January", "February", "March", "April", "May", "June", 
+                           "July", "August", "September", "October", "November", "December"]
+            
+            rec_month = month_names[best_month_idx]
+            harvest_month = month_names[(best_month_idx + cycle_months) % 12]
+            
+            status = "Safe"
+            if best_harvest_rain > harvest_limit:
+                status = "Risk (Wet Harvest)"
+                
+            advice = (
+                f"Optimal Planting: **{rec_month}** (Harvest in {harvest_month}).\n"
+                f"Rationale: Maximizes vegetative rainfall while targeting a harvest month with "
+                f"**{int(best_harvest_rain)}mm** rain (Limit: {int(harvest_limit)}mm). "
+                f"Status: {status}."
+            )
+            
             return {
-                'best_month': 'April',
-                'peak_rain_mm': 1200,
-                'advice': "Historical data suggests planting in April maximizes natural rainfall coverage."
+                'best_month': rec_month,
+                'peak_rain_mm': int(best_score), # Abstract score
+                'advice': advice
             }
-        except: return None
+            
+        except Exception as e:
+            print(f"Seasonality Error: {e}")
+            return None

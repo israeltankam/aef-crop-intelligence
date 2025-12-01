@@ -38,10 +38,11 @@ class StateManager:
         # --- Step 4: Soil ---
         'soil_type': 'loam',
         'use_expert_soil': False,
-        # Nutrients (kg/ha)
-        'initial_nitrogen': 70.0,
-        'initial_phosphorus': 30.0, # NEW
-        'initial_potassium': 100.0, # NEW
+        
+        # Nutrients (mg/kg / ppm)
+        'initial_nitrogen': 10.0,
+        'initial_phosphorus': 20.0,
+        'initial_potassium': 100.0,
         
         'soil_layers': None, 
         'fert_schedule': None, 
@@ -59,6 +60,8 @@ class StateManager:
         StateManager._initialize_complex_state()
         
         # 3. Knowledge Base
+        # We ensure the DBs are loaded into session state.
+        # If files don't exist, _ensure_knowledge_base will create them once.
         if 'df_diseases' not in st.session_state or 'df_crops' not in st.session_state:
             StateManager._ensure_knowledge_base()
 
@@ -73,7 +76,6 @@ class StateManager:
         d1 = st.session_state['planting_date'] + timedelta(days=20)
         d2 = st.session_state['planting_date'] + timedelta(days=45)
         
-        # UPDATED: Fertilizer schedule now handles N, P, K columns
         if st.session_state['fert_schedule'] is None:
             st.session_state['fert_schedule'] = pd.DataFrame({
                 'date': [d1, d2], 
@@ -87,37 +89,63 @@ class StateManager:
 
     @staticmethod
     def _ensure_knowledge_base():
-        """Generates the databases ONLY if they are missing."""
+        """
+        Loads CSV databases. 
+        Only generates default files if they are completely missing (Fresh Install).
+        NEVER overwrites existing files.
+        """
         if not os.path.exists("src/data"): os.makedirs("src/data")
 
         # --- 1. CROPS DB ---
         crops_path = "src/data/crops_db.csv"
+        
+        # Only create if missing (or update manually if you want to force this new structure)
+        # Note: I added 'Harvest_Rain_Limit_mm'
         if not os.path.exists(crops_path):
             data = [
-                ["C_CAS_01","Cassava","TME 419 (Improved)","Perennial",365,0,18.0,26.0,35.0,1.8,4.5,0.65,1.1,1.5,100,0.2, 10000],
-                ["C_CAS_02","Cassava","Local White (Landrace)","Perennial",365,0,18.0,26.0,35.0,1.6,4.0,0.60,1.1,1.5,100,1.0, 10000],
-                ["C_MAI_01","Maize","Pioneer P1197 (Hybrid)","Annual",120,1600,8.0,30.0,35.0,3.9,6.5,0.52,1.2,1.5,180,0.3, 60000],
-                ["C_MAI_02","Maize","Local Open Pollinated","Annual",130,1700,8.0,30.0,36.0,3.2,5.0,0.40,1.15,1.1,160,0.9, 55000],
-                ["C_COT_01","Cotton","DeltaPine (Bt)","Annual",150,2200,12.0,28.0,38.0,2.4,3.5,0.42,1.2,1.8,150,0.4, 80000],
-                ["C_COT_02","Cotton","Conventional Local","Annual",160,2300,12.0,28.0,38.0,2.1,3.0,0.35,1.2,1.6,140,0.9, 70000],
-                ["C_COC_01","Cocoa","Forastero (Amelonado)","Perennial",365,0,20.0,25.0,32.0,1.5,5.0,0.35,1.1,2.0,120,0.6, 1100],
-                ["C_COC_02","Cocoa","Trinitario (Hybrid)","Perennial",365,0,20.0,25.0,32.0,1.6,5.5,0.38,1.1,2.0,130,0.4, 1100],
-                ["C_WHT_01","Wheat","Winter Red (Intensive)","Annual",240,2000,0.0,20.0,30.0,2.8,6.0,0.48,1.15,1.5,150,0.4, 3000000],
-                ["C_RIC_01","Rice","IR64 (Indica)","Annual",115,1500,10.0,30.0,38.0,2.2,6.0,0.50,1.2,0.8,120,0.5, 250000],
-                ["C_SOY_01","Soybean","Roundup Ready","Annual",110,1400,10.0,28.0,35.0,1.8,4.5,0.38,1.1,1.2,50,0.3, 300000],
-                ["C_COF_01","Coffee","Arabica (Typica)","Perennial",365,0,15.0,20.0,25.0,1.2,4.0,0.30,0.95,1.5,100,0.8, 1600],
-                ["C_COF_02","Coffee","Robusta (Nganda)","Perennial",365,0,20.0,26.0,34.0,1.4,4.5,0.35,1.0,2.0,120,0.3, 1100]
+                # Cassava: Tolerates rain at harvest (tubers underground), though lifting is muddy. Limit 150mm.
+                ["C_CAS_01","Cassava","TME 419 (Improved)","Perennial",365,0,18.0,26.0,35.0,2.4,5.0,0.80,0.80,2.0,100,0.2, 10000, 150],
+                ["C_CAS_02","Cassava","Local White (Landrace)","Perennial",365,0,18.0,26.0,35.0,2.0,4.5,0.70,0.80,2.0,100,1.0, 10000, 150],
+                
+                # Maize: Needs dry down. Wet harvest causes aflatoxin/rot. Limit 50mm.
+                ["C_MAI_01","Maize","Pioneer P1197 (Hybrid)","Annual",120,1600,8.0,30.0,35.0,3.9,6.5,0.52,1.20,1.5,180,0.3, 60000, 50],
+                ["C_MAI_02","Maize","Local Open Pollinated","Annual",130,1700,8.0,30.0,36.0,3.2,5.0,0.40,1.15,1.1,160,0.9, 55000, 50],
+                
+                # Cotton: CRITICAL. Rain stains lint (boll rot). Limit 20mm (very dry).
+                ["C_COT_01","Cotton","DeltaPine (Bt)","Annual",150,2200,12.0,28.0,38.0,1.7,3.5,0.35,1.15,1.8,150,0.4, 80000, 20],
+                ["C_COT_02","Cotton","Conventional Local","Annual",160,2300,12.0,28.0,38.0,1.5,3.0,0.30,1.15,1.6,140,0.9, 70000, 20],
+                
+                # Cocoa: Harvest year-round but drying needs sun. Limit 100mm.
+                ["C_COC_01","Cocoa","Forastero (Amelonado)","Perennial",365,0,20.0,25.0,32.0,1.5,5.0,0.35,1.10,2.0,120,0.6, 1100, 100],
+                ["C_COC_02","Cocoa","Trinitario (Hybrid)","Perennial",365,0,20.0,25.0,32.0,1.6,5.5,0.38,1.10,2.0,130,0.4, 1100, 100],
+                
+                # Wheat: Pre-harvest sprouting if wet. Limit 30mm.
+                ["C_WHT_01","Wheat","Winter Red (Intensive)","Annual",240,2000,0.0,20.0,30.0,2.8,6.0,0.48,1.15,1.5,150,0.4, 3000000, 30],
+                
+                # Rice: Harvested in drained fields. Limit 60mm.
+                ["C_RIC_01","Rice","IR64 (Indica)","Annual",115,1500,10.0,30.0,38.0,2.2,6.0,0.50,1.20,0.8,120,0.5, 250000, 60],
+                
+                # Soybean: Pod shattering/rot. Limit 40mm.
+                ["C_SOY_01","Soybean","Roundup Ready","Annual",110,1400,10.0,28.0,35.0,1.8,4.5,0.38,1.10,1.2,50,0.3, 300000, 40],
+                
+                # Coffee: Splitting/Fermentation. Limit 40mm.
+                ["C_COF_01","Coffee","Arabica (Typica)","Perennial",365,0,15.0,20.0,25.0,1.2,4.0,0.30,0.95,1.5,100,0.8, 1600, 40],
+                ["C_COF_02","Coffee","Robusta (Nganda)","Perennial",365,0,20.0,26.0,34.0,1.4,4.5,0.35,1.00,2.0,120,0.3, 1100, 40]
             ]
             cols = ["Crop_ID","Crop_Name","Variety","Type","Cycle_Days","GDD_Maturity",
                     "T_Base","T_Opt","T_Max","RUE_g_MJ","Max_LAI","Harvest_Index","Kc_Mid",
-                    "Root_Depth_Max_m","Critical_Soil_N_kg_ha","Resistance_Score", "Default_Density"]
+                    "Root_Depth_Max_m","Critical_Soil_N_kg_ha","Resistance_Score", "Default_Density", 
+                    "Harvest_Rain_Limit_mm"] # Added this column
             pd.DataFrame(data, columns=cols).to_csv(crops_path, index=False)
             
         st.session_state['df_crops'] = pd.read_csv(crops_path)
 
         # --- 2. DISEASES DB ---
         dis_path = "src/data/diseases_db.csv"
+        
+        # Only create if missing
         if not os.path.exists(dis_path):
+            # Minimal seed data to prevent crash if file missing
             data = [["D_CAS_01","Cassava","Cassava Mosaic Disease (CMD)","Viral","Whitefly",28.0,60.0,0.12,50.0,0.60,"Rogue infected plants."]]
             cols = ["Disease_ID","Target_Crop_Name","Disease_Name","Type","Vector_Type",
                     "Opt_Temp","Opt_Humidity","Beta_Infection","Dispersal_Sigma_m",
@@ -147,7 +175,7 @@ class StateManager:
             
             'soil_type': st.session_state['soil_type'],
             'initial_nitrogen': st.session_state['initial_nitrogen'],
-            'initial_phosphorus': st.session_state.get('initial_phosphorus', 30.0),
+            'initial_phosphorus': st.session_state.get('initial_phosphorus', 20.0),
             'initial_potassium': st.session_state.get('initial_potassium', 100.0),
             'use_expert_soil': st.session_state['use_expert_soil'],
             
@@ -177,8 +205,8 @@ class StateManager:
             st.session_state['insect_pressure'] = data.get('insect_pressure', 1.0)
             
             st.session_state['soil_type'] = data.get('soil_type', 'loam')
-            st.session_state['initial_nitrogen'] = data.get('initial_nitrogen', 70.0)
-            st.session_state['initial_phosphorus'] = data.get('initial_phosphorus', 30.0)
+            st.session_state['initial_nitrogen'] = data.get('initial_nitrogen', 10.0)
+            st.session_state['initial_phosphorus'] = data.get('initial_phosphorus', 20.0)
             st.session_state['initial_potassium'] = data.get('initial_potassium', 100.0)
             st.session_state['use_expert_soil'] = data.get('use_expert_soil', False)
             

@@ -180,7 +180,8 @@ def app():
                 conf_txt = (
                     f"Location: {st.session_state['center_lat']:.4f}, {st.session_state['center_lon']:.4f}\n"
                     f"Crop: {crop_p['Crop_Name']} - {crop_p['Variety']} (Cycle: {crop_p['Cycle_Days']} days)\n"
-                    f"Soil Profile: {st.session_state['soil_type'].title()}, Initial N: {st.session_state['initial_nitrogen']} kg/ha\n"
+                    f"Soil Type: {st.session_state['soil_type'].title()}\n"
+                    f"Initial Nutrients (mg/kg): N={st.session_state['initial_nitrogen']}, P={st.session_state.get('initial_phosphorus',20)}, K={st.session_state.get('initial_potassium',100)}\n"
                     f"Disease Target: {dis_info['Disease_Name'] if dis_info is not None else 'None'}"
                 )
                 pdf.chapter_body(conf_txt)

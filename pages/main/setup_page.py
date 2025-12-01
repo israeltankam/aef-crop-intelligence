@@ -112,40 +112,52 @@ def validate_land_cover_ee(polygon_coords_latlon):
 
 # --- NEW: AUTO SOIL RETRIEVAL ---
 def get_auto_soil_profile(coords):
+    if not st.session_state.get('ee_initialized'): return None, "Offline"
+    try:
+        ee_coords = [[p[1], p[0]] for p in coords]
+        geom = ee.Geometry.Polygon([ee_coords])
+        tex_img = ee.Image("OpenLandMap/SOL/SOL_TEXTURE-CLASS_USDA-TT_M/v02").select('b0').clip(geom)
+        tex_stats = tex_img.reduceRegion(reducer=ee.Reducer.mode(), geometry=geom, scale=250)
+        tex_class_id = tex_stats.get('b0').getInfo()
+        usda_map = {1:'clay',2:'silty clay',3:'sandy clay',4:'clay loam',5:'silty clay loam',6:'sandy clay loam',7:'loam',8:'silt loam',9:'sandy loam',10:'silt',11:'loamy sand',12:'sand'}
+        detected_texture = usda_map.get(tex_class_id, 'loam') 
+        oc_img = ee.Image("OpenLandMap/SOL/SOL_ORGANIC-CARBON_USDA-6A1C_M/v02").select('b0').clip(geom)
+        oc_stats = oc_img.reduceRegion(reducer=ee.Reducer.mean(), geometry=geom, scale=250)
+        organic_carbon = oc_stats.get('b0').getInfo() 
+        return detected_texture, organic_carbon
+    except Exception as e:
+        return None, str(e)
+        
+# --- NEW: AUTO SOIL & NUTRIENT RETRIEVAL ---
+def get_auto_soil_profile(coords):
     """
-    Fetches dominant soil texture and Organic Carbon from OpenLandMap.
+    Fetches dominant soil texture, Organic Carbon, and Clay Content.
     """
-    if not initialize_ee(): return None, "Offline"
-
+    if not initialize_ee(): return None, "Offline", 0
     try:
         ee_coords = [[p[1], p[0]] for p in coords]
         geom = ee.Geometry.Polygon([ee_coords])
         
-        # 1. Texture Class (USDA)
-        # Band b0 is surface (0cm)
+        # 1. Texture Class
         tex_img = ee.Image("OpenLandMap/SOL/SOL_TEXTURE-CLASS_USDA-TT_M/v02").select('b0').clip(geom)
         tex_stats = tex_img.reduceRegion(reducer=ee.Reducer.mode(), geometry=geom, scale=250)
         tex_class_id = tex_stats.get('b0').getInfo()
+        usda_map = {1:'clay',2:'silty clay',3:'sandy clay',4:'clay loam',5:'silty clay loam',6:'sandy clay loam',7:'loam',8:'silt loam',9:'sandy loam',10:'silt',11:'loamy sand',12:'sand'}
+        detected_texture = usda_map.get(tex_class_id, 'loam') 
         
-        # Map USDA ID to strings in _SOIL_TABLE
-        # 1:Cl, 2:SiCl, 3:SaCl, 4:ClLo, 5:SiClLo, 6:SaClLo, 7:Lo, 8:SiLo, 9:SaLo, 10:Si, 11:LoSa, 12:Sa
-        usda_map = {
-            1: 'clay', 2: 'silty clay', 3: 'sandy clay', 4: 'clay loam', 
-            5: 'silty clay loam', 6: 'sandy clay loam', 7: 'loam', 8: 'silt loam', 
-            9: 'sandy loam', 10: 'silt', 11: 'loamy sand', 12: 'sand'
-        }
-        detected_texture = usda_map.get(tex_class_id, 'loam') # Default fallback
-
-        # 2. Organic Carbon (g/kg)
+        # 2. Organic Carbon (g/kg) - Proxy for Nitrogen
         oc_img = ee.Image("OpenLandMap/SOL/SOL_ORGANIC-CARBON_USDA-6A1C_M/v02").select('b0').clip(geom)
         oc_stats = oc_img.reduceRegion(reducer=ee.Reducer.mean(), geometry=geom, scale=250)
-        organic_carbon = oc_stats.get('b0').getInfo() # g/kg (e.g. 15 g/kg = 1.5%)
+        organic_carbon = oc_stats.get('b0').getInfo() 
         
-        return detected_texture, organic_carbon
-
+        # 3. Clay Content (%) - Proxy for Potassium capacity and P fixation
+        clay_img = ee.Image("OpenLandMap/SOL/SOL_CLAY-WFRACTION_USDA-3A1A1A_M/v02").select('b0').clip(geom)
+        clay_stats = clay_img.reduceRegion(reducer=ee.Reducer.mean(), geometry=geom, scale=250)
+        clay_content = clay_stats.get('b0').getInfo()
+        
+        return detected_texture, organic_carbon, clay_content
     except Exception as e:
-        print(f"Soil Auto-Detect Error: {e}")
-        return None, str(e)
+        return None, str(e), 0
 
 # --- MAIN PAGE LOGIC ---
 def app():
@@ -368,32 +380,70 @@ def app():
         if c_next.button("Next ➡️"): st.session_state['step'] = 4; st.rerun()
 
     # ==========================================================================
-    # STEP 4: SOIL & MANAGEMENT (UPDATED WITH NPK)
+    # STEP 4: SOIL & MANAGEMENT (UPDATED WITH NPK mg/kg)
     # ==========================================================================
     elif st.session_state['step'] == 4:
         st.subheader("🪨 Step 4: Soil & Management Operations")
         
         # --- 1. SOIL PROFILE SECTION ---
-        st.markdown("##### Soil Profile")
+        st.markdown("##### Soil Profile & Nutrient Intelligence")
         
-        # Auto-Detect Button
-        if st.button("🛰️ Auto-Detect Soil Profile (AlphaEarth)", help="Fetches texture and carbon from OpenLandMap"):
-            with st.spinner("Scanning soil data..."):
-                tex, carbon = get_auto_soil_profile(st.session_state['field_coords'])
-                if tex:
-                    st.session_state['soil_type'] = tex
-                    # Estimating N from Organic Carbon (Simple heuristic)
-                    est_n = min(150.0, max(40.0, carbon * 5.0))
-                    st.session_state['initial_nitrogen'] = est_n
+        # Auto-Detect Layout
+        c_auto, c_hist = st.columns([1, 2])
+        
+        with c_auto:
+            if st.button("🛰️ Auto-Detect Soil (AlphaEarth)", help="Fetches Texture, Carbon, and Clay from OpenLandMap"):
+                with st.spinner("Scanning soil physics & chemistry..."):
+                    tex, carbon, clay = get_auto_soil_profile(st.session_state['field_coords'])
                     
-                    # Assume P and K scale somewhat with fertility/carbon for defaults (very rough heuristic)
-                    st.session_state['initial_phosphorus'] = max(10.0, carbon * 2.0)
-                    st.session_state['initial_potassium'] = max(50.0, carbon * 8.0)
-                    
-                    st.success(f"Detected: **{tex.title()}** | Organic Carbon: **{carbon:.1f} g/kg**")
-                    import time; time.sleep(1.5); st.rerun()
-                else:
-                    st.error(f"Detection failed: {carbon}")
+                    if tex:
+                        st.session_state['soil_type'] = tex
+                        
+                        # --- NUTRIENT ESTIMATION LOGIC ---
+                        # 1. Retrieve Cultivation History (from slider state, default 0)
+                        years_farming = st.session_state.get('history_years', 0)
+                        
+                        # 2. Heuristics
+                        # Nitrogen (N): Highly dependent on Organic Carbon (SOC). 
+                        # SOC (g/kg) -> Total N approx SOC/10. Available N approx 1-2% of Total N.
+                        # We use a calibrated factor: ~0.5 * SOC for available N in mg/kg.
+                        base_n = max(5.0, min(50.0, carbon * 0.5))
+                        
+                        # Phosphorus (P): 
+                        # Base P from organic matter + mineral P. 
+                        # High Clay often fixes P (reduces availability).
+                        base_p = max(5.0, (15.0 + (carbon * 0.2)) - (clay * 0.1))
+                        
+                        # Potassium (K):
+                        # Strongly correlated with Clay (CEC). 
+                        # Base K ~ 60 + (Clay% * 1.5)
+                        base_k = max(40.0, 60.0 + (clay * 1.5))
+                        
+                        # 3. Apply Depletion (Decay) Logic
+                        # Rate of decay per year of unfertilized farming
+                        decay_n = 0.05 # 5% loss per year
+                        decay_p = 0.02 # 2% loss
+                        decay_k = 0.03 # 3% loss
+                        
+                        final_n = base_n * ((1 - decay_n) ** years_farming)
+                        final_p = base_p * ((1 - decay_p) ** years_farming)
+                        final_k = base_k * ((1 - decay_k) ** years_farming)
+                        
+                        st.session_state['initial_nitrogen'] = round(final_n, 1)
+                        st.session_state['initial_phosphorus'] = round(final_p, 1)
+                        st.session_state['initial_potassium'] = round(final_k, 1)
+                        
+                        st.success(f"Detected: **{tex.title()}** | C: **{carbon} g/kg** | Clay: **{clay}%**")
+                        import time; time.sleep(1.0); st.rerun()
+                    else:
+                        st.error("Detection failed.")
+
+        with c_hist:
+            st.session_state['history_years'] = st.slider(
+                "📉 Cultivation History (Years without fertilizer)", 
+                0, 20, 0,
+                help="Used to calculate nutrient depletion from the baseline soil potential."
+            )
 
         c_soil_cfg, c_soil_info = st.columns([1, 1])
         
@@ -403,7 +453,6 @@ def app():
             st.session_state['use_expert_soil'] = expert_mode
 
             if not expert_mode:
-                # STANDARD MODE: Simple Dropdown
                 soils = list(_SOIL_TABLE.keys())
                 curr_soil = st.session_state.get('soil_type', 'loam').lower()
                 if curr_soil not in soils: curr_soil = 'loam'
@@ -417,27 +466,24 @@ def app():
                 
                 props = _SOIL_TABLE[st.session_state['soil_type']]
                 st.session_state['soil_layers'] = pd.DataFrame([{
-                    'depth_top': 0.0, 
-                    'depth_bottom': 1.5, 
-                    'texture': st.session_state['soil_type'],
-                    'field_capacity': props['field_capacity'], 
-                    'wilting_point': props['wilting_point'] 
+                    'depth_top': 0.0, 'depth_bottom': 1.5, 'texture': st.session_state['soil_type'],
+                    'field_capacity': props['field_capacity'], 'wilting_point': props['wilting_point'] 
                 }])
             
-            # NUTRIENT INPUTS (UPDATED FOR NPK)
-            st.markdown("###### Initial Soil Nutrient Status (kg/ha)")
+            # NUTRIENT INPUTS (Manual Entry Enabled)
+            st.markdown("###### Initial Soil Nutrient Levels (mg/kg)")
             c_n, c_p, c_k = st.columns(3)
             with c_n:
                 st.session_state['initial_nitrogen'] = st.number_input(
                     "Nitrogen (N)", 
-                    value=float(st.session_state.get('initial_nitrogen', 70.0)), 
-                    step=5.0, help="Available Nitrate-N"
+                    value=float(st.session_state.get('initial_nitrogen', 10.0)), 
+                    step=1.0, help="Available N (Nitrate/Ammonium)"
                 )
             with c_p:
                 st.session_state['initial_phosphorus'] = st.number_input(
                     "Phosphorus (P)", 
-                    value=float(st.session_state.get('initial_phosphorus', 30.0)), 
-                    step=5.0, help="Available P (Olsen/Bray)"
+                    value=float(st.session_state.get('initial_phosphorus', 20.0)), 
+                    step=1.0, help="Available P (Olsen)"
                 )
             with c_k:
                 st.session_state['initial_potassium'] = st.number_input(
@@ -452,32 +498,26 @@ def app():
                 st.caption("Define custom soil horizons below.")
             else:
                 props = _SOIL_TABLE[st.session_state['soil_type']]
-                st.info(f"**Standard Properties ({st.session_state['soil_type'].title()})**")
+                st.info(f"**Physical Properties ({st.session_state['soil_type'].title()})**")
                 st.write(f"- Field Capacity: **{props['field_capacity']*100:.0f}%**")
                 st.write(f"- Wilting Point: **{props['wilting_point']*100:.0f}%**")
-                st.caption("Values derived from USDA texture class averages.")
 
-        # EXPERT EDITOR (Only if toggled)
         if expert_mode:
             st.markdown("###### Custom Soil Layers")
-            edited_layers = st.data_editor(
-                st.session_state['soil_layers'],
-                num_rows="dynamic",
-                key="editor_layers",
-                use_container_width=True
+            st.session_state['soil_layers'] = st.data_editor(
+                st.session_state['soil_layers'], num_rows="dynamic", key="editor_layers", use_container_width=True
             )
-            st.session_state['soil_layers'] = edited_layers
 
         st.divider()
 
         # --- 2. MANAGEMENT SCHEDULES ---
         c_fert, c_irr = st.columns(2)
         with c_fert:
-            st.markdown("##### 🧪 Fertilizer Schedule (NPK)")
+            st.markdown("##### 🧪 Fertilizer Schedule (kg/ha)")
+            st.caption("Inputs remain in **kg/ha** (application rate).")
             df_fert = st.session_state['fert_schedule']
             if not df_fert.empty: df_fert['date'] = pd.to_datetime(df_fert['date']).dt.date
             
-            # Updated Column Config for N, P, K
             st.session_state['fert_schedule'] = st.data_editor(
                 df_fert, 
                 num_rows="dynamic", 
@@ -489,13 +529,17 @@ def app():
                 }, 
                 key="editor_fert"
             )
-            st.caption("Enter amounts for Nitrogen, Phosphorus, and Potassium separately.")
             
         with c_irr:
             st.markdown("##### 💧 Irrigation Schedule")
+            st.caption("Inputs in **mm**.")
             df_irr = st.session_state['irr_schedule']
             if not df_irr.empty: df_irr['date'] = pd.to_datetime(df_irr['date']).dt.date
-            st.session_state['irr_schedule'] = st.data_editor(df_irr, num_rows="dynamic", column_config={"date": st.column_config.DateColumn("Date"), "amount": st.column_config.NumberColumn("Amount (mm)")}, key="editor_irr")
+            st.session_state['irr_schedule'] = st.data_editor(
+                df_irr, num_rows="dynamic", 
+                column_config={"date": st.column_config.DateColumn("Date"), "amount": st.column_config.NumberColumn("Amount (mm)")}, 
+                key="editor_irr"
+            )
         
         st.divider()
         c_back, c_next = st.columns([1, 6])
