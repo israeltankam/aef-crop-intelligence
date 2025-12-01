@@ -338,21 +338,70 @@ def app():
                     pdf.chapter_body("**Note:** Application rates refer to the commercial product weight, not the elemental nutrient weight.")
                 
                 # 5. SATELLITE VALIDATION
-                if 'ndvi_data' in st.session_state and st.session_state['ndvi_data'] is not None:
-                    pdf.chapter_title("5. Satellite Reality Check")
-                    pdf.chapter_body("Comparison of Digital Twin growth model (LAI) vs observed Satellite Vegetation Index (NDVI).")
-                    df_ndvi = st.session_state['ndvi_data']
-                    fig_sat, ax_sat = plt.subplots(figsize=(8, 4))
-                    l1, = ax_sat.plot(dates, df_hist['LAI'], 'g--', label='Model LAI')
-                    ax_sat.set_ylabel('Leaf Area Index', color='g')
-                    ax_sat2 = ax_sat.twinx()
-                    l2, = ax_sat2.plot(df_ndvi['Date'], df_ndvi['NDVI'], 'bo', label='Satellite NDVI')
-                    ax_sat2.set_ylabel('NDVI (Observed)', color='b')
-                    ax_sat2.set_ylim(0, 1)
-                    plt.legend([l1, l2], ['Model LAI', 'Satellite NDVI'], loc='upper left')
-                    ax_sat.set_title("Model vs Satellite Observations")
+                pdf.chapter_title("5. Satellite Reality Check")
+                pdf.chapter_body("Comparison of Digital Twin growth model (Leaf Area Index) vs observed Satellite Vegetation Index (NDVI) from Sentinel-2.")
+
+                # 1. Determine Date Range for Fetching
+                # stats['Date'] comes from the simulation results
+                sim_start = pd.to_datetime(stats['Date'][0]).date()
+                sim_end = pd.to_datetime(stats['Date'][-1]).date()
+                today = date.today()
+                
+                # We can only validate up to today
+                fetch_end = min(sim_end, today)
+
+                # 2. Fetch Data on-the-fly if missing (Lazy Loading)
+                if 'ndvi_data' not in st.session_state:
+                    if sim_start <= today:
+                        # We assume fetch_sentinel_ndvi is defined at the top of report.py
+                        # (as provided in the previous steps)
+                        coords = st.session_state['field_coords']
+                        st.session_state['ndvi_data'] = fetch_sentinel_ndvi(coords, sim_start, fetch_end)
+                    else:
+                        st.session_state['ndvi_data'] = None
+
+                df_ndvi = st.session_state.get('ndvi_data')
+
+                # 3. Generate Plot or Fallback Message
+                if df_ndvi is not None and not df_ndvi.empty:
+                    fig_sat, ax1 = plt.subplots(figsize=(8, 4))
+                    
+                    # Plot Model LAI (Green Dashed Line)
+                    # df_hist comes from the 'res_single' history earlier in the function
+                    l1, = ax1.plot(dates, df_hist['LAI'], 'g--', linewidth=1.5, label='Model LAI (Biomass)')
+                    ax1.set_ylabel('Leaf Area Index (m²/m²)', color='g')
+                    ax1.tick_params(axis='y', labelcolor='g')
+                    ax1.set_xlabel('Date')
+                    
+                    # Plot Satellite NDVI (Blue Dots) on Secondary Axis
+                    ax2 = ax1.twinx()
+                    l2, = ax2.plot(df_ndvi['Date'], df_ndvi['NDVI'], 'bo', markersize=4, label='Satellite NDVI (Observed)')
+                    ax2.set_ylabel('NDVI (Greenness)', color='b')
+                    ax2.tick_params(axis='y', labelcolor='b')
+                    ax2.set_ylim(0, 1)
+                    
+                    # Combined Legend
+                    lines = [l1, l2]
+                    labels = [l.get_label() for l in lines]
+                    ax1.legend(lines, labels, loc='upper left')
+                    
+                    ax1.set_title("Reality Check: Digital Twin vs. Space Observation")
+                    ax1.grid(True, linestyle=':', alpha=0.6)
+                    
                     pdf.add_plot_to_pdf(fig_sat)
                     plt.close(fig_sat)
+                    
+                    pdf.chapter_body(
+                        "**Interpretation:** The green dashed line represents the simulation's expected growth. "
+                        "Blue dots are actual satellite measurements. "
+                        "A strong correlation confirms the model is calibrated correctly for your field conditions."
+                    )
+                
+                else:
+                    # Graceful fallback if no data found
+                    reason = "Simulated period is in the future" if sim_start > today else "Persistent cloud cover or sensor unavailability"
+                    pdf.chapter_body(f"**No satellite imagery available.**\nReason: {reason}.")
+                    pdf.chapter_body("The model is running in predictive mode based on climatology.")
 
                 # 6. EPIDEMIOLOGY
                 if dis_info is not None:
@@ -364,7 +413,7 @@ def app():
                     )
                     pdf.chapter_body(epi_txt)
                     
-                    # Plot Disease
+                    # Plot Disease Progression (Time Series)
                     fig2, ax = plt.subplots(figsize=(8, 4))
                     ax.plot(dates, stats['Incidence_Mean']*100, 'r-', linewidth=2, label='Infection % (Mean)')
                     lower_i = np.clip(stats['Incidence_Mean'] - (1.96 * stats['Incidence_Std']), 0, 1) * 100
@@ -376,27 +425,49 @@ def app():
                     pdf.add_plot_to_pdf(fig2)
                     plt.close(fig2)
                     
-                    # Map
+                    # Plot Disease Map (Spatial)
                     try:
                         fig3, ax3 = plt.subplots(figsize=(8, 6))
+                        
+                        # Retrieve spatial data
                         triang_source = ens_res['triangulation']
                         vals = stats['Final_Grid_Mean']
-                        x_plot = triang_source.y
-                        y_plot = triang_source.x
+                        
+                        # Dashboard logic: x=Lon (y in triangulation), y=Lat (x in triangulation)
+                        x_plot = triang_source.y 
+                        y_plot = triang_source.x 
+                        
+                        # Reconstruct Triangulation for Matplotlib
                         triang_plot = mtri.Triangulation(x_plot, y_plot, triang_source.triangles)
+                        
+                        # CRITICAL FIX 1: Apply the mask to hide areas outside the field polygon
+                        if triang_source.mask is not None:
+                             triang_plot.set_mask(triang_source.mask)
+                        
+                        # Render Heatmap
                         tpc = ax3.tripcolor(triang_plot, vals, cmap='Reds', shading='gouraud', vmin=0, vmax=1)
-                        poly = ens_res['field_poly']
+                        
+                        # Draw Field Boundary
+                        poly = ens_res['field_poly'] # [Lat, Lon]
+                        # Convert to [Lon, Lat] for plot
                         poly_plot = np.vstack([poly, poly[0]])
                         ax3.plot(poly_plot[:, 1], poly_plot[:, 0], 'k-', linewidth=1.5)
+                        
                         ax3.set_aspect('equal')
-                        ax3.set_title("Mean Disease Severity Map")
+                        ax3.set_title("Mean Final Disease Severity Map")
                         ax3.set_xlabel("Longitude")
                         ax3.set_ylabel("Latitude")
                         fig3.colorbar(tpc, ax=ax3, label="Avg. Severity (0-1)")
+                        ax3.grid(True, linestyle='--', alpha=0.3)
+                        
+                        # CRITICAL FIX 2: Actually add the plot to the PDF
                         pdf.add_plot_to_pdf(fig3)
                         plt.close(fig3)
-                    except:
-                        pass
+                        
+                    except Exception as e:
+                        # If map fails, print error to PDF so we know why
+                        pdf.chapter_body(f"[Map generation error: {str(e)}]")
+                        plt.close(fig3)
 
                 # 7. RECOMMENDATIONS
                 pdf.chapter_title("7. Management Recommendations")

@@ -5,7 +5,7 @@ import numpy as np
 import altair as alt
 import matplotlib.pyplot as plt
 from matplotlib.tri import Triangulation
-from datetime import date, timedelta
+from datetime import date
 from src.models.state_manager import StateManager
 from src.models.simulation_engine import SimulationEngine
 import ee
@@ -17,6 +17,11 @@ def fetch_sentinel_ndvi(coords, start_date, end_date):
     Fetches Sentinel-2 time series for the field polygon.
     Returns DataFrame: [Date, NDVI]
     """
+    # 0. Sanity Checks
+    if start_date > end_date:
+        # Planting is in the future, or today is before planting
+        return pd.DataFrame(columns=['Date', 'NDVI'])
+
     # 1. Initialize EE
     if not st.session_state.get('ee_initialized'):
         try:
@@ -40,7 +45,9 @@ def fetch_sentinel_ndvi(coords, start_date, end_date):
             cloud_bit_mask = 1 << 10
             cirrus_bit_mask = 1 << 11
             mask = qa.bitwiseAnd(cloud_bit_mask).eq(0).And(qa.bitwiseAnd(cirrus_bit_mask).eq(0))
-            return image.updateMask(mask).divide(10000)
+            
+            # --- CRITICAL FIX: Preserve Timestamp Metadata ---
+            return image.updateMask(mask).divide(10000).copyProperties(image, ["system:time_start"])
 
         s2 = ee.ImageCollection('COPERNICUS/S2_SR_HARMONIZED')\
             .filterDate(str(start_date), str(end_date))\
@@ -135,6 +142,7 @@ def app():
     dates = [pd.to_datetime(h['Date']).date() for h in history]
     
     today = date.today()
+    # Ensure default date is valid
     default_date = max(dates) if today > max(dates) else today
     if default_date < min(dates): default_date = min(dates)
     
@@ -144,10 +152,7 @@ def app():
     day_data = history[idx]
     
     # --- 3. METRICS ---
-    # Get Area (default to 1.0 if missing)
     area = st.session_state.get('area_ha', 1.0)
-    
-    # Calculate Total Production
     yield_tha = day_data['Yield']
     total_tonnes = yield_tha * area
 
@@ -173,9 +178,15 @@ def app():
         fig, ax = plt.subplots(figsize=(10, 7))
         triang_source = res['triangulation']
         
-        x_plot = triang_source.y  # Longitude
-        y_plot = triang_source.x  # Latitude
+        # Reconstruct triangulation for plotting
+        # Matplotlib Triangulation objects are lightweight, safe to recreate
+        x_plot = triang_source.y # Lon
+        y_plot = triang_source.x # Lat
         triang_plot = Triangulation(x_plot, y_plot, triang_source.triangles)
+        
+        # Apply the mask if it exists (Fix for concave polygons)
+        if triang_source.mask is not None:
+            triang_plot.set_mask(triang_source.mask)
         
         if map_mode == "Disease Severity":
             vals = day_data['Grid_Incidence']
@@ -218,7 +229,7 @@ def app():
     df_plot = pd.DataFrame(history)
     df_plot['Date'] = pd.to_datetime(df_plot['Date'])
     
-    # Common Rules
+    # Rules
     rule_selected = alt.Chart(pd.DataFrame({'Date': [pd.to_datetime(selected_date)]})).mark_rule(color='black').encode(x='Date:T')
     
     det_date = st.session_state.get('detection_date')
@@ -239,15 +250,11 @@ def app():
             y=alt.Y('Biomass:Q', title='Biomass (t/ha)', axis=alt.Axis(titleColor='#8B4513')),
             color=alt.Color('Metric:N')
         )
-        c = alt.layer(line_lai, line_bio).resolve_scale(y='independent').properties(height=350)
-        st.altair_chart((c + rule_selected).interactive(), use_container_width=True)
+        st.altair_chart((alt.layer(line_lai, line_bio).resolve_scale(y='independent').properties(height=350) + rule_selected).interactive(), use_container_width=True)
         
-    # --- TAB 2: SOIL WATER & NUTRIENTS (FIXED) ---
+    # --- TAB 2: SOIL WATER & NUTRIENTS ---
     with tabs[1]:
-        # Using N_kg, P_kg, K_kg instead of Nmin
         df_soil = df_plot[['Date', 'SWC', 'N_kg', 'P_kg', 'K_kg']].copy()
-        
-        # Melt for multi-line chart
         df_soil_melt = df_soil.melt('Date', var_name='Parameter', value_name='Value')
         
         base = alt.Chart(df_soil_melt).encode(x='Date:T')
@@ -263,10 +270,9 @@ def app():
             ),
             tooltip=['Date', 'Parameter', 'Value']
         )
-        
         st.altair_chart((lines + rule_selected).interactive(), use_container_width=True)
 
-    # --- TAB 3: DISEASE (Updated for Detection Line) ---
+    # --- TAB 3: DISEASE ---
     with tabs[2]:
         base = alt.Chart(df_plot).encode(x='Date:T')
         
@@ -274,71 +280,75 @@ def app():
             y=alt.Y('Incidence:Q', title='Incidence (0-1)', axis=alt.Axis(titleColor='red')),
             color=alt.Color('Metric:N', scale=alt.Scale(domain=['Infection Severity', 'Env. Risk Score'], range=['red', 'purple']), legend=alt.Legend(title="Epidemiology"))
         )
-        line_env = base.transform_calculate(Metric="'Env. Risk Score'").mark_line(strokeDash=[5,5]).encode(
+        line_env = base.transform_calculate(Metric="'Env. Risk Score'").mark_line(strokeDash=[2,2]).encode(
             y=alt.Y('Env_Favorability:Q', title='Env. Risk (0-1)', axis=alt.Axis(titleColor='purple')),
             color=alt.Color('Metric:N')
         )
-        # Combine: Chart + Selection + Detection Rule
-        chart = alt.layer(area_inc, line_env, rule_detect).resolve_scale(y='independent').properties(height=350)
-        st.altair_chart(chart.interactive(), use_container_width=True)
-        st.caption(f"Orange dashed line indicates Detection Date. Prior to this, only Environmental Risk is shown.")
+        # Combine
+        st.altair_chart(alt.layer(area_inc, line_env, rule_detect).resolve_scale(y='independent').properties(height=350).interactive(), use_container_width=True)
+        st.caption(f"Orange dashed line indicates Detection Date ({det_date}). Prior to this, only Environmental Risk is shown.")
 
-    # --- TAB 4: DAILY STRESS (UPDATED NPK) ---
+    # --- TAB 4: DAILY STRESS ---
     with tabs[3]:
-        # Melt water plus N, P, K stresses
         df_stress = df_plot.melt(
             'Date', 
             value_vars=['Avg_Stress', 'Avg_N_Stress', 'Avg_P_Stress', 'Avg_K_Stress'], 
             var_name='Stress Type', 
             value_name='Index'
         )
-        
         df_stress['Stress Type'] = df_stress['Stress Type'].replace({
             'Avg_Stress': 'Water', 
-            'Avg_N_Stress': 'Nitrogen (N)',
-            'Avg_P_Stress': 'Phosphorus (P)',
+            'Avg_N_Stress': 'Nitrogen (N)', 
+            'Avg_P_Stress': 'Phosphorus (P)', 
             'Avg_K_Stress': 'Potassium (K)'
         })
-        
         c = alt.Chart(df_stress).mark_area(opacity=0.5).encode(
             x='Date:T',
             y=alt.Y('Index:Q', title='Stress Index (0=None, 1=Severe)'),
             color=alt.Color('Stress Type:N', scale=alt.Scale(scheme='category10')),
             tooltip=['Date', 'Stress Type', 'Index']
         ).properties(height=350)
-        
         st.altair_chart((c + rule_selected).interactive(), use_container_width=True)
 
     # --- TAB 5: REALITY CHECK (NDVI) ---
     with tabs[4]:
         st.caption("Validating Digital Twin against Sentinel-2 Satellite observations (Cloud-free days only).")
         
-        if 'ndvi_data' not in st.session_state:
-            with st.spinner("Fetching Sentinel-2 data from AlphaEarth..."):
-                start = df_plot['Date'].min().date()
-                end = df_plot['Date'].max().date()
-                coords = st.session_state['field_coords']
-                if end > date.today(): end = date.today()
-                st.session_state['ndvi_data'] = fetch_sentinel_ndvi(coords, start, end)
+        # 1. Check Date Range Validity
+        sim_start = df_plot['Date'].min().date()
+        sim_end = df_plot['Date'].max().date()
+        today_date = date.today()
         
-        df_ndvi = st.session_state.get('ndvi_data')
-        
-        if df_ndvi is not None and not df_ndvi.empty:
-            base_model = alt.Chart(df_plot).encode(x='Date:T')
-            line_lai_model = base_model.mark_line(color='green', strokeDash=[5,5]).encode(
-                y=alt.Y('LAI:Q', title='Modelled LAI (Greenness)', axis=alt.Axis(titleColor='green'))
-            )
-            base_sat = alt.Chart(df_ndvi).encode(x='Date:T')
-            point_ndvi = base_sat.mark_point(color='blue', filled=True, size=60).encode(
-                y=alt.Y('NDVI:Q', title='Satellite NDVI (Observed)', scale=alt.Scale(domain=[0, 1]), axis=alt.Axis(titleColor='blue')),
-                tooltip=['Date', 'NDVI']
-            )
-            c_check = alt.layer(line_lai_model, point_ndvi).resolve_scale(y='independent').properties(height=350)
-            st.altair_chart(c_check.interactive(), use_container_width=True)
-            st.info("Interpretation: The Dotted Green Line is what the math predicts. The Blue Dots are what the satellite sees. If dots are much lower than the line, check for unmodelled stress (pests/disease).")
+        # If planting is in future, we can't fetch data
+        if sim_start > today_date:
+            st.warning("⚠️ Simulation is for a future date range. Satellite validation is not available.")
         else:
-            st.warning("No clear satellite imagery found for this period (Cloud cover or date range issue).")
-            st.dataframe(df_plot[['Date', 'LAI']].head())
+            # Fetch Data if needed
+            if 'ndvi_data' not in st.session_state:
+                with st.spinner("Fetching Sentinel-2 data from AlphaEarth..."):
+                    coords = st.session_state['field_coords']
+                    # Cap end date at today
+                    fetch_end = min(sim_end, today_date)
+                    st.session_state['ndvi_data'] = fetch_sentinel_ndvi(coords, sim_start, fetch_end)
+            
+            df_ndvi = st.session_state.get('ndvi_data')
+            
+            if df_ndvi is not None and not df_ndvi.empty:
+                base_model = alt.Chart(df_plot).encode(x='Date:T')
+                line_lai_model = base_model.mark_line(color='green', strokeDash=[5,5]).encode(
+                    y=alt.Y('LAI:Q', title='Modelled LAI (Greenness)', axis=alt.Axis(titleColor='green'))
+                )
+                base_sat = alt.Chart(df_ndvi).encode(x='Date:T')
+                point_ndvi = base_sat.mark_point(color='blue', filled=True, size=60).encode(
+                    y=alt.Y('NDVI:Q', title='Satellite NDVI (Observed)', scale=alt.Scale(domain=[0, 1]), axis=alt.Axis(titleColor='blue')),
+                    tooltip=['Date', 'NDVI']
+                )
+                c_check = alt.layer(line_lai_model, point_ndvi).resolve_scale(y='independent').properties(height=350)
+                st.altair_chart(c_check.interactive(), use_container_width=True)
+                st.info("Interpretation: The Dotted Green Line is what the math predicts. The Blue Dots are what the satellite sees.")
+            else:
+                st.warning("No clear satellite imagery found for the period from planting to today.")
+                st.caption("Reasons: Cloud cover, planting date is too recent, or sensor unavailability.")
 
     # --- STRESS SUMMARY ---
     st.subheader("🧭 Stress Summary")
@@ -350,7 +360,6 @@ def app():
     c1.info(f"**Water Stress:** {w_days} days ({w_days/n_days*100:.1f}%) > 0.5")
     c2.warning(f"**Nitrogen Stress:** {n_days_stress} days ({n_days_stress/n_days*100:.1f}%) > 0.5")
     
-    # --- RAW DATA ---
     with st.expander("📋 View Raw Daily Data"):
         st.dataframe(df_plot.drop(columns=['Grid_Incidence', 'Grid_Yield']))
     

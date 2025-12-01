@@ -133,9 +133,21 @@ class SimulationEngine:
         points = np.vstack((xv.flatten(), yv.flatten())).T
         mask = path.contains_points(points).reshape(N, N)
         valid_points = points[mask.flatten()]
+        
         if len(valid_points) < 3: return None
+        
         tri = Delaunay(valid_points)
         triang = Triangulation(valid_points[:,0], valid_points[:,1], tri.simplices)
+        
+        # --- FIX: MASK TRIANGLES OUTSIDE POLYGON (Non-convex hull) ---
+        # Calculate centroids of all triangles
+        tri_centers = np.mean(valid_points[tri.simplices], axis=1)
+        # Check if centers are inside the path
+        # mask=True means "masked out" (hidden)
+        mask_tri = ~path.contains_points(tri_centers)
+        triang.set_mask(mask_tri)
+        # -------------------------------------------------------------
+        
         I_grid_init = np.zeros((N, N))
         if config['disease_spots']:
             for spot in config['disease_spots']:
@@ -145,6 +157,7 @@ class SimulationEngine:
                     count = spot.get('plants', 1)
                     severity = min(1.0, 0.05 * count)
                     I_grid_init[iy, ix] = max(I_grid_init[iy, ix], severity)
+        
         return field_poly, N, mask, valid_points, triang, I_grid_init
 
     def _run_disease_realization(self, config, crop_p, bio_history, N, mask, valid_points, I_grid_init):
