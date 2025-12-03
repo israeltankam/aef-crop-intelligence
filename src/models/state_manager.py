@@ -101,41 +101,42 @@ class StateManager:
         
         # Only create if missing (or update manually if you want to force this new structure)
         # Note: I added 'Harvest_Rain_Limit_mm'
+        # Only create if missing 
         if not os.path.exists(crops_path):
             data = [
-                # Cassava: Tolerates rain at harvest (tubers underground), though lifting is muddy. Limit 150mm.
-                ["C_CAS_01","Cassava","TME 419 (Improved)","Perennial",365,0,18.0,26.0,35.0,2.4,5.0,0.80,0.80,2.0,100,0.2, 10000, 150],
-                ["C_CAS_02","Cassava","Local White (Landrace)","Perennial",365,0,18.0,26.0,35.0,2.0,4.5,0.70,0.80,2.0,100,1.0, 10000, 150],
+                # Cassava: Tolerates rain at harvest. Limit 150mm. Max Irr 40mm.
+                ["C_CAS_01","Cassava","TME 419 (Improved)","Perennial",365,0,18,26,35,2.4,5,0.8,0.8,2,100,0.2,10000,150,40],
+                ["C_CAS_02","Cassava","Local White (Landrace)","Perennial",365,0,18,26,35,2,4.5,0.7,0.8,2,100,1,10000,150,40],
                 
-                # Maize: Needs dry down. Wet harvest causes aflatoxin/rot. Limit 50mm.
-                ["C_MAI_01","Maize","Pioneer P1197 (Hybrid)","Annual",120,1600,8.0,30.0,35.0,3.9,6.5,0.52,1.20,1.5,180,0.3, 60000, 50],
-                ["C_MAI_02","Maize","Local Open Pollinated","Annual",130,1700,8.0,30.0,36.0,3.2,5.0,0.40,1.15,1.1,160,0.9, 55000, 50],
+                # Maize: Needs dry down. Limit 50mm. Max Irr 50mm.
+                ["C_MAI_01","Maize","Pioneer P1197 (Hybrid)","Annual",120,1600,8,30,35,3.9,6.5,0.52,1.2,1.5,180,0.3,60000,50,50],
+                ["C_MAI_02","Maize","Local Open Pollinated","Annual",130,1700,8,30,36,3.2,5,0.4,1.15,1.1,160,0.9,55000,50,50],
                 
-                # Cotton: CRITICAL. Rain stains lint (boll rot). Limit 20mm (very dry).
-                ["C_COT_01","Cotton","DeltaPine (Bt)","Annual",150,2200,12.0,28.0,38.0,1.7,3.5,0.35,1.15,1.8,150,0.4, 80000, 20],
-                ["C_COT_02","Cotton","Conventional Local","Annual",160,2300,12.0,28.0,38.0,1.5,3.0,0.30,1.15,1.6,140,0.9, 70000, 20],
+                # Cotton: CRITICAL Rain limits. Limit 20mm. Max Irr 60mm.
+                ["C_COT_01","Cotton","DeltaPine (Bt)","Annual",150,2200,12,28,38,1.7,3.5,0.35,1.15,1.8,150,0.4,80000,20,60],
+                ["C_COT_02","Cotton","Conventional Local","Annual",160,2300,12,28,38,1.5,3,0.3,1.15,1.6,140,0.9,70000,20,60],
                 
-                # Cocoa: Harvest year-round but drying needs sun. Limit 100mm.
-                ["C_COC_01","Cocoa","Forastero (Amelonado)","Perennial",365,0,20.0,25.0,32.0,1.5,5.0,0.35,1.10,2.0,120,0.6, 1100, 100],
-                ["C_COC_02","Cocoa","Trinitario (Hybrid)","Perennial",365,0,20.0,25.0,32.0,1.6,5.5,0.38,1.10,2.0,130,0.4, 1100, 100],
+                # Cocoa: Harvest year-round. Limit 100mm. Max Irr 40mm.
+                ["C_COC_01","Cocoa","Forastero (Amelonado)","Perennial",365,0,20,25,32,1.5,5,0.25,1.1,2,120,0.6,1100,100,40],
+                ["C_COC_02","Cocoa","Trinitario (Hybrid)","Perennial",365,0,20,25,32,1.6,5.5,0.28,1.1,2,130,0.4,1100,100,40],
                 
-                # Wheat: Pre-harvest sprouting if wet. Limit 30mm.
-                ["C_WHT_01","Wheat","Winter Red (Intensive)","Annual",240,2000,0.0,20.0,30.0,2.8,6.0,0.48,1.15,1.5,150,0.4, 3000000, 30],
+                # Wheat: Pre-harvest sprouting. Limit 30mm. Max Irr 50mm.
+                ["C_WHT_01","Wheat","Winter Red (Intensive)","Annual",240,2000,0,20,30,2.8,6,0.48,1.15,1.5,150,0.4,3000000,30,50],
                 
-                # Rice: Harvested in drained fields. Limit 60mm.
-                ["C_RIC_01","Rice","IR64 (Indica)","Annual",115,1500,10.0,30.0,38.0,2.2,6.0,0.50,1.20,0.8,120,0.5, 250000, 60],
+                # Rice: Harvested in drained fields. Limit 60mm. Max Irr 80mm.
+                ["C_RIC_01","Rice","IR64 (Indica)","Annual",115,1500,10,30,38,2.2,6,0.5,1.2,0.8,120,0.5,250000,60,80],
                 
-                # Soybean: Pod shattering/rot. Limit 40mm.
-                ["C_SOY_01","Soybean","Roundup Ready","Annual",110,1400,10.0,28.0,35.0,1.8,4.5,0.38,1.10,1.2,50,0.3, 300000, 40],
+                # Soybean: Pod shattering. Limit 40mm. Max Irr 40mm.
+                ["C_SOY_01","Soybean","Roundup Ready","Annual",110,1400,10,28,35,1.8,4.5,0.38,1.1,1.2,50,0.3,300000,40,40],
                 
-                # Coffee: Splitting/Fermentation. Limit 40mm.
-                ["C_COF_01","Coffee","Arabica (Typica)","Perennial",365,0,15.0,20.0,25.0,1.2,4.0,0.30,0.95,1.5,100,0.8, 1600, 40],
-                ["C_COF_02","Coffee","Robusta (Nganda)","Perennial",365,0,20.0,26.0,34.0,1.4,4.5,0.35,1.00,2.0,120,0.3, 1100, 40]
+                # Coffee: Splitting/Fermentation. Limit 40mm. Max Irr 30mm.
+                ["C_COF_01","Coffee","Arabica (Typica)","Perennial",365,0,15,20,25,1.2,4,0.3,0.95,1.5,100,0.8,1600,40,30],
+                ["C_COF_02","Coffee","Robusta (Nganda)","Perennial",365,0,20,26,34,1.4,4.5,0.35,1,2,120,0.3,1100,40,30]
             ]
             cols = ["Crop_ID","Crop_Name","Variety","Type","Cycle_Days","GDD_Maturity",
                     "T_Base","T_Opt","T_Max","RUE_g_MJ","Max_LAI","Harvest_Index","Kc_Mid",
                     "Root_Depth_Max_m","Critical_Soil_N_kg_ha","Resistance_Score", "Default_Density", 
-                    "Harvest_Rain_Limit_mm"] # Added this column
+                    "Harvest_Rain_Limit_mm", "Max_Irr_Event_mm"] # Added this column
             pd.DataFrame(data, columns=cols).to_csv(crops_path, index=False)
             
         st.session_state['df_crops'] = pd.read_csv(crops_path)

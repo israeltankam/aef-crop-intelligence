@@ -22,7 +22,7 @@ class SimulationEngine:
     def _prepare_physics(self, config):
         """
         Initializes Weather, Soil State (Water + NPK), and Management Schedules.
-        CONVERTS mg/kg inputs to kg/ha for the internal physics engine.
+        Correctly scales soil bucket to CROP ROOT DEPTH.
         """
         df_c = st.session_state['df_crops']
         crop_p = df_c[df_c['Crop_ID'] == config['selected_crop_id']].iloc[0]
@@ -38,7 +38,6 @@ class SimulationEngine:
         # 2. Init Soil Properties
         soil_layers = config['soil_layers']
         
-        # Robust handling for list vs dataframe vs none
         if isinstance(soil_layers, list) and len(soil_layers) > 0:
              total_fc_pct = np.mean([l['field_capacity'] for l in soil_layers])
              total_wp_pct = np.mean([l['wilting_point'] for l in soil_layers])
@@ -49,16 +48,18 @@ class SimulationEngine:
              total_fc_pct = 0.27
              total_wp_pct = 0.11
 
-        root_depth = 1000 # mm assumption for lite model
-        fc_mm = total_fc_pct * root_depth
-        wp_mm = total_wp_pct * root_depth
+        # FIX: Use Crop Specific Root Depth (mm)
+        root_depth_m = float(crop_p.get('Root_Depth_Max_m', 1.0))
+        root_depth_mm = root_depth_m * 1000.0
         
+        fc_mm = total_fc_pct * root_depth_mm
+        wp_mm = total_wp_pct * root_depth_mm
+        
+        # Initial water is fraction of this specific root zone
         init_water = config['initial_soil_water'] * fc_mm 
         if init_water < wp_mm: init_water = wp_mm
 
-        # 3. Initialize State with N, P, K (CONVERSION HERE)
-        # Unit Conversion: mg/kg (ppm) -> kg/ha
-        # We use a conservative factor of 4.0 (assuming 1.3 bulk density, ~30cm topsoil effective zone)
+        # 3. Initialize State
         conv_factor = 4.0 
         
         soil_state = {
@@ -70,31 +71,22 @@ class SimulationEngine:
             'wilting_point_mm': wp_mm
         }
         
-        # 4. Parse Management (Fertilizer NPK + Irrigation)
+        # 4. Parse Management
         fert_df = pd.DataFrame(config['fert_schedule'])
-        
-        fert_n_map = {}
-        fert_p_map = {}
-        fert_k_map = {}
+        fert_n_map, fert_p_map, fert_k_map = {}, {}, {}
 
         if not fert_df.empty:
             if 'product' in fert_df.columns:
-                # NEW: Product-based Schedule
                 for _, row in fert_df.iterrows():
                     d = pd.to_datetime(row['date']).date()
                     prod_name = row['product']
-                    amount = float(row['amount']) # kg product / ha
-                    
-                    # Lookup product composition
+                    amount = float(row['amount'])
                     prod_info = next((p for p in self.fert_service.products if p['name'] == prod_name), None)
-                    
                     if prod_info:
-                        # Convert Product Amount -> Elemental NPK
                         fert_n_map[d] = fert_n_map.get(d, 0) + (amount * prod_info['N'] / 100.0)
                         fert_p_map[d] = fert_p_map.get(d, 0) + (amount * prod_info['P'] / 100.0)
                         fert_k_map[d] = fert_k_map.get(d, 0) + (amount * prod_info['K'] / 100.0)
             else:
-                # OLD: Direct NPK input (Fallback)
                 for col in ['amount_n', 'amount_p', 'amount_k']:
                     if col not in fert_df.columns: fert_df[col] = 0.0
                 fert_n_map = {pd.to_datetime(r['date']).date(): float(r['amount_n']) for _, r in fert_df.iterrows()}
@@ -113,11 +105,29 @@ class SimulationEngine:
         # 5. Run Physics Loop
         bio_history = []
         biomass_cum = 0.0
+        biomass_perfect_cum = 0.0 # Accumulator for genetic potential
+        
+        # --- CRITICAL: Initialize Plant State for new Physics Logic ---
+        plant_state = {
+            'lai': 0.0, 
+            'stunting_factor': 1.0, 
+            'cum_dd': 0.0
+        }
+
         for t, row in weather.iterrows():
-            bio = self.physics.stics_lite_step(t, row, crop_p, soil_state, mgmt)
+            # Pass plant_state to allow dynamic LAI feedback
+            bio = self.physics.stics_lite_step(t, row, crop_p, soil_state, plant_state, mgmt)
+            
             biomass_cum += bio['d_biomass_t_ha']
+            
+            # Accumulate perfect (no-stress) biomass for benchmarking
+            d_perfect = bio.get('d_biomass_perfect_t_ha', bio['d_biomass_t_ha'])
+            biomass_perfect_cum += d_perfect
+            
             bio['cumulative_biomass'] = biomass_cum
+            bio['cumulative_perfect'] = biomass_perfect_cum
             bio['weather_row'] = row
+            
             bio_history.append(bio)
             
         return crop_p, weather, bio_history
@@ -139,14 +149,9 @@ class SimulationEngine:
         tri = Delaunay(valid_points)
         triang = Triangulation(valid_points[:,0], valid_points[:,1], tri.simplices)
         
-        # --- FIX: MASK TRIANGLES OUTSIDE POLYGON (Non-convex hull) ---
-        # Calculate centroids of all triangles
         tri_centers = np.mean(valid_points[tri.simplices], axis=1)
-        # Check if centers are inside the path
-        # mask=True means "masked out" (hidden)
         mask_tri = ~path.contains_points(tri_centers)
         triang.set_mask(mask_tri)
-        # -------------------------------------------------------------
         
         I_grid_init = np.zeros((N, N))
         if config['disease_spots']:
@@ -172,10 +177,8 @@ class SimulationEngine:
         if dis_p is not None:
             if 'fungal' in str(dis_p['Type']).lower() or 'bacterial' in str(dis_p['Type']).lower(): is_fungal = True
 
-        # START WITH CLEAN SLATE (No infection before detection)
         I_grid = np.zeros((N, N))
         
-        # Parse Detection Date
         try:
             detect_date = pd.to_datetime(config['detection_date']).date()
         except:
@@ -193,23 +196,17 @@ class SimulationEngine:
             weather_row = bio['weather_row']
             curr_date = weather_row['DATE'].date()
             
-            # 1. Calculate Environmental Risk (Probability of Emergence)
             env_risk = 0
             if dis_p is not None:
                 t_score = np.exp(-((weather_row['TMIN'] + weather_row['TMAX'])/2 - dis_p['Opt_Temp'])**2 / 50)
                 h_score = 1.0 if weather_row['HUMIDITY'] > dis_p['Opt_Humidity'] else weather_row['HUMIDITY']/100
                 env_risk = t_score * h_score
 
-            # 2. Disease Dynamics based on Timeline
             if curr_date < detect_date:
-                # Pre-detection phase: No active disease, just risk monitoring
                 pass 
             elif curr_date == detect_date:
-                # Outbreak Trigger: Seed the grid with observed spots
-                # We merge existing (zeros) with the init grid derived from spots
                 I_grid = np.maximum(I_grid, I_grid_init)
             else:
-                # Post-detection: Active Spread
                 if dis_p is not None:
                     if is_fungal:
                         wind_speed = weather_row.get('WIND_SPEED', 2.0)
@@ -227,8 +224,6 @@ class SimulationEngine:
 
             inf_values = I_grid[mask]
             
-            # 3. Yield Impact
-            # Damage only accumulates if infection exists
             damage_factor = np.ones(n_valid)
             if dis_p is not None and np.mean(inf_values) > 0:
                 retained = dis_p.get('Yield_Retained_Infected', 0.5)
@@ -301,7 +296,7 @@ class SimulationEngine:
             'Incidence_Mean': np.mean(i_arr, axis=0),
             'Incidence_Std': np.std(i_arr, axis=0),
             'Final_Grid_Mean': ensemble_final_grid / n_runs,
-            'Biomass_Potential': [b['cumulative_biomass'] for b in bio_history] 
+            'Biomass_Potential': [b['cumulative_perfect'] for b in bio_history] 
         }
         return {
             'ensemble_stats': stats,
@@ -310,17 +305,24 @@ class SimulationEngine:
             'crop_params': crop_p
         }
 
-    # --- IRRIGATION OPTIMIZER ---
     def optimize_irrigation_schedule(self, config):
         """
-        Reactive Optimization: Detects daily stress (Depletion > RAW) and prescribes irrigation.
-        Ignores stress if user has ALREADY scheduled irrigation for that day.
+        Reactive Optimization with constraints.
+        Constraints:
+        1. Soil Capacity (90% FC)
+        2. System Limit (Max_Irr_Event_mm)
+        3. Cycle Time (4-day min interval)
         """
         # 1. Run baseline to get weather and determine soil properties
         crop_p, weather, base_hist = self._prepare_physics(config)
         
+        # CONSTRAINT A: Max System Capacity per Event
+        max_irr_limit = float(crop_p.get('Max_Irr_Event_mm', 40.0))
+        
+        # CONSTRAINT B: Minimum Return Interval (Days)
+        min_interval_days = 4 
+
         soil_layers = config['soil_layers']
-        # Handle formats
         if isinstance(soil_layers, list) and len(soil_layers) > 0:
              total_fc_pct = np.mean([l['field_capacity'] for l in soil_layers])
              total_wp_pct = np.mean([l['wilting_point'] for l in soil_layers])
@@ -331,12 +333,14 @@ class SimulationEngine:
              total_fc_pct = 0.27
              total_wp_pct = 0.11
         
-        root_depth = 1000
-        fc_mm = total_fc_pct * root_depth
-        wp_mm = total_wp_pct * root_depth
+        # UPDATED: Use Crop Root Depth
+        root_depth_m = float(crop_p.get('Root_Depth_Max_m', 1.0))
+        root_depth_mm = root_depth_m * 1000.0
+        
+        fc_mm = total_fc_pct * root_depth_mm
+        wp_mm = total_wp_pct * root_depth_mm
         taw = fc_mm - wp_mm
         
-        # 2. Re-initialize Soil State (Correctly including NPK)
         conv_factor = 4.0
         soil_state = {
             'water_mm': config['initial_soil_water'] * fc_mm,
@@ -347,7 +351,6 @@ class SimulationEngine:
             'wilting_point_mm': wp_mm
         }
         
-        # Prepare Inputs
         user_irr_dates = {pd.to_datetime(r['date']).date(): float(r['amount']) for r in config['irr_schedule']}
         fert_df = pd.DataFrame(config['fert_schedule'])
         fert_n_map, fert_p_map, fert_k_map = {}, {}, {}
@@ -364,49 +367,46 @@ class SimulationEngine:
                         fert_k_map[d] = fert_k_map.get(d, 0) + (amount * prod_info['K'] / 100.0)
         
         new_irrigation_log = []
+        last_auto_irr_day = -999 
         
-        # 3. Optimization Loop
+        # --- CRITICAL: Reset Plant State for Optimization Run ---
+        plant_state = {'lai': 0.0, 'stunting_factor': 1.0, 'cum_dd': 0.0}
+
         for t, row in weather.iterrows():
             curr_date = row['DATE'].date()
-            
-            # --- CRITICAL FIX: Look ahead at today's scheduled inputs ---
             user_input = user_irr_dates.get(curr_date, 0.0)
             rain_input = row['RAIN']
             
-            # Calculate what the water level WOULD be after these inputs
             projected_water_mm = soil_state['water_mm'] + user_input + rain_input
-            
-            # Check depletion based on the PROJECTED water level
             depletion = fc_mm - projected_water_mm
-            raw = taw * 0.5 
+            p = 0.5 
+            raw = taw * p 
             
             added_water = 0
-            
-            # Trigger ONLY if still stressed *after* user inputs
             if depletion > raw:
-                refill_target = fc_mm * 0.90
-                req_water = max(0, refill_target - projected_water_mm)
-                
-                if req_water > 10: 
-                    added_water = req_water
-                    new_irrigation_log.append({
-                        'date': curr_date,
-                        'amount': round(added_water, 1),
-                        'reason': 'Stress Mitigation'
-                    })
+                days_since_last = t - last_auto_irr_day
+                if days_since_last >= min_interval_days:
+                    refill_target = fc_mm * 0.90
+                    req_water = max(0, refill_target - projected_water_mm)
+                    actual_app = min(req_water, max_irr_limit)
+                    if actual_app > 10: 
+                        added_water = actual_app
+                        new_irrigation_log.append({
+                            'date': curr_date,
+                            'amount': round(added_water, 1),
+                            'reason': 'Stress Mitigation'
+                        })
+                        last_auto_irr_day = t
             
-            # Construct MGMT Step
             mgmt_step = {
-                'fert_n': fert_n_map, 'fert_p': fert_p_map, 'fert_k': fert_k_map,
-                'irr': user_irr_dates.copy() 
+                'fert_n': fert_n_map, 'fert_p': fert_p_map, 'fert_k': fert_k_map, 'irr': user_irr_dates.copy() 
             }
-            # Inject total water
             total_irrigation = user_input + added_water
             mgmt_step['irr'][curr_date] = total_irrigation
             
-            self.physics.stics_lite_step(t, row, crop_p, soil_state, mgmt_step)
+            # Pass plant_state
+            self.physics.stics_lite_step(t, row, crop_p, soil_state, plant_state, mgmt_step)
 
-        # 4. Aggregate Results
         df_log = pd.DataFrame(new_irrigation_log)
         if df_log.empty:
             return [], soil_state['water_mm']
@@ -416,8 +416,7 @@ class SimulationEngine:
         df_log['Year'] = df_log['date'].dt.year
         
         schedule_agg = df_log.groupby(['Year', 'Week_Num']).agg({
-            'date': 'min', 
-            'amount': 'sum'
+            'date': 'min', 'amount': 'sum'
         }).reset_index().sort_values('date')
         
         final_schedule = []
@@ -430,16 +429,12 @@ class SimulationEngine:
             
         return final_schedule, soil_state['water_mm'] 
 
-    # --- FERTILIZER OPTIMIZER ---
-    # --- FERTILIZER OPTIMIZER (Updated for Usability) ---
     def optimize_fertilization_schedule(self, config):
         """
         Simulates crop growth to identify N-P-K hunger gaps.
-        Aggregates needs into fewer, larger applications (approx. monthly).
         """
         crop_p, weather, base_hist = self._prepare_physics(config)
         
-        # ... [Soil Init Logic - Same as before] ...
         soil_layers = config['soil_layers']
         if isinstance(soil_layers, pd.DataFrame) and not soil_layers.empty:
              total_fc_pct = soil_layers['field_capacity'].mean()
@@ -448,8 +443,12 @@ class SimulationEngine:
              total_fc_pct = 0.27
              total_wp_pct = 0.11
         
-        fc_mm = total_fc_pct * 1000
-        wp_mm = total_wp_pct * 1000
+        # UPDATED: Root Depth
+        root_depth_m = float(crop_p.get('Root_Depth_Max_m', 1.0))
+        root_depth_mm = root_depth_m * 1000.0
+        
+        fc_mm = total_fc_pct * root_depth_mm
+        wp_mm = total_wp_pct * root_depth_mm
         conv_factor = 4.0
         
         soil_state = {
@@ -461,7 +460,6 @@ class SimulationEngine:
             'wilting_point_mm': wp_mm
         }
 
-        # ... [Input Parsing - Same as before] ...
         irr_map = {pd.to_datetime(r['date']).date(): float(r['amount']) for r in config['irr_schedule']}
         fert_df = pd.DataFrame(config['fert_schedule'])
         fert_n_map, fert_p_map, fert_k_map = {}, {}, {}
@@ -477,24 +475,19 @@ class SimulationEngine:
                     fert_k_map[d] = fert_k_map.get(d, 0) + (amount * prod_info['K'] / 100.0)
 
         rec_log = []
+        last_fert_day = -45
+        min_interval_days = 45
         
-        # --- USABILITY LOGIC CHANGE ---
-        last_fert_day = -45 # Start "fresh"
-        min_interval_days = 45 # Force at least 1.5 months between applications
-        
-        accumulated_deficit_n = 0
-        accumulated_deficit_p = 0
-        accumulated_deficit_k = 0
+        # --- CRITICAL: Reset Plant State ---
+        plant_state = {'lai': 0.0, 'stunting_factor': 1.0, 'cum_dd': 0.0}
 
         for i, (t, row) in enumerate(weather.iterrows()):
             curr_date = row['DATE'].date()
-            
             mgmt_step = {
                 'fert_n': fert_n_map, 'fert_p': fert_p_map, 'fert_k': fert_k_map,
                 'irr': irr_map
             }
             
-            # Check Critical Thresholds
             stress_n = soil_state['n_kg'] < 15.0
             stress_p = soil_state['p_kg'] < 8.0
             stress_k = soil_state['k_kg'] < 12.0
@@ -502,21 +495,15 @@ class SimulationEngine:
             progress = i / int(crop_p['Cycle_Days'])
             is_active_growth = 0.15 < progress < 0.85 
             
-            # If stressed, we calculate deficit but DO NOT apply yet if too soon
             if is_active_growth and (stress_n or stress_p or stress_k):
-                # Calculate Deficit to reach "Comfort Zone" (e.g. 40kg N buffer)
-                # We target a higher buffer now because we apply less often
                 def_n = max(0, 40.0 - soil_state['n_kg'])
                 def_p = max(0, 20.0 - soil_state['p_kg'])
                 def_k = max(0, 30.0 - soil_state['k_kg'])
-                
-                # Check timing
+        
                 if (i - last_fert_day) >= min_interval_days:
-                    # Time to apply!
-                    # Get product for the CURRENT deficit
                     product_name, amount_kg_ha, rationale = self.fert_service.recommend_product(def_n, def_p, def_k)
                     
-                    if product_name and amount_kg_ha > 10: # Minimum 10kg/ha to be worth the labor
+                    if product_name and amount_kg_ha > 10: 
                         rec_log.append({
                             'date': curr_date,
                             'product': product_name,
@@ -524,22 +511,15 @@ class SimulationEngine:
                             'rationale': rationale
                         })
                         
-                        # Update soil state
                         prod_info = next(p for p in self.fert_service.products if p['name'] == product_name)
                         soil_state['n_kg'] += amount_kg_ha * (prod_info['N'] / 100)
                         soil_state['p_kg'] += amount_kg_ha * (prod_info['P'] / 100)
                         soil_state['k_kg'] += amount_kg_ha * (prod_info['K'] / 100)
                         
                         last_fert_day = i
-                else:
-                    # Too soon to apply. The crop suffers a tiny bit today, 
-                    # but the physics loop will naturally reduce the soil stock further,
-                    # making the deficit LARGER for the next allowed date.
-                    # We don't need to manually accumulate; the 'soil_state' naturally drops
-                    # so the calculation at the next valid 'i' will include this accumulated hunger.
-                    pass
-
-            self.physics.stics_lite_step(i, row, crop_p, soil_state, mgmt_step)
+            
+            # Pass plant_state
+            self.physics.stics_lite_step(i, row, crop_p, soil_state, plant_state, mgmt_step)
 
         if not rec_log: return []
         return rec_log
@@ -593,7 +573,7 @@ class SimulationEngine:
             advice = (
                 f"Optimal Planting: **{rec_month}** (Harvest in {harvest_month}).\n"
                 f"Rationale: Maximizes vegetative rainfall while targeting a harvest month with "
-                f"**{int(best_harvest_rain)}mm** rain (Limit: {int(harvest_limit)}mm). "
+                f"**{int(best_harvest_rain)}mm** rain (Limit: {int(harvest_limit)}mm).\n"
                 f"Status: {status}."
             )
             return {
