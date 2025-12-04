@@ -45,12 +45,13 @@ class PhysicsEngine:
         # add rainfall and irrigation; handle runoff/percolation as excess beyond FC
         soil_state['water_mm'] = soil_state.get('water_mm', fc_mm/2.0) + rain + irr_amount
         if soil_state['water_mm'] > fc_mm:
-            percolation = soil_state['water_mm'] - fc_mm
+            # percolation = soil_state['water_mm'] - fc_mm
             # simple percolation (lost from root zone)
             soil_state['water_mm'] = fc_mm
-        # Hargreaves: need Ra (extraterrestrial). If not available, approximate Ra from measured rad_global
-        # NOTE: this approx is crude; prefer true Ra if you have latitude/date.
-        ra_approx = rad_global / 0.75  # assume transmissivity ~0.75 to get Ra proxy
+        
+        # Hargreaves ET0
+        # Check if Ra is available, otherwise approximate
+        ra_approx = rad_global / 0.75  # assume transmissivity ~0.75
         et0 = 0.0023 * (t_avg + 17.8) * (max(0.1, (tmax - tmin)) ** 0.5) * ra_approx  # mm/day approx
 
         # crop Kc curve (unchanged structure)

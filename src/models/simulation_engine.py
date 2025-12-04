@@ -2,6 +2,7 @@
 import numpy as np
 import pandas as pd
 import streamlit as st
+import ee  # <--- FIXED: Added missing import
 from datetime import date
 from scipy.signal import convolve2d
 from scipy.spatial import Delaunay
@@ -28,12 +29,15 @@ class SimulationEngine:
         crop_p = df_c[df_c['Crop_ID'] == config['selected_crop_id']].iloc[0]
         cycle = int(crop_p['Cycle_Days'])
 
-        # 1. Fetch Weather
-        weather = self.weather_service.fetch_weather_climatology_ee(
+        # --- UPDATED WEATHER LOGIC ---
+        # Calls the unified WeatherService which handles EE -> Open-Meteo -> ARIMA fallback
+        weather = self.weather_service.get_weather_projections(
             config['center_lat'], config['center_lon'], config['planting_date'], cycle
         )
+        
         if weather is None or weather.empty:
-            weather = self.weather_service.generate_synthetic_weather(config['planting_date'], cycle)
+            st.error("Critical Failure: Unable to generate climate data from any source.")
+            return None
 
         # 2. Init Soil Properties
         soil_layers = config['soil_layers']
@@ -48,7 +52,7 @@ class SimulationEngine:
              total_fc_pct = 0.27
              total_wp_pct = 0.11
 
-        # FIX: Use Crop Specific Root Depth (mm)
+        # Use Crop Specific Root Depth (mm)
         root_depth_m = float(crop_p.get('Root_Depth_Max_m', 1.0))
         root_depth_mm = root_depth_m * 1000.0
         
@@ -107,7 +111,7 @@ class SimulationEngine:
         biomass_cum = 0.0
         biomass_perfect_cum = 0.0 # Accumulator for genetic potential
         
-        # --- CRITICAL: Initialize Plant State for new Physics Logic ---
+        # Initialize Plant State
         plant_state = {
             'lai': 0.0, 
             'stunting_factor': 1.0, 
@@ -254,10 +258,14 @@ class SimulationEngine:
         return history_realization
 
     def run_simulation(self, config):
-        crop_p, weather, bio_history = self._prepare_physics(config)
+        res_physics = self._prepare_physics(config)
+        if res_physics is None: return None
+        crop_p, weather, bio_history = res_physics
+        
         spatial_res = self._prepare_spatial(config)
         if spatial_res is None: return None
         field_poly, N, mask, valid_points, triang, I_grid_init = spatial_res
+        
         history = self._run_disease_realization(config, crop_p, bio_history, N, mask, valid_points, I_grid_init)
         return {
             'history': history,
@@ -268,7 +276,10 @@ class SimulationEngine:
         }
 
     def run_ensemble_inference(self, config, n_runs=50):
-        crop_p, weather, bio_history = self._prepare_physics(config)
+        res_physics = self._prepare_physics(config)
+        if res_physics is None: return None
+        crop_p, weather, bio_history = res_physics
+        
         spatial_res = self._prepare_spatial(config)
         if spatial_res is None: return None
         field_poly, N, mask, valid_points, triang, I_grid_init = spatial_res
@@ -313,8 +324,10 @@ class SimulationEngine:
         2. System Limit (Max_Irr_Event_mm)
         3. Cycle Time (4-day min interval)
         """
-        # 1. Run baseline to get weather and determine soil properties
-        crop_p, weather, base_hist = self._prepare_physics(config)
+        # 1. Run baseline
+        res_physics = self._prepare_physics(config)
+        if res_physics is None: return [], 0.0
+        crop_p, weather, base_hist = res_physics
         
         # CONSTRAINT A: Max System Capacity per Event
         max_irr_limit = float(crop_p.get('Max_Irr_Event_mm', 40.0))
@@ -433,7 +446,9 @@ class SimulationEngine:
         """
         Simulates crop growth to identify N-P-K hunger gaps.
         """
-        crop_p, weather, base_hist = self._prepare_physics(config)
+        res_physics = self._prepare_physics(config)
+        if res_physics is None: return []
+        crop_p, weather, base_hist = res_physics
         
         soil_layers = config['soil_layers']
         if isinstance(soil_layers, pd.DataFrame) and not soil_layers.empty:
