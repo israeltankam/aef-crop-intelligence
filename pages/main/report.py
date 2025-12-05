@@ -359,7 +359,7 @@ def app():
                     
                     pdf.set_fill_color(240, 240, 240)
                     pdf.cell(40, 7, "Date", 1, 0, 'C', 1)
-                    pdf.cell(40, 7, "Amount (mm)", 1, 0, 'C', 1)
+                    pdf.cell(40, 7, "Amount (L/ha)", 1, 0, 'C', 1)
                     pdf.cell(90, 7, "Rationale", 1, 1, 'L', 1)
                     
                     # Limit displayed rows for PDF to avoid overflow
@@ -371,8 +371,12 @@ def app():
                             pdf.cell(90, 7, f"and {len(opt_irr_schedule)-display_limit} more events.", 1, 1, 'L')
                             break
                         
+                        # CONVERSION LOGIC: mm -> L/ha
+                        amount_mm = event['amount']
+                        amount_l_ha = amount_mm * 10000.0
+                        
                         pdf.cell(40, 7, str(event['date']), 1, 0, 'C')
-                        pdf.cell(40, 7, f"{event['amount']} mm", 1, 0, 'C')
+                        pdf.cell(40, 7, f"{amount_l_ha:,.0f} L/ha", 1, 0, 'C') # Formatted with commas
                         pdf.cell(90, 7, "Refill Soil Moisture to 90% FC", 1, 1, 'L')
                     
                     pdf.ln(5)

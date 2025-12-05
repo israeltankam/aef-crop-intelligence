@@ -1,19 +1,26 @@
 # src/models/physics_engine.py
 import numpy as np
+from src.models.evapotranspiration import penman_monteith_et0
 
 class PhysicsEngine:
     @staticmethod
-    def stics_lite_step(day_idx, weather_row, crop, soil_state, plant_state, mgmt_events):
+    def stics_lite_step(day_idx, weather_row, crop, soil_state, plant_state, mgmt_events, lat_deg=0.0):
         """
         Dual-Mode Physics Engine (Annual vs Perennial).
         Includes Pruning Logic reading from Crop parameters.
+        Now uses FAO-56 Penman-Monteith for ET0.
         """
 
         # --- INPUTS ---
         tmin, tmax = weather_row['TMIN'], weather_row['TMAX']
-        rad_global = weather_row['RADIATION']
+        rad_global = weather_row['RADIATION']  # MJ/m2/day
         rain = weather_row['RAIN']
         t_avg = (tmin + tmax) / 2.0
+        
+        # New Inputs for Penman-Monteith
+        humidity = weather_row.get('HUMIDITY', 60.0)
+        wind = weather_row.get('WIND_SPEED', 2.0)
+        doy = weather_row['DATE'].dayofyear
 
         # Update Chronological Age
         plant_state['age_days'] = plant_state.get('age_days', 0) + 1
@@ -57,12 +64,17 @@ class PhysicsEngine:
 
         irr_amount = mgmt_events.get('irr', {}).get(curr_date, 0.0)
 
+        # Infiltration
         soil_state['water_mm'] = soil_state.get('water_mm', fc_mm/2.0) + rain + irr_amount
         if soil_state['water_mm'] > fc_mm:
             soil_state['water_mm'] = fc_mm 
         
-        ra_approx = rad_global / 0.75 
-        et0 = 0.0023 * (t_avg + 17.8) * (max(0.1, (tmax - tmin)) ** 0.5) * ra_approx
+        # --- ET0 CALCULATION (Updated to Penman-Monteith) ---
+        et0 = penman_monteith_et0(
+            tmax_c=tmax, tmin_c=tmin, tmean_c=t_avg, 
+            rs=rad_global, uz=wind, rh_mean=humidity, 
+            doy=doy, lat_deg=lat_deg, elevation_m=200.0
+        )
 
         kc_ini, kc_mid, kc_end = 0.35, crop['Kc_Mid'], 0.6
         if is_perennial:
@@ -90,7 +102,13 @@ class PhysicsEngine:
             ks = max(0.0, (taw - current_depletion) / max(1e-6, buffer))
 
         eta = et0 * kc * ks
-        soil_state['water_mm'] = max(wp_mm, soil_state['water_mm'] - eta)
+        
+        # --- CRITICAL SAFETY CAP ---
+        # Prevent drawing water below wilting point in a single step
+        available_extractable = max(0.0, soil_state['water_mm'] - wp_mm)
+        actual_uptake = min(eta, available_extractable)
+        
+        soil_state['water_mm'] = max(wp_mm, soil_state['water_mm'] - actual_uptake)
 
         # --- 3. NUTRIENT BALANCE ---
         fert_n = mgmt_events.get('fert_n', {}).get(curr_date, 0.0)
@@ -236,7 +254,7 @@ class PhysicsEngine:
             'p_fac': p_fac,
             'k_fac': k_fac,
             'lai': lai,
-            'eta': eta,
+            'eta': actual_uptake, # Return actual uptake
             'et0': et0,
             'kc': kc,
             'swc': soil_state['water_mm'],

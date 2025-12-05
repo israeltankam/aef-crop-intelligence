@@ -87,7 +87,9 @@ class SimulationEngine:
         fc_mm = total_fc_pct * root_depth_mm
         wp_mm = total_wp_pct * root_depth_mm
         
-        init_water = config['initial_soil_water'] * fc_mm 
+        # FIX: Ensure robust default if config is missing key (default to 0.8)
+        init_water_frac = config.get('initial_soil_water', 0.8)
+        init_water = init_water_frac * fc_mm 
         if init_water < wp_mm: init_water = wp_mm
 
         conv_factor = 4.0 
@@ -152,7 +154,7 @@ class SimulationEngine:
         bio_history = []
         
         # Accumulators
-        biomass_cum = 0.0          
+        biomass_cum = 0.0      
         biomass_perfect_cum = 0.0  
         wood_cum = 0.0
         standing_fruit = 0.0
@@ -165,13 +167,17 @@ class SimulationEngine:
             'wood_biomass': 0.0 
         }
 
+        # EXTRACT LATITUDE FOR ET0
+        lat = config.get('center_lat', 0.0)
+
         for t, row in weather.iterrows():
             curr_date = row['DATE'].date()
             
             mgmt['pruning'] = curr_date in pruning_days
             plant_state['wood_biomass'] = wood_cum
 
-            bio = self.physics.stics_lite_step(t, row, crop_p, soil_state, plant_state, mgmt)
+            # PASS LATITUDE TO PHYSICS
+            bio = self.physics.stics_lite_step(t, row, crop_p, soil_state, plant_state, mgmt, lat_deg=lat)
             
             if is_perennial:
                 wood_cum += bio['d_wood_t_ha']
@@ -208,7 +214,8 @@ class SimulationEngine:
         min_x, min_y = np.min(field_poly, axis=0)
         max_x, max_y = np.max(field_poly, axis=0)
         N = 40 
-        x = np.linspace(min_x, max_x, N); y = np.linspace(min_y, max_y, N)
+        x = np.linspace(min_x, max_x, N);
+        y = np.linspace(min_y, max_y, N)
         xv, yv = np.meshgrid(x, y)
         points = np.vstack((xv.flatten(), yv.flatten())).T
         mask = path.contains_points(points).reshape(N, N)
@@ -266,20 +273,15 @@ class SimulationEngine:
         n_valid = len(valid_points)
         
         # --- STOCHASTIC INITIALIZATION (AR1 Process) ---
-        # Used to create correlated noise for weather/yield across the simulation timeline
         yield_noise_val = 0.0
         env_noise_val = 0.0
         
         for bio in bio_history:
             # 1. APPLY STOCHASTICITY (If enabled)
-            # This makes the "Deterministic Baseline" wiggle per run
             if stochastic_mode:
-                # AR(1) Update: X_t = 0.95*X_{t-1} + noise
-                # This ensures "Good Years" stay good for a while, creating trends
                 yield_noise_val = 0.95 * yield_noise_val + np.random.normal(0, 0.05)
                 env_noise_val = 0.95 * env_noise_val + np.random.normal(0, 0.05)
                 
-                # Factors centered around 1.0
                 yield_factor = max(0.5, 1.0 + yield_noise_val) 
                 env_factor = max(0.5, 1.0 + env_noise_val)
             else:
@@ -289,7 +291,6 @@ class SimulationEngine:
             # 2. APPLY YIELD VARIABILITY
             biomass_val = bio['cumulative_biomass'] 
             if crop_p['Type'] == 'Perennial':
-                # Apply noise to the Fruit Biomass to simulate physiological variation
                 yield_base = bio['Fruit_Biomass'] * yield_factor
             else:
                 yield_base = (biomass_val * crop_p['Harvest_Index']) * yield_factor
@@ -305,7 +306,6 @@ class SimulationEngine:
                 
                 # Base Risk
                 raw_risk = t_score * h_score
-                # Perturb Risk (simulate "It was actually wetter/drier than the sensor said")
                 env_risk = np.clip(raw_risk * env_factor, 0.0, 1.0)
 
             # --- DISEASE UPDATE STEP ---
@@ -330,7 +330,6 @@ class SimulationEngine:
                     jumps = (np.random.rand(N, N) < jump_prob) * (I_grid.sum() > 0) * 0.1
                     
                     # C. NATURAL RECOVERY & ENVIRONMENTAL RESET
-                    # Recovery increases when environment is hostile (low risk)
                     seasonality_multiplier = 1.0 + (3.0 * (1.0 - env_risk)) 
                     effective_decay = base_recovery_rate * seasonality_multiplier
                     
@@ -406,7 +405,6 @@ class SimulationEngine:
         dates = [b['weather_row']['DATE'] for b in bio_history]
         
         for _ in range(n_runs):
-            # Pass stochastic_mode=True to enable the AR1 noise for this run
             run_hist = self._run_disease_realization(config, crop_p, bio_history, N, mask, valid_points, I_grid_init, stochastic_mode=True)
             
             y_series = [day['Yield'] for day in run_hist]
@@ -436,7 +434,8 @@ class SimulationEngine:
 
     def optimize_irrigation_schedule(self, config):
         """
-        Reactive Optimization. Handles Perennial repetition automatically in _prepare_physics.
+        Reactive Optimization.
+        Handles Perennial repetition automatically in _prepare_physics logic manually re-implemented here for iterative loop.
         """
         res_physics = self._prepare_physics(config)
         if res_physics is None: return [], 0.0
@@ -468,20 +467,17 @@ class SimulationEngine:
         taw = fc_mm - wp_mm
         
         conv_factor = 4.0
+        
+        # FIX: Consistently use the same default as _prepare_physics
+        init_water_frac = config.get('initial_soil_water', 0.8)
         soil_state = {
-            'water_mm': config['initial_soil_water'] * fc_mm,
+            'water_mm': init_water_frac * fc_mm,
             'n_kg': config['initial_nitrogen'] * conv_factor,
             'p_kg': config.get('initial_phosphorus', 20.0) * conv_factor,
             'k_kg': config.get('initial_potassium', 100.0) * conv_factor,
             'field_capacity_mm': fc_mm,
             'wilting_point_mm': wp_mm
         }
-        
-        # Schedules are expanded inside _prepare_physics implicitly?
-        # No, _prepare_physics is just for initializing state.
-        # But optimize_* re-calls _prepare_physics (which expands schedules in its local scope)
-        # However, we need to pass expanded user inputs to our local physics loop here.
-        # So we must perform expansion manually here too, or rely on a helper.
         
         raw_irr = config['irr_schedule']
         if crop_p['Type'] == 'Perennial':
@@ -515,6 +511,9 @@ class SimulationEngine:
         plant_state = {'lai': 0.0, 'stunting_factor': 1.0, 'cum_dd': 0.0, 'age_days': 0, 'wood_biomass': 0.0}
         wood_cum = 0.0 # Track wood locally for pruning
 
+        # EXTRACT LATITUDE
+        lat = config.get('center_lat', 0.0)
+
         for t, row in weather.iterrows():
             curr_date = row['DATE'].date()
             user_input = user_irr_dates.get(curr_date, 0.0)
@@ -532,7 +531,9 @@ class SimulationEngine:
                     refill_target = fc_mm * 0.90
                     req_water = max(0, refill_target - projected_water_mm)
                     actual_app = min(req_water, max_irr_limit)
-                    if actual_app > 10: 
+                    
+                    # FIX: Lower threshold from 10 to 2 to catch stress earlier
+                    if actual_app > 2.0: 
                         added_water = actual_app
                         new_irrigation_log.append({
                             'date': curr_date,
@@ -550,7 +551,8 @@ class SimulationEngine:
             
             plant_state['wood_biomass'] = wood_cum
             
-            bio = self.physics.stics_lite_step(t, row, crop_p, soil_state, plant_state, mgmt_step)
+            # PASS LATITUDE
+            bio = self.physics.stics_lite_step(t, row, crop_p, soil_state, plant_state, mgmt_step, lat_deg=lat)
             
             if crop_p['Type'] == 'Perennial':
                 wood_cum += bio['d_wood_t_ha']
@@ -598,8 +600,9 @@ class SimulationEngine:
         wp_mm = total_wp_pct * root_depth_mm
         conv_factor = 4.0
         
+        init_water_frac = config.get('initial_soil_water', 0.8)
         soil_state = {
-            'water_mm': config['initial_soil_water'] * fc_mm,
+            'water_mm': init_water_frac * fc_mm,
             'n_kg': config['initial_nitrogen'] * conv_factor,
             'p_kg': config.get('initial_phosphorus', 20.0) * conv_factor,
             'k_kg': config.get('initial_potassium', 100.0) * conv_factor,
@@ -640,6 +643,9 @@ class SimulationEngine:
         
         plant_state = {'lai': 0.0, 'stunting_factor': 1.0, 'cum_dd': 0.0, 'age_days': 0, 'wood_biomass': 0.0}
         wood_cum = 0.0
+        
+        # EXTRACT LATITUDE
+        lat = config.get('center_lat', 0.0)
 
         for i, (t, row) in enumerate(weather.iterrows()):
             curr_date = row['DATE'].date()
@@ -663,7 +669,7 @@ class SimulationEngine:
                 def_n = max(0, 40.0 - soil_state['n_kg'])
                 def_p = max(0, 20.0 - soil_state['p_kg'])
                 def_k = max(0, 30.0 - soil_state['k_kg'])
-        
+                
                 if (i - last_fert_day) >= min_interval_days:
                     product_name, amount_kg_ha, rationale = self.fert_service.recommend_product(def_n, def_p, def_k)
                     
@@ -683,7 +689,9 @@ class SimulationEngine:
                         last_fert_day = i
             
             plant_state['wood_biomass'] = wood_cum
-            bio = self.physics.stics_lite_step(i, row, crop_p, soil_state, plant_state, mgmt_step)
+            
+            # PASS LATITUDE
+            bio = self.physics.stics_lite_step(i, row, crop_p, soil_state, plant_state, mgmt_step, lat_deg=lat)
             
             if crop_p['Type'] == 'Perennial':
                 wood_cum += bio['d_wood_t_ha']

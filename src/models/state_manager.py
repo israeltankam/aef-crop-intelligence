@@ -38,6 +38,9 @@ class StateManager:
         # --- Step 4: Soil ---
         'soil_type': 'loam',
         'use_expert_soil': False,
+        # CHANGE: Add default initial soil water (0.8 = 80% of Field Capacity)
+        # This prevents the simulation from starting in a "Bone Dry" state if user ignores it.
+        'initial_soil_water': 0.8,
         
         # Nutrients (mg/kg / ppm)
         'initial_nitrogen': 10.0,
@@ -107,8 +110,8 @@ class StateManager:
                 ["C_MAI_02","Maize","Local Open Pollinated","Annual",130,1700,8,30,36,3.2,5,0.4,1.15,1.1,160,0.9,55000,50,50,0.0,0.0],
                 ["C_COT_01","Cotton","DeltaPine (Bt)","Annual",150,2200,12,28,38,1.7,3.5,0.35,1.15,1.8,150,0.4,80000,20,60,0.0,0.0],
                 ["C_COT_02","Cotton","Conventional Local","Annual",160,2300,12,28,38,1.5,3,0.3,1.15,1.6,140,0.9,70000,20,60,0.0,0.0],
-                ["C_COC_01","Cocoa","Forastero (Amelonado)","Perennial",365,0,20,25,32,1.5,5,0.25,1.1,2,120,0.6,1100,100,40,0.20,0.30],
-                ["C_COC_02","Cocoa","Trinitario (Hybrid)","Perennial",365,0,20,25,32,1.6,5.5,0.28,1.1,2,130,0.4,1100,100,40,0.20,0.30],
+                ["C_COC_01","Cocoa","Forastero (Amelonado)","Perennial",365,0,20,25,32,1.5,5,0.15,1.1,2,120,0.6,1100,100,40,0.20,0.30],
+                ["C_COC_02","Cocoa","Trinitario (Hybrid)","Perennial",365,0,20,25,32,1.6,5.5,0.18,1.1,2,130,0.4,1100,100,40,0.20,0.30],
                 ["C_WHT_01","Wheat","Winter Red (Intensive)","Annual",240,2000,0,20,30,2.8,6,0.48,1.15,1.5,150,0.4,3000000,30,50,0.0,0.0],
                 ["C_RIC_01","Rice","IR64 (Indica)","Annual",115,1500,10,30,38,2.2,6,0.5,1.2,0.8,120,0.5,250000,60,80,0.0,0.0],
                 ["C_SOY_01","Soybean","Roundup Ready","Annual",110,1400,10,28,35,1.8,4.5,0.38,1.1,1.2,50,0.3,300000,40,40,0.0,0.0],
