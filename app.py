@@ -1,4 +1,4 @@
-#app.py
+# app.py
 import streamlit as st
 import hydralit_components as hc
 from src.models.state_manager import StateManager

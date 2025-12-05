@@ -1,3 +1,4 @@
+# pages/main/setup_page.py
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -11,6 +12,7 @@ import json
 import ee
 from google.oauth2.service_account import Credentials
 from src.models.fertilizer_service import FertilizerService
+import geocoder # NEW IMPORT
 
 # --- CONSTANTS ---
 _SOIL_TABLE = {
@@ -116,6 +118,18 @@ def get_auto_soil_profile(coords):
     except Exception as e:
         return None, str(e), 0
 
+# --- NEW HELPER: LOCATION DETECTION ---
+def get_default_location():
+    """Attempts to get user location via IP. Returns (lat, lon) or default."""
+    try:
+        g = geocoder.ip('me')
+        if g.latlng:
+            return g.latlng[0], g.latlng[1]
+    except:
+        pass
+    # Fallback to a neutral location if IP fails (e.g. Center of Africa or Map Center)
+    return 4.0, 11.5 # Cameroon center approx, or 0,0
+
 def app():
     if 'step' not in st.session_state: StateManager.initialize()
     st.title("🛠️ Digital Twin Configuration")
@@ -140,6 +154,14 @@ def app():
     if st.session_state['step'] == 1:
         st.subheader("🌍 Step 1: Define Field Geography")
         
+        # --- AUTO-LOCATE ON FIRST LOAD ---
+        if 'center_lat' not in st.session_state or st.session_state['center_lat'] == 9.30: # Check if still default
+             lat, lon = get_default_location()
+             # Only update if it's not the hardcoded fallback to ensure we actually got something
+             if lat != 4.0 and lon != 11.5: 
+                 st.session_state['center_lat'] = lat
+                 st.session_state['center_lon'] = lon
+
         with st.expander("📂 Load Saved Configuration (.json)", expanded=False):
             uploaded_file = st.file_uploader("Drop your field_config.json here", type="json")
             if uploaded_file is not None:
@@ -148,17 +170,21 @@ def app():
                     if st.button("🚀 Jump to Review"): st.session_state['step'] = 5; st.rerun()
         
         c1, c2 = st.columns([3, 1])
-        with c1: search = st.text_input("Search Location", "Garoua, Cameroon")
+        with c1: search = st.text_input("Search Location", "") # Empty default
         with c2:
             st.write("")
             if st.button("🔍 Locate"):
                 try:
                     geolocator = Nominatim(user_agent="aef_app_v2")
-                    loc = geolocator.geocode(search)
-                    if loc:
-                        st.session_state['center_lat'] = loc.latitude
-                        st.session_state['center_lon'] = loc.longitude
-                        st.rerun()
+                    if not search: # If empty search, try "me" again or current coords
+                         lat, lon = st.session_state['center_lat'], st.session_state['center_lon']
+                         st.info(f"Centering on {lat}, {lon}")
+                    else:
+                        loc = geolocator.geocode(search)
+                        if loc:
+                            st.session_state['center_lat'] = loc.latitude
+                            st.session_state['center_lon'] = loc.longitude
+                            st.rerun()
                 except: st.error("Location not found.")
 
         if st.session_state['field_coords']:

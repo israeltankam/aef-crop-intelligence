@@ -32,7 +32,9 @@ class SimulationEngine:
             for event in schedule_list:
                 try:
                     orig_date = pd.to_datetime(event['date'])
+                    # Shift date by i years
                     new_date = orig_date.replace(year=orig_date.year + offset_year).date()
+                    
                     new_event = event.copy()
                     new_event['date'] = new_date
                     expanded.append(new_event)
@@ -49,6 +51,7 @@ class SimulationEngine:
         df_c = st.session_state['df_crops']
         crop_p = df_c[df_c['Crop_ID'] == config['selected_crop_id']].iloc[0]
         
+        # --- 1. HORIZON LOGIC ---
         is_perennial = crop_p['Type'] == 'Perennial'
         
         if is_perennial:
@@ -56,6 +59,7 @@ class SimulationEngine:
         else:
             duration_days = int(crop_p['Cycle_Days'])
 
+        # --- 2. WEATHER ---
         weather = self.weather_service.get_weather_projections(
             config['center_lat'], config['center_lon'], config['planting_date'], duration_days
         )
@@ -64,6 +68,7 @@ class SimulationEngine:
             st.error("Critical Failure: Unable to generate climate data from any source.")
             return None
 
+        # --- 3. SOIL INIT ---
         soil_layers = config['soil_layers']
         
         if isinstance(soil_layers, list) and len(soil_layers) > 0:
@@ -96,13 +101,16 @@ class SimulationEngine:
             'wilting_point_mm': wp_mm
         }
         
+        # --- 4. MANAGEMENT SCHEDULES ---
         raw_fert = config['fert_schedule']
         raw_irr = config['irr_schedule']
 
+        # If perennial, expand the user's 1-year inputs to 10 years
         if is_perennial:
             raw_fert = self._expand_schedule_for_perennials(raw_fert)
             raw_irr = self._expand_schedule_for_perennials(raw_irr)
 
+        # Parse Fertilizers & Operations
         fert_df = pd.DataFrame(raw_fert)
         fert_n_map, fert_p_map, fert_k_map = {}, {}, {}
         pruning_days = set() 
@@ -140,8 +148,10 @@ class SimulationEngine:
             'irr': irr_map
         }
 
+        # --- 5. RUN PHYSICS LOOP ---
         bio_history = []
         
+        # Accumulators
         biomass_cum = 0.0          
         biomass_perfect_cum = 0.0  
         wood_cum = 0.0
@@ -225,7 +235,7 @@ class SimulationEngine:
         
         return field_poly, N, mask, valid_points, triang, I_grid_init
 
-    def _run_disease_realization(self, config, crop_p, bio_history, N, mask, valid_points, I_grid_init):
+    def _run_disease_realization(self, config, crop_p, bio_history, N, mask, valid_points, I_grid_init, stochastic_mode=False):
         df_d = st.session_state['df_diseases']
         dis_id = config['selected_disease_id']
         dis_p = None
@@ -248,28 +258,55 @@ class SimulationEngine:
         beta = dis_p['Beta_Infection'] if dis_p is not None else 0
         if dis_p is not None: beta *= crop_p['Resistance_Score']
 
-        # NEW: Retrieve Recovery Parameters (Defaults if missing from old CSVs)
+        # Recovery Parameters
         hygiene_factor = float(dis_p.get('Pruning_Hygiene_Factor', 1.0)) if dis_p is not None else 1.0
         base_recovery_rate = float(dis_p.get('Daily_Recovery_Rate', 0.0)) if dis_p is not None else 0.0
 
         history_realization = []
         n_valid = len(valid_points)
         
+        # --- STOCHASTIC INITIALIZATION (AR1 Process) ---
+        # Used to create correlated noise for weather/yield across the simulation timeline
+        yield_noise_val = 0.0
+        env_noise_val = 0.0
+        
         for bio in bio_history:
+            # 1. APPLY STOCHASTICITY (If enabled)
+            # This makes the "Deterministic Baseline" wiggle per run
+            if stochastic_mode:
+                # AR(1) Update: X_t = 0.95*X_{t-1} + noise
+                # This ensures "Good Years" stay good for a while, creating trends
+                yield_noise_val = 0.95 * yield_noise_val + np.random.normal(0, 0.05)
+                env_noise_val = 0.95 * env_noise_val + np.random.normal(0, 0.05)
+                
+                # Factors centered around 1.0
+                yield_factor = max(0.5, 1.0 + yield_noise_val) 
+                env_factor = max(0.5, 1.0 + env_noise_val)
+            else:
+                yield_factor = 1.0
+                env_factor = 1.0
+
+            # 2. APPLY YIELD VARIABILITY
             biomass_val = bio['cumulative_biomass'] 
             if crop_p['Type'] == 'Perennial':
-                yield_base = bio['Fruit_Biomass']
+                # Apply noise to the Fruit Biomass to simulate physiological variation
+                yield_base = bio['Fruit_Biomass'] * yield_factor
             else:
-                yield_base = biomass_val * crop_p['Harvest_Index']
+                yield_base = (biomass_val * crop_p['Harvest_Index']) * yield_factor
 
             weather_row = bio['weather_row']
             curr_date = weather_row['DATE'].date()
             
+            # 3. APPLY ENVIRONMENT VARIABILITY (Disease Risk)
             env_risk = 0
             if dis_p is not None:
                 t_score = np.exp(-((weather_row['TMIN'] + weather_row['TMAX'])/2 - dis_p['Opt_Temp'])**2 / 50)
                 h_score = 1.0 if weather_row['HUMIDITY'] > dis_p['Opt_Humidity'] else weather_row['HUMIDITY']/100
-                env_risk = t_score * h_score
+                
+                # Base Risk
+                raw_risk = t_score * h_score
+                # Perturb Risk (simulate "It was actually wetter/drier than the sensor said")
+                env_risk = np.clip(raw_risk * env_factor, 0.0, 1.0)
 
             # --- DISEASE UPDATE STEP ---
             if curr_date < detect_date:
@@ -278,7 +315,7 @@ class SimulationEngine:
                 I_grid = np.maximum(I_grid, I_grid_init)
             else:
                 if dis_p is not None:
-                    # 1. GROWTH
+                    # A. GROWTH
                     if is_fungal:
                         wind_speed = weather_row.get('WIND_SPEED', 2.0)
                         spread_driver = (wind_speed / 5.0) 
@@ -288,51 +325,17 @@ class SimulationEngine:
                     pressure = convolve2d(I_grid, kernel, mode='same')
                     growth = beta * spread_driver * env_risk * pressure * (1 - I_grid)
                     
-                    # 2. DISPERSAL JUMPS
+                    # B. DISPERSAL JUMPS
                     jump_prob = 0.0005 * (1.5 if is_fungal else 1.0)
                     jumps = (np.random.rand(N, N) < jump_prob) * (I_grid.sum() > 0) * 0.1
                     
-                    # 3. MECHANICAL SANITATION (PRUNING)
-                    # Check if pruning happened this day by looking at biomass delta
-                    # Pruning is detected if d_wood_t_ha is negative (removed wood)
-                    pruning_effect = 0.0
-                    if bio['Wood_Biomass'] < 0: # Note: This check relies on delta being available, but bio holds cumulative. 
-                        # Better approach: Check mgmt schedule or infer from physics return?
-                        # Since we don't pass the raw schedule here easily, we can check if wood dropped significantly.
-                        # However, for robustness, we should ideally pass the 'is_pruning' flag.
-                        # Let's infer from the abrupt wood loss logic in physics engine.
-                        pass # Logic below handles decay, explicit pruning needs a trigger.
-                    
-                    # Since we don't have the 'pruning' flag easily available in this scope without refactoring loop,
-                    # we will apply sanitation if the user defined pruning in the schedule for this date.
-                    # We can infer it if we see a significant biomass removal in physics output, but `bio` here is cumulative.
-                    # Simplified approach: We assume Pruning happened if we see a drop in Wood Biomass from prev day.
-                    # But we are iterating. Let's use the explicit check if possible.
-                    # Since we can't easily access the schedule here without re-parsing, let's implement 
-                    # NATURAL DECAY first, which is the biggest factor.
-                    
-                    # 4. NATURAL RECOVERY & ENVIRONMENTAL RESET
+                    # C. NATURAL RECOVERY & ENVIRONMENTAL RESET
                     # Recovery increases when environment is hostile (low risk)
-                    # Logic: If Env_Risk is low, fungal spores die.
-                    seasonality_multiplier = 1.0 + (3.0 * (1.0 - env_risk)) # Up to 4x decay in dry season
+                    seasonality_multiplier = 1.0 + (3.0 * (1.0 - env_risk)) 
                     effective_decay = base_recovery_rate * seasonality_multiplier
                     
-                    # Apply updates
+                    # Update Grid
                     I_grid = I_grid + growth + jumps - (I_grid * effective_decay)
-                    
-                    # 5. EXPLICIT PRUNING CHECK (Re-implementation for robustness)
-                    # We can check if date matches any pruning date passed in config? 
-                    # Simpler: If the physics engine returned a negative wood delta, it was pruned.
-                    # But `bio` dict doesn't store delta wood. 
-                    # Let's assume for now the Natural Decay is the primary driver for stabilization.
-                    # To allow Pruning Sanitation, we would need to pass the schedule into this method.
-                    # Given the constraints, let's rely on the Biomass Removal (which reduces host area) implicitly 
-                    # (less biomass -> less absolute disease if we modeled absolute area), but here we model %.
-                    # We will implement a simplified Pruning Detection:
-                    # If we just implemented PhysicsEngine that removes wood, let's assume if we are in a perennial crop
-                    # and it's a specific date, we apply it. 
-                    # Better: The SimulationEngine already looped through weather. 
-                    # Let's just trust the Biological Recovery + Env Reset for now as it solves the saturation.
                     
                     I_grid = np.clip(I_grid, 0, 1)
                     I_grid = I_grid * mask
@@ -403,7 +406,9 @@ class SimulationEngine:
         dates = [b['weather_row']['DATE'] for b in bio_history]
         
         for _ in range(n_runs):
-            run_hist = self._run_disease_realization(config, crop_p, bio_history, N, mask, valid_points, I_grid_init)
+            # Pass stochastic_mode=True to enable the AR1 noise for this run
+            run_hist = self._run_disease_realization(config, crop_p, bio_history, N, mask, valid_points, I_grid_init, stochastic_mode=True)
+            
             y_series = [day['Yield'] for day in run_hist]
             i_series = [day['Incidence'] for day in run_hist]
             ensemble_yields.append(y_series)
