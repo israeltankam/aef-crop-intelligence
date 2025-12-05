@@ -3,6 +3,7 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.dates as mdates
 from fpdf import FPDF
 from datetime import date
 import tempfile
@@ -10,6 +11,8 @@ import os
 import matplotlib.tri as mtri
 from src.models.simulation_engine import SimulationEngine
 from src.models.state_manager import StateManager
+from google.oauth2.service_account import Credentials
+import ee
 
 class PDFReport(FPDF):
     def header(self):
@@ -31,31 +34,19 @@ class PDFReport(FPDF):
         self.ln(4)
 
     def chapter_body(self, txt):
-        """
-        Robust text renderer that handles:
-        - Literal newline characters (\\n) cleaning
-        - **Bold** markdown parsing
-        - Bullet points
-        """
-        # 1. Clean literal newlines
         txt = txt.replace('\\n', '\n')
-        
-        # 2. Split into logical lines
         lines = txt.split('\n')
-        
         for line in lines:
             line = line.strip()
             if not line:
                 self.ln(4) 
                 continue
             
-            # Detect Bullet Points
             is_bullet = False
             if line.startswith('- ') or line.startswith('* '):
                 is_bullet = True
                 line = line[2:] 
             
-            # Start line
             if is_bullet:
                 self.set_font('Arial', 'B', 14) 
                 self.cell(6, 5, chr(149), 0, 0, 'R') 
@@ -63,19 +54,14 @@ class PDFReport(FPDF):
             else:
                 self.set_font('Arial', '', 10)
 
-            # 3. Parse **Bold** Markers
             parts = line.split('**')
-            
             for i, part in enumerate(parts):
                 if not part: continue
-                
                 if i % 2 == 1:
                     self.set_font('Arial', 'B', 10)
                 else:
                     self.set_font('Arial', '', 10)
-                
                 self.write(5, part)
-                
             self.ln(6)
 
     def add_plot_to_pdf(self, fig):
@@ -86,12 +72,7 @@ class PDFReport(FPDF):
         self.ln(5)
 
 # --- HELPER: NDVI FETCH ---
-# (Duplicated from dashboard.py to ensure report standalone functionality)
-from google.oauth2.service_account import Credentials
-import ee
-
 def fetch_sentinel_ndvi(coords, start_date, end_date):
-    """Fetches Sentinel-2 time series for the field polygon."""
     if start_date > end_date: return pd.DataFrame(columns=['Date', 'NDVI'])
 
     if not st.session_state.get('ee_initialized'):
@@ -147,6 +128,7 @@ def app():
 
     res_single = st.session_state['sim_results']
     crop_p = res_single['crop_params']
+    is_perennial = crop_p['Type'] == 'Perennial'
     
     dis_id = st.session_state['selected_disease_id']
     df_d = st.session_state['df_diseases']
@@ -161,157 +143,204 @@ def app():
     with col2:
         if st.button("📄 Download PDF Dossier", type="primary", use_container_width=True):
             
-            # --- 1. PREPARE BASE CONFIGURATION ---
+            # --- 1. PREPARE CONFIG ---
             engine = SimulationEngine()
             config = {k: st.session_state[k] for k in StateManager.DEFAULTS.keys() if k in st.session_state}
             
-            # Reconstruct schedule dicts from session state
             get_sched = lambda x: x.to_dict('records') if x is not None and not x.empty else []
             config['fert_schedule'] = get_sched(st.session_state.get('fert_schedule'))
             config['irr_schedule'] = get_sched(st.session_state.get('irr_schedule'))
             
-            # Ensure primitives
-            config['soil_water_holding_cap'] = st.session_state.get('soil_water_holding_cap', 150.0)
             config['initial_soil_water'] = st.session_state.get('initial_soil_water', 0.5)
             config['initial_nitrogen'] = st.session_state.get('initial_nitrogen', 100.0)
             config['insect_pressure'] = st.session_state.get('insect_pressure', 1.0)
             config['planting_date'] = st.session_state.get('planting_date', date.today())
             
-            # Ensure complex soil layers are passed
             if st.session_state.get('soil_layers') is not None:
                 config['soil_layers'] = st.session_state['soil_layers'].to_dict('records')
             else:
                 config['soil_layers'] = []
 
-            # --- 2. RUN DISEASE ENSEMBLE (FORECAST YIELD) ---
-            with st.spinner("Running 50 Stochastic Scenarios for Risk Quantification..."):
+            # --- 2. RUN DISEASE ENSEMBLE ---
+            # Automatically handles 10-year horizon for perennials inside SimulationEngine
+            with st.spinner(f"Running 50 Stochastic Scenarios for {'10-Year' if is_perennial else 'Seasonal'} Risk..."):
                 ens_res = engine.run_ensemble_inference(config, n_runs=50)
                 
             if ens_res is None:
                 st.error("Ensemble failed. Check configuration.")
                 return
 
-            # --- 3. RUN IRRIGATION OPTIMIZER ---
-            with st.spinner("🤖 Optimizing Water Strategy & Seasonality..."):
-                # Returns list of recommended events
+            # --- 3. RUN OPTIMIZERS ---
+            with st.spinner("🤖 Optimizing Water & Nutrition Strategy..."):
                 opt_irr_schedule, final_swc = engine.optimize_irrigation_schedule(config)
                 season_advice = engine.assess_planting_season(st.session_state['center_lat'], st.session_state['center_lon'])
-
-            # --- 4. RUN FERTILIZER OPTIMIZER ---
-            with st.spinner("🧪 Calculating Precision Nutrition..."):
-                # Returns list of recommended events
                 opt_fert_schedule = engine.optimize_fertilization_schedule(config)
 
-            # --- 5. RUN POTENTIAL YIELD SIMULATION (OPTIMAL MGMT + NO DISEASE) ---
-            with st.spinner("Computing Biological Yield Potential (The Ceiling)..."):
-                # Create a specific config for the "Perfect" run
+            # --- 4. RUN POTENTIAL YIELD (CONTROL) ---
+            with st.spinner("Computing Biological Potential..."):
                 optimal_config = config.copy()
-                
-                # Apply the OPTIMIZED schedules we just calculated
-                # Use the recommended schedules instead of user schedules
                 optimal_config['irr_schedule'] = opt_irr_schedule
                 optimal_config['fert_schedule'] = opt_fert_schedule
-                
-                # Eliminate Biotic Stress
                 optimal_config['selected_disease_id'] = None
                 optimal_config['disease_spots'] = []
-                optimal_config['insect_pressure'] = 0.0 # Remove vector pressure
+                optimal_config['insect_pressure'] = 0.0
                 
-                # Run single deterministic simulation
                 res_potential = engine.run_simulation(optimal_config)
                 
-                if res_potential:
-                    hist_potential = res_potential['history']
-                    # Extract the yield curve from this optimal run
-                    pot_yield_curve = [day['Yield'] for day in hist_potential]
-                    pot_yield_dates = [day['Date'] for day in hist_potential]
-                    pot_yield_val = pot_yield_curve[-1]
+                # Extract Potential Curve
+                hist_potential = res_potential['history'] if res_potential else []
+                if is_perennial:
+                    # For perennials, potential is the standing fruit curve
+                    pot_yield_curve = [day.get('Fruit_Biomass', day['Yield']) for day in hist_potential]
                 else:
-                    # Fallback (should not happen)
-                    pot_yield_curve = []
-                    pot_yield_dates = []
-                    pot_yield_val = 1.0
+                    pot_yield_curve = [day['Yield'] for day in hist_potential]
+                
+                pot_yield_dates = [day['Date'] for day in hist_potential]
 
-            # --- 6. COMPILE REPORT ---
+            # --- 5. COMPILE REPORT ---
             with st.spinner("Compiling Intelligence..."):
                 pdf = PDFReport()
                 pdf.add_page()
                 
                 stats = ens_res['ensemble_stats']
-                
-                # EXTRACT FORECAST STATS (The Floor/Reality)
-                final_y_mean = stats['Yield_Mean'][-1]
-                final_y_std = stats['Yield_Std'][-1]
-                final_y_ci = 1.96 * final_y_std
-                
-                final_inf_mean = stats['Incidence_Mean'][-1]
-                final_inf_std = stats['Incidence_Std'][-1]
-                final_inf_ci = 1.96 * final_inf_std
-                
                 area = st.session_state.get('area_ha', 1.0)
-                total_prod_mean = final_y_mean * area
-                total_prod_ci = final_y_ci * area
                 
+                # --- METRICS LOGIC ---
+                if is_perennial:
+                    # ROI: Analyze Peaks (Harvests) over 10 years
+                    df_ens = pd.DataFrame({'Date': stats['Date'], 'Yield': stats['Yield_Mean']})
+                    df_ens['Year'] = pd.to_datetime(df_ens['Date']).dt.year
+                    
+                    # Get max standing fruit per year (proxy for harvestable amount)
+                    yearly_peaks = df_ens.groupby('Year')['Yield'].max()
+                    
+                    # 1. Average Annual Yield
+                    final_y_mean = yearly_peaks.mean() 
+                    
+                    # 2. Total Production (Sum of all years)
+                    total_production_mean = yearly_peaks.sum() * area
+                    
+                    # Uncertainty (approx based on last year's std dev ratio)
+                    last_std = stats['Yield_Std'][-1]
+                    last_mean = stats['Yield_Mean'][-1]
+                    cv = last_std / (last_mean + 1e-6)
+                    final_y_ci = 1.96 * (final_y_mean * cv)
+                    total_prod_ci = 1.96 * (total_production_mean * cv)
+                    
+                    # Gap Analysis (Potential vs Realized)
+                    df_pot = pd.DataFrame({'Date': pot_yield_dates, 'Yield': pot_yield_curve})
+                    df_pot['Year'] = pd.to_datetime(df_pot['Date']).dt.year
+                    pot_peaks = df_pot.groupby('Year')['Yield'].max()
+                    
+                    pot_avg = pot_peaks.mean() # Average Potential
+                    pot_total = pot_peaks.sum() # Total Potential
+                    
+                    # Gap based on Totals (mathematically equivalent to gap based on averages)
+                    yield_gap_t = pot_total - yearly_peaks.sum()
+                    loss_pct = (yield_gap_t / (pot_total + 1e-6)) * 100
+                    
+                    # UPDATED LABELS: Showing 10y Average instead of Cumulative
+                    potential_label = f"{pot_avg:.2f} t/ha (10y Average)"
+                    forecast_label = f"{final_y_mean:.2f} +/- {final_y_ci:.2f} t/ha (10y Average)"
+                    
+                else:
+                    # ANNUAL: Single final value
+                    final_y_mean = stats['Yield_Mean'][-1]
+                    final_y_std = stats['Yield_Std'][-1]
+                    final_y_ci = 1.96 * final_y_std
+                    
+                    total_production_mean = final_y_mean * area
+                    total_prod_ci = final_y_ci * area
+                    
+                    pot_val = pot_yield_curve[-1] if pot_yield_curve else 0
+                    yield_gap_t = pot_val - final_y_mean
+                    loss_pct = (yield_gap_t / (pot_val + 1e-6)) * 100
+                    
+                    potential_label = f"{pot_val:.2f} t/ha"
+                    forecast_label = f"{final_y_mean:.2f} +/- {final_y_ci:.2f} t/ha"
+
+                # Stress Frequency
                 hist_single = res_single['history']
                 df_hist = pd.DataFrame(hist_single)
                 peak_stress_w = df_hist['Avg_Stress'].max()
                 peak_stress_n = df_hist['Avg_N_Stress'].max()
-
-                # --- PDF CHAPTERS ---
                 
-                # 1. CONFIGURATION
+                # Drought Events Count (Days > 0.6 stress)
+                drought_days = (df_hist['Avg_Stress'] > 0.6).sum()
+                drought_events = drought_days // 7 # Approx weeks of severe stress
+
+                # --- CHAPTER 1: CONFIG ---
                 pdf.chapter_title("1. Field Configuration")
                 conf_txt = (
                     f"Location: {st.session_state['center_lat']:.4f}, {st.session_state['center_lon']:.4f}\n"
-                    f"Crop: {crop_p['Crop_Name']} - {crop_p['Variety']} (Cycle: {crop_p['Cycle_Days']} days)\n"
+                    f"Crop: {crop_p['Crop_Name']} - {crop_p['Variety']} ({'Perennial - 10 Year Horizon' if is_perennial else f'Annual - {crop_p['Cycle_Days']} days'})\n"
                     f"Soil Type: {st.session_state['soil_type'].title()}\n"
                     f"Initial Nutrients (mg/kg): N={st.session_state['initial_nitrogen']}, P={st.session_state.get('initial_phosphorus',20)}, K={st.session_state.get('initial_potassium',100)}\n"
                     f"Disease Target: {dis_info['Disease_Name'] if dis_info is not None else 'None'}"
                 )
                 pdf.chapter_body(conf_txt)
                 
-                # 2. AGRONOMIC DIAGNOSTICS
+                # --- CHAPTER 2: DIAGNOSTICS ---
                 pdf.chapter_title("2. Agronomic Diagnostics")
                 
-                # Calculate Yield Gap against the TRUE POTENTIAL (Optimal Mgmt)
-                yield_gap_t = pot_yield_val - final_y_mean
-                loss_pct = (yield_gap_t / (pot_yield_val + 1e-6)) * 100
-                
                 diag_txt = (
-                    f"Bio-Physical Potential (Optimal Mgmt): **{pot_yield_val:.2f} t/ha**\n"
-                    f"Forecast Yield (Current Scenario): **{final_y_mean:.2f} +/- {final_y_ci:.2f} t/ha** (95% CI)\n"
+                    f"Bio-Physical Potential (Optimal Mgmt): **{potential_label}**\n"
+                    f"Forecast Yield (Current Scenario): **{forecast_label}**\n"
                     f"Yield Gap: **{loss_pct:.1f}%** loss attributed to current management and disease pressure.\n"
-                    f"Est. Total Production: {total_prod_mean:.1f} +/- {total_prod_ci:.1f} tonnes\n"
+                    f"Est. Total Production: {total_production_mean:.1f} +/- {total_prod_ci:.1f} tonnes\n"
                     f"Current Water Stress Peak: {peak_stress_w*100:.1f}% severity.\n"
-                    f"Current Nitrogen Stress Peak: {peak_stress_n*100:.1f}% severity.\n"
+                    f"Current Nitrogen Stress Peak: {peak_stress_n*100:.1f}% severity."
                 )
+                
+                if is_perennial:
+                    diag_txt += f"\n**Long-Term Risk:** {drought_events} severe drought weeks projected over the next decade."
+                
                 pdf.chapter_body(diag_txt)
                 
-                # Plot 1: Yield (Forecast vs Potential)
-                fig1, ax1 = plt.subplots(figsize=(8, 4))
+                # --- PLOT 1: TRAJECTORY ---
+                fig1, ax1 = plt.subplots(figsize=(10, 5))
                 dates = pd.to_datetime(stats['Date'])
                 
-                # Plot Potential (The Ceiling - Derived from Optimal Run)
-                if pot_yield_curve:
-                    # Align dates just in case (though simulation duration should match)
-                    ax1.plot(pot_yield_dates, pot_yield_curve, 'k--', alpha=0.6, linewidth=1.5, label='Potential (Optimal Mgmt + No Disease)')
-                
-                # Plot Forecast (The Reality - Derived from Ensemble)
-                ax1.plot(dates, stats['Yield_Mean'], 'g-', linewidth=2, label='Forecast (Current Mgmt + Disease)')
-                
-                # Plot Uncertainty
-                lower = stats['Yield_Mean'] - (1.96 * stats['Yield_Std'])
-                upper = stats['Yield_Mean'] + (1.96 * stats['Yield_Std'])
-                ax1.fill_between(dates, lower, upper, color='green', alpha=0.2, label='95% Uncertainty')
-                
-                ax1.set_ylabel('Yield (t/ha)', color='g')
+                if is_perennial:
+                    # SAWTOOTH PLOT
+                    ax1.plot(dates, stats['Yield_Mean'], 'g-', linewidth=2, label='Forecast (Standing Fruit)')
+                    
+                    # Uncertainty Ribbon
+                    lower = stats['Yield_Mean'] - (1.96 * stats['Yield_Std'])
+                    upper = stats['Yield_Mean'] + (1.96 * stats['Yield_Std'])
+                    # Clip lower at 0
+                    lower = np.maximum(lower, 0)
+                    
+                    ax1.fill_between(dates, lower, upper, color='green', alpha=0.2, label='95% Uncertainty')
+                    
+                    # Formatting
+                    ax1.set_ylabel('Standing Fruit (t/ha)', color='g')
+                    ax1.set_title("Simulation Trajectory (10 Year Horizon)")
+                    
+                    # Format X-axis to show Years
+                    ax1.xaxis.set_major_locator(mdates.YearLocator())
+                    ax1.xaxis.set_major_formatter(mdates.DateFormatter('%Y'))
+                    
+                else:
+                    # SIGMOID PLOT (Annual)
+                    if pot_yield_curve:
+                        ax1.plot(pot_yield_dates, pot_yield_curve, 'k--', alpha=0.6, linewidth=1.5, label='Potential')
+                    
+                    ax1.plot(dates, stats['Yield_Mean'], 'g-', linewidth=2, label='Forecast')
+                    
+                    lower = stats['Yield_Mean'] - (1.96 * stats['Yield_Std'])
+                    upper = stats['Yield_Mean'] + (1.96 * stats['Yield_Std'])
+                    ax1.fill_between(dates, lower, upper, color='green', alpha=0.2, label='95% Uncertainty')
+                    
+                    ax1.set_ylabel('Yield (t/ha)', color='g')
+                    ax1.set_title("Yield Accumulation Forecast")
+
                 ax1.legend(loc='upper left', fontsize='small')
                 ax1.grid(True, alpha=0.3)
-                ax1.set_title("Yield Forecast vs. Biological Potential")
                 pdf.add_plot_to_pdf(fig1)
                 plt.close(fig1)
                 
-                # 3. SMART WATER MANAGEMENT
+                # --- CHAPTER 3: WATER ---
                 pdf.chapter_title("3. Smart Water Management")
                 
                 if peak_stress_w > 0.5: status = "CRITICAL"
@@ -319,10 +348,8 @@ def app():
                 else: status = "OPTIMAL"
                 
                 water_intro = f"Current Status: **{status}** (Peak Stress Index: {peak_stress_w:.2f})\n"
-                
                 if season_advice:
                     water_intro += f"**Seasonality Insight:** {season_advice.get('advice', 'No data')}\n"
-                
                 pdf.chapter_body(water_intro)
                 
                 if opt_irr_schedule:
@@ -330,58 +357,68 @@ def app():
                     pdf.cell(0, 8, "Recommended Supplemental Irrigation Calendar:", 0, 1)
                     pdf.set_font('Arial', '', 9)
                     
-                    # Table Header
                     pdf.set_fill_color(240, 240, 240)
                     pdf.cell(40, 7, "Date", 1, 0, 'C', 1)
                     pdf.cell(40, 7, "Amount (mm)", 1, 0, 'C', 1)
                     pdf.cell(90, 7, "Rationale", 1, 1, 'L', 1)
                     
-                    for event in opt_irr_schedule:
+                    # Limit displayed rows for PDF to avoid overflow
+                    display_limit = 15
+                    for i, event in enumerate(opt_irr_schedule):
+                        if i >= display_limit:
+                            pdf.cell(40, 7, "...", 1, 0, 'C')
+                            pdf.cell(40, 7, "...", 1, 0, 'C')
+                            pdf.cell(90, 7, f"and {len(opt_irr_schedule)-display_limit} more events.", 1, 1, 'L')
+                            break
+                        
                         pdf.cell(40, 7, str(event['date']), 1, 0, 'C')
                         pdf.cell(40, 7, f"{event['amount']} mm", 1, 0, 'C')
                         pdf.cell(90, 7, "Refill Soil Moisture to 90% FC", 1, 1, 'L')
                     
                     pdf.ln(5)
-                    pdf.chapter_body(f"**Projected Impact:** Implementing this schedule contributes to reaching the {pot_yield_val:.1f} t/ha potential.")
+                    pdf.chapter_body(f"**Projected Impact:** Implementing this schedule contributes to reaching the potential yield.")
                 else:
-                    pdf.chapter_body("No additional irrigation is required. Current rainfall and soil moisture retention are sufficient for this crop cycle.")
+                    pdf.chapter_body("No additional irrigation is required.")
 
-                # 4. SMART FERTILIZATION
+                # --- CHAPTER 4: NUTRITION ---
                 pdf.chapter_title("4. Precision Nutrition Strategy")
                 
                 if not opt_fert_schedule:
-                    pdf.chapter_body("[OK] Soil nutrient stocks are sufficient. No additional fertilization required.")
+                    pdf.chapter_body("[OK] Soil nutrient stocks are sufficient.")
                 else:
-                    intro_fert = (
-                        "Objective: Maintain N-P-K levels above critical thresholds during active growth "
-                        "while minimizing application frequency and environmental leaching."
-                    )
-                    pdf.chapter_body(intro_fert)
+                    pdf.chapter_body("Objective: Maintain N-P-K levels above critical thresholds during active growth.")
                     
                     pdf.set_font('Arial', 'B', 10)
                     pdf.cell(0, 8, "Recommended Product Application Schedule:", 0, 1)
                     pdf.set_font('Arial', '', 9)
                     
-                    # Table Header
                     pdf.set_fill_color(230, 240, 255)
                     pdf.cell(30, 7, "Date", 1, 0, 'C', 1)
                     pdf.cell(50, 7, "Product", 1, 0, 'L', 1)
                     pdf.cell(30, 7, "Rate (kg/ha)", 1, 0, 'C', 1)
                     pdf.cell(80, 7, "Rationale", 1, 1, 'L', 1)
-                    
                     pdf.set_font('Arial', '', 9)
                     
-                    for event in opt_fert_schedule:
+                    display_limit = 15
+                    for i, event in enumerate(opt_fert_schedule):
+                        if i >= display_limit:
+                            pdf.cell(30, 7, "...", 1, 0, 'C')
+                            pdf.cell(160, 7, f"and {len(opt_fert_schedule)-display_limit} more events.", 1, 1, 'L')
+                            break
+
                         date_str = str(event['date'])
                         prod_str = event['product']
                         rate_str = f"{event['amount']} kg"
                         rat_str = event['rationale']
                         
+                        # Dynamic row height
                         num_lines = max(1, len(rat_str) // 45 + 1)
                         row_height = 6 * num_lines
                         
+                        # Page break check
                         if pdf.get_y() + row_height > 270:
                             pdf.add_page()
+                            # Re-print header
                             pdf.set_font('Arial', 'B', 9)
                             pdf.cell(30, 7, "Date", 1, 0, 'C', 1)
                             pdf.cell(50, 7, "Product", 1, 0, 'L', 1)
@@ -395,17 +432,15 @@ def app():
                         pdf.cell(30, row_height, date_str, 1, 0, 'C')
                         pdf.cell(50, row_height, prod_str, 1, 0, 'L')
                         pdf.cell(30, row_height, rate_str, 1, 0, 'C')
-                        
                         pdf.set_xy(x_start + 110, y_start) 
                         pdf.multi_cell(80, 6, rat_str, 1, 'L')
                         pdf.set_xy(x_start, y_start + row_height)
 
                     pdf.ln(5)
-                    pdf.chapter_body("**Note:** Application rates refer to the commercial product weight, not the elemental nutrient weight.")
-                
-                # 5. SATELLITE VALIDATION
+
+                # --- CHAPTER 5: SATELLITE ---
                 pdf.chapter_title("5. Satellite Reality Check")
-                pdf.chapter_body("Comparison of Digital Twin growth model (Leaf Area Index) vs observed Satellite Vegetation Index (NDVI) from Sentinel-2.")
+                pdf.chapter_body("Comparison of Digital Twin growth model (LAI) vs observed Satellite Vegetation Index (NDVI).")
 
                 sim_start = pd.to_datetime(stats['Date'][0]).date()
                 sim_end = pd.to_datetime(stats['Date'][-1]).date()
@@ -423,59 +458,49 @@ def app():
 
                 if df_ndvi is not None and not df_ndvi.empty:
                     fig_sat, ax1 = plt.subplots(figsize=(8, 4))
-                    
-                    l1, = ax1.plot(dates, df_hist['LAI'], 'g--', linewidth=1.5, label='Model LAI (Biomass)')
-                    ax1.set_ylabel('Leaf Area Index (m²/m²)', color='g')
+                    l1, = ax1.plot(dates, df_hist['LAI'], 'g--', linewidth=1.5, label='Model LAI')
+                    ax1.set_ylabel('Leaf Area Index', color='g')
                     ax1.tick_params(axis='y', labelcolor='g')
-                    ax1.set_xlabel('Date')
                     
                     ax2 = ax1.twinx()
-                    l2, = ax2.plot(df_ndvi['Date'], df_ndvi['NDVI'], 'bo', markersize=4, label='Satellite NDVI (Observed)')
-                    ax2.set_ylabel('NDVI (Greenness)', color='b')
+                    l2, = ax2.plot(df_ndvi['Date'], df_ndvi['NDVI'], 'bo', markersize=4, label='Satellite NDVI')
+                    ax2.set_ylabel('NDVI', color='b')
                     ax2.tick_params(axis='y', labelcolor='b')
-                    ax2.set_ylim(0, 1)
                     
-                    lines = [l1, l2]
-                    labels = [l.get_label() for l in lines]
-                    ax1.legend(lines, labels, loc='upper left')
-                    
-                    ax1.set_title("Reality Check: Digital Twin vs. Space Observation")
+                    ax1.legend([l1, l2], ['Model LAI', 'Satellite NDVI'], loc='upper left')
+                    ax1.set_title("Digital Twin vs. Satellite")
                     ax1.grid(True, linestyle=':', alpha=0.6)
-                    
                     pdf.add_plot_to_pdf(fig_sat)
                     plt.close(fig_sat)
-                    
-                    pdf.chapter_body(
-                        "**Interpretation:** The green dashed line represents the simulation's expected growth. "
-                        "Blue dots are actual satellite measurements. "
-                        "A strong correlation confirms the model is calibrated correctly for your field conditions."
-                    )
+                    pdf.chapter_body("Interpretation: Strong correlation confirms calibration.")
                 else:
-                    reason = "Simulated period is in the future" if sim_start > today else "Persistent cloud cover or sensor unavailability"
-                    pdf.chapter_body(f"**No satellite imagery available.**\nReason: {reason}.")
-                    pdf.chapter_body("The model is running in predictive mode based on climatology.")
+                    pdf.chapter_body("No satellite imagery available (Future dates or Cloud cover).")
 
-                # 6. EPIDEMIOLOGY
+                # --- CHAPTER 6: EPIDEMIOLOGY ---
                 if dis_info is not None:
                     pdf.chapter_title("6. Epidemiological Risk")
+                    final_inf_mean = stats['Incidence_Mean'][-1]
+                    final_inf_std = stats['Incidence_Std'][-1]
+                    final_inf_ci = 1.96 * final_inf_std
+                    
                     epi_txt = (
                         f"Pathogen: **{dis_info['Disease_Name']}**\n"
-                        f"Final Infection Severity: {final_inf_mean*100:.1f}% +/- {final_inf_ci*100:.1f}% area affected.\n"
-                        f"Projected Impact: {final_inf_mean*100:.1f}% of field infected by harvest."
+                        f"Final Infection Severity: {final_inf_mean*100:.1f}% +/- {final_inf_ci*100:.1f}%."
                     )
                     pdf.chapter_body(epi_txt)
                     
                     fig2, ax = plt.subplots(figsize=(8, 4))
-                    ax.plot(dates, stats['Incidence_Mean']*100, 'r-', linewidth=2, label='Infection % (Mean)')
+                    ax.plot(dates, stats['Incidence_Mean']*100, 'r-', linewidth=2, label='Infection %')
                     lower_i = np.clip(stats['Incidence_Mean'] - (1.96 * stats['Incidence_Std']), 0, 1) * 100
                     upper_i = np.clip(stats['Incidence_Mean'] + (1.96 * stats['Incidence_Std']), 0, 1) * 100
-                    ax.fill_between(dates, lower_i, upper_i, color='red', alpha=0.2, label='95% Confidence')
+                    ax.fill_between(dates, lower_i, upper_i, color='red', alpha=0.2)
                     ax.set_ylabel('Field Infection %')
-                    ax.set_title(f"Disease Progression Risk")
+                    ax.set_title("Disease Progression")
                     ax.grid(True, alpha=0.3)
                     pdf.add_plot_to_pdf(fig2)
                     plt.close(fig2)
                     
+                    # Map
                     try:
                         fig3, ax3 = plt.subplots(figsize=(8, 6))
                         triang_source = ens_res['triangulation']
@@ -494,55 +519,28 @@ def app():
                         ax3.plot(poly_plot[:, 1], poly_plot[:, 0], 'k-', linewidth=1.5)
                         
                         ax3.set_aspect('equal')
-                        ax3.set_title("Mean Final Disease Severity Map")
-                        ax3.set_xlabel("Longitude")
-                        ax3.set_ylabel("Latitude")
-                        fig3.colorbar(tpc, ax=ax3, label="Avg. Severity (0-1)")
-                        ax3.grid(True, linestyle='--', alpha=0.3)
+                        ax3.set_title("Final Disease Severity Map")
+                        fig3.colorbar(tpc, ax=ax3, label="Severity (0-1)")
                         pdf.add_plot_to_pdf(fig3)
                         plt.close(fig3)
-                    except Exception as e:
-                        pdf.chapter_body(f"[Map generation error: {str(e)}]")
-                        plt.close(fig3)
+                    except Exception:
+                        pass
 
-                # 7. RECOMMENDATIONS
+                # --- CHAPTER 7: RECS ---
                 pdf.chapter_title("7. Management Recommendations")
                 recs = []
                 
                 if dis_info is not None:
                     recs.append(f"**Specific Protocols for {dis_info['Disease_Name']}:**")
                     raw_methods = dis_info['Control_Methods'].replace('\\n', '\n')
-                    methods = raw_methods.split('\n')
-                    for m in methods:
-                        m = m.strip()
-                        if m:
-                            recs.append(f"- {m}")
-                    
-                    if final_inf_mean > 0.3:
-                        recs.append("\n**!! ALERT:** High probability of widespread infection. Immediate intervention is required.")
-                    elif final_inf_mean > 0.05:
-                        recs.append("\n**! WARNING:** Infection detected. Scout high-probability zones.")
+                    for m in raw_methods.split('\n'):
+                        if m.strip(): recs.append(f"- {m.strip()}")
                 
-                if peak_stress_w > 0.6:
-                    recs.append("**!! CRITICAL WATER STRESS.** Yield penalty severe. See Chapter 3.")
-                elif peak_stress_w > 0.3:
-                    recs.append("**! Moderate water stress.** Consider increasing irrigation.")
-                    
-                if peak_stress_n > 0.5:
-                    recs.append("**! Nitrogen Deficiency:** Apply Urea or N-rich fertilizer at vegetative stage.")
+                if peak_stress_w > 0.6: recs.append("**!! CRITICAL WATER STRESS.**")
+                if peak_stress_n > 0.5: recs.append("**! Nitrogen Deficiency.**")
                 
-                peak_stress_p = df_hist['Avg_P_Stress'].max()
-                peak_stress_k = df_hist['Avg_K_Stress'].max()
+                if not recs: recs.append("[OK] Crop status is healthy.")
                 
-                if peak_stress_p > 0.5:
-                    recs.append("**! Phosphorus Deficiency:** Limit root growth. Apply DAP/TSP at planting.")
-                
-                if peak_stress_k > 0.5:
-                    recs.append("**! Potassium Deficiency:** Risk of lower drought tolerance. Apply MOP/SOP.")
-
-                if not recs:
-                    recs.append("[OK] Crop status is healthy.")
-
                 pdf.chapter_body("\n".join(recs))
                 
                 pdf_bytes = pdf.output(dest='S').encode('latin-1')

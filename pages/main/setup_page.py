@@ -1,4 +1,3 @@
-#pages\main\setup_page.py
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -7,13 +6,13 @@ from streamlit_folium import st_folium
 from folium.plugins import Draw
 from geopy.geocoders import Nominatim
 from src.models.state_manager import StateManager
-from datetime import date
+from datetime import date, timedelta
 import json
 import ee
 from google.oauth2.service_account import Credentials
 from src.models.fertilizer_service import FertilizerService
 
-# --- CONSTANTS (From Grainly) ---
+# --- CONSTANTS ---
 _SOIL_TABLE = {
     'sand':            {'field_capacity': 0.10, 'wilting_point': 0.03},
     'loamy sand':      {'field_capacity': 0.13, 'wilting_point': 0.05},
@@ -29,12 +28,8 @@ _SOIL_TABLE = {
     'clay':            {'field_capacity': 0.47, 'wilting_point': 0.27}
 }
 
-# --- HELPER: EARTH ENGINE SETUP ---
 def initialize_ee():
-    """Initializes Earth Engine using Service Account with explicit Scopes."""
-    if st.session_state.get('ee_initialized', False):
-        return True
-
+    if st.session_state.get('ee_initialized', False): return True
     try:
         service_account_info = st.secrets["gcp_service_account"]
         scopes = ['https://www.googleapis.com/auth/earthengine']
@@ -44,11 +39,8 @@ def initialize_ee():
         return True
     except Exception as e:
         st.error("🛑 Earth Engine Authentication Failed")
-        st.exception(e) 
-        st.stop()
         return False
 
-# --- HELPER: GEOSPATIAL MATH ---
 def is_point_in_polygon(point, polygon_coords):
     x, y = point[0], point[1] 
     n = len(polygon_coords)
@@ -83,89 +75,51 @@ def calculate_area_ha(coords):
     area_m2 = 0.5 * np.abs(np.dot(x, np.roll(y, 1)) - np.dot(y, np.roll(x, 1)))
     return round(area_m2 / 10000.0, 2)
 
-# --- NEW: LAND COVER VALIDATOR ---
 def validate_land_cover_ee(polygon_coords_latlon):
     if not initialize_ee(): return True, "Offline mode", {}
-    
     ee_coords = [[p[1], p[0]] for p in polygon_coords_latlon]
     if ee_coords[0] != ee_coords[-1]: ee_coords.append(ee_coords[0])
     geom = ee.Geometry.Polygon([ee_coords])
-    
-    img = ee.ImageCollection("ESA/WorldCover/v100").filterBounds(geom).mosaic().select("Map").clip(geom)
-    
     try:
+        img = ee.ImageCollection("ESA/WorldCover/v100").filterBounds(geom).mosaic().select("Map").clip(geom)
         stats = img.reduceRegion(reducer=ee.Reducer.frequencyHistogram(), geometry=geom, scale=10, maxPixels=1e9)
         hist = stats.get('Map').getInfo()
         if not hist: return True, "No Data", {}
-
         total_pixels = sum(hist.values())
         class_names = {'10':'Trees','20':'Shrubland','30':'Grassland','40':'Cropland','50':'Urban/Street','60':'Bare/Dirt','70':'Snow/Ice','80':'Water','90':'Wetland','95':'Mangrove'}
         breakdown = {class_names.get(k, k): v for k, v in hist.items()}
-        
         urban_count = hist.get('50', 0)
         if (urban_count / total_pixels) > 0.01: return False, f"Detected Street/Building ({urban_count} pixels).", breakdown
         water_count = hist.get('80', 0) + hist.get('90', 0) + hist.get('95', 0)
         if (water_count / total_pixels) > 0.05: return False, "Area contains water or wetland.", breakdown
-            
         return True, "Land valid", breakdown
     except Exception as e:
         return True, "Validation skipped (Error)", {}
 
-# --- NEW: AUTO SOIL RETRIEVAL ---
 def get_auto_soil_profile(coords):
-    if not st.session_state.get('ee_initialized'): return None, "Offline"
-    try:
-        ee_coords = [[p[1], p[0]] for p in coords]
-        geom = ee.Geometry.Polygon([ee_coords])
-        tex_img = ee.Image("OpenLandMap/SOL/SOL_TEXTURE-CLASS_USDA-TT_M/v02").select('b0').clip(geom)
-        tex_stats = tex_img.reduceRegion(reducer=ee.Reducer.mode(), geometry=geom, scale=250)
-        tex_class_id = tex_stats.get('b0').getInfo()
-        usda_map = {1:'clay',2:'silty clay',3:'sandy clay',4:'clay loam',5:'silty clay loam',6:'sandy clay loam',7:'loam',8:'silt loam',9:'sandy loam',10:'silt',11:'loamy sand',12:'sand'}
-        detected_texture = usda_map.get(tex_class_id, 'loam') 
-        oc_img = ee.Image("OpenLandMap/SOL/SOL_ORGANIC-CARBON_USDA-6A1C_M/v02").select('b0').clip(geom)
-        oc_stats = oc_img.reduceRegion(reducer=ee.Reducer.mean(), geometry=geom, scale=250)
-        organic_carbon = oc_stats.get('b0').getInfo() 
-        return detected_texture, organic_carbon
-    except Exception as e:
-        return None, str(e)
-        
-# --- NEW: AUTO SOIL & NUTRIENT RETRIEVAL ---
-def get_auto_soil_profile(coords):
-    """
-    Fetches dominant soil texture, Organic Carbon, and Clay Content.
-    """
     if not initialize_ee(): return None, "Offline", 0
     try:
         ee_coords = [[p[1], p[0]] for p in coords]
         geom = ee.Geometry.Polygon([ee_coords])
-        
-        # 1. Texture Class
         tex_img = ee.Image("OpenLandMap/SOL/SOL_TEXTURE-CLASS_USDA-TT_M/v02").select('b0').clip(geom)
         tex_stats = tex_img.reduceRegion(reducer=ee.Reducer.mode(), geometry=geom, scale=250)
         tex_class_id = tex_stats.get('b0').getInfo()
         usda_map = {1:'clay',2:'silty clay',3:'sandy clay',4:'clay loam',5:'silty clay loam',6:'sandy clay loam',7:'loam',8:'silt loam',9:'sandy loam',10:'silt',11:'loamy sand',12:'sand'}
         detected_texture = usda_map.get(tex_class_id, 'loam') 
-        
-        # 2. Organic Carbon (g/kg) - Proxy for Nitrogen
         oc_img = ee.Image("OpenLandMap/SOL/SOL_ORGANIC-CARBON_USDA-6A1C_M/v02").select('b0').clip(geom)
         oc_stats = oc_img.reduceRegion(reducer=ee.Reducer.mean(), geometry=geom, scale=250)
         organic_carbon = oc_stats.get('b0').getInfo() 
-        
-        # 3. Clay Content (%) - Proxy for Potassium capacity and P fixation
         clay_img = ee.Image("OpenLandMap/SOL/SOL_CLAY-WFRACTION_USDA-3A1A1A_M/v02").select('b0').clip(geom)
         clay_stats = clay_img.reduceRegion(reducer=ee.Reducer.mean(), geometry=geom, scale=250)
         clay_content = clay_stats.get('b0').getInfo()
-        
         return detected_texture, organic_carbon, clay_content
     except Exception as e:
         return None, str(e), 0
 
-# --- MAIN PAGE LOGIC ---
 def app():
     if 'step' not in st.session_state: StateManager.initialize()
     st.title("🛠️ Digital Twin Configuration")
 
-    # Navigation
     steps = {1: "1. Geography", 2: "2. Crop", 3: "3. Disease", 4: "4. Management", 5: "5. Launch"}
     can_navigate = st.session_state.get('field_coords') is not None and len(st.session_state['field_coords']) > 0
     cols = st.columns(5)
@@ -253,49 +207,29 @@ def app():
     # ==========================================================================
     elif st.session_state['step'] == 2:
         st.subheader("🌱 Step 2: Crop System")
-        
         df_crops = st.session_state['df_crops']
         crops = df_crops['Crop_Name'].unique()
-        
         c_sel, c_date = st.columns(2)
         with c_sel:
             curr_id = st.session_state.get('selected_crop_id')
             default_idx = 0
-            
             if curr_id:
                 curr_name = df_crops[df_crops['Crop_ID'] == curr_id].iloc[0]['Crop_Name']
                 if curr_name in crops: default_idx = list(crops).index(curr_name)
 
             selected_crop_name = st.selectbox("Select Crop Species", crops, index=default_idx)
-            
             varieties = df_crops[df_crops['Crop_Name'] == selected_crop_name]
             selected_var = st.selectbox("Select Variety", varieties['Variety'].unique())
-            
-            # Get the specific row for this variety
             row = varieties[varieties['Variety'] == selected_var].iloc[0]
             new_crop_id = row['Crop_ID']
-            
-            # --- AUTO-UPDATE DENSITY LOGIC ---
-            # If the user switched crops, update the density to the new crop's default
             if st.session_state.get('selected_crop_id') != new_crop_id:
                 st.session_state['selected_crop_id'] = new_crop_id
-                # Check if 'Default_Density' column exists (backward compatibility)
                 if 'Default_Density' in row:
                     st.session_state['planting_density'] = int(row['Default_Density'])
-                    # Rerun to visually update the number_input below immediately
-                    st.rerun()
-            
+                st.rerun()
         with c_date:
-            st.session_state['planting_date'] = st.date_input(
-                "Planting Date", value=st.session_state['planting_date']
-            )
-            
-            # This input now defaults to the updated session_state['planting_density']
-            st.session_state['planting_density'] = st.number_input(
-                "Planting Density (plants/ha)", 
-                value=int(st.session_state.get('planting_density', 10000)),
-                step=100
-            )
+            st.session_state['planting_date'] = st.date_input("Planting Date", value=st.session_state['planting_date'])
+            st.session_state['planting_density'] = st.number_input("Planting Density (plants/ha)", value=int(st.session_state.get('planting_density', 10000)), step=100)
 
         st.divider()
         c_back, c_next = st.columns([1, 6])
@@ -327,19 +261,13 @@ def app():
 
         with c_date:
             st.session_state['detection_date'] = st.date_input("Detection Date", value=st.session_state['detection_date'])
-            
-            # --- CONDITIONAL SLIDER LOGIC (MODIFIED HERE) ---
             if 'fungal' in str(selected_d_type).lower() or 'bacterial' in str(selected_d_type).lower():
                 st.info(f"💨 **Wind/Rain Driven:** {selected_d_type}")
                 st.caption("Spread is modeled using Wind Field vectors from Earth Engine.")
-                st.session_state['insect_pressure'] = 1.0 # Default for non-vector
+                st.session_state['insect_pressure'] = 1.0 
             else:
                 st.info(f"🦟 **Vector Driven:** {selected_d_type}")
-                st.session_state['insect_pressure'] = st.slider(
-                    "Vector Pressure (Observed)", 0.0, 5.0, 
-                    st.session_state.get('insect_pressure', 1.0),
-                    help="Relative abundance of the vector (e.g., Whitefly count)."
-                )
+                st.session_state['insect_pressure'] = st.slider("Vector Pressure (Observed)", 0.0, 5.0, st.session_state.get('insect_pressure', 1.0), help="Relative abundance of the vector.")
         
         st.divider()
         col_map, col_list = st.columns([2, 1])
@@ -381,183 +309,110 @@ def app():
         if c_next.button("Next ➡️"): st.session_state['step'] = 4; st.rerun()
 
     # ==========================================================================
-    # STEP 4: SOIL & MANAGEMENT (UPDATED WITH NPK mg/kg & DECAY LOGIC)
+    # STEP 4: SOIL & MANAGEMENT
     # ==========================================================================
     elif st.session_state['step'] == 4:
         st.subheader("🪨 Step 4: Soil & Management Operations")
         
-        # --- 1. SOIL PROFILE SECTION ---
+        # Check Crop Type for UI Hints
+        c_id = st.session_state.get('selected_crop_id')
+        row = st.session_state['df_crops'][st.session_state['df_crops']['Crop_ID'] == c_id].iloc[0]
+        is_perennial = row['Type'] == 'Perennial'
+
+        # --- SOIL PROFILE ---
         st.markdown("##### Soil Profile & Nutrient Intelligence")
-        
-        # Auto-Detect Layout
         c_auto, c_hist = st.columns([1, 2])
-        
         with c_auto:
-            if st.button("🛰️ Auto-Detect Soil (AlphaEarth)", help="Fetches Texture, Carbon, and Clay from OpenLandMap"):
+            if st.button("🛰️ Auto-Detect Soil (AlphaEarth)"):
                 with st.spinner("Scanning soil physics & chemistry..."):
-                    # Call the updated helper function that returns 3 values
                     tex, carbon, clay = get_auto_soil_profile(st.session_state['field_coords'])
-                    
                     if tex:
                         st.session_state['soil_type'] = tex
-                        
-                        # --- NUTRIENT ESTIMATION LOGIC ---
-                        # 1. Retrieve Cultivation History (from slider state, default 0)
                         years_farming = st.session_state.get('history_years', 0)
-                        
-                        # 2. Heuristics based on Carbon (g/kg) and Clay (%)
-                        # Nitrogen (N): Approx 0.5 * SOC
                         base_n = max(5.0, min(50.0, carbon * 0.5))
-                        
-                        # Phosphorus (P): Base from organic matter, penalized by clay fixation
                         base_p = max(5.0, (15.0 + (carbon * 0.2)) - (clay * 0.1))
-                        
-                        # Potassium (K): Strongly correlated with Clay (CEC)
                         base_k = max(40.0, 60.0 + (clay * 1.5))
-                        
-                        # 3. Apply Depletion (Decay) Logic
-                        decay_n = 0.05 # 5% loss per year
-                        decay_p = 0.02 # 2% loss
-                        decay_k = 0.03 # 3% loss
-                        
-                        final_n = base_n * ((1 - decay_n) ** years_farming)
-                        final_p = base_p * ((1 - decay_p) ** years_farming)
-                        final_k = base_k * ((1 - decay_k) ** years_farming)
-                        
+                        final_n = base_n * ((1 - 0.05) ** years_farming)
+                        final_p = base_p * ((1 - 0.02) ** years_farming)
+                        final_k = base_k * ((1 - 0.03) ** years_farming)
                         st.session_state['initial_nitrogen'] = round(final_n, 1)
                         st.session_state['initial_phosphorus'] = round(final_p, 1)
                         st.session_state['initial_potassium'] = round(final_k, 1)
-                        
                         st.success(f"Detected: **{tex.title()}** | C: **{carbon} g/kg** | Clay: **{clay}%**")
                         import time; time.sleep(1.0); st.rerun()
-                    else:
-                        st.error("Detection failed.")
-
+                    else: st.error("Detection failed.")
         with c_hist:
-            st.session_state['history_years'] = st.slider(
-                "📉 Cultivation History (Years without fertilizer)", 
-                0, 20, 0,
-                help="Used to calculate nutrient depletion from the baseline soil potential."
-            )
+            st.session_state['history_years'] = st.slider("📉 Cultivation History (Years without fertilizer)", 0, 20, 0)
 
         c_soil_cfg, c_soil_info = st.columns([1, 1])
-        
         with c_soil_cfg:
-            # Expert Mode Toggle
             expert_mode = st.toggle("Expert Mode (Edit Layers)", value=st.session_state.get('use_expert_soil', False))
             st.session_state['use_expert_soil'] = expert_mode
-
             if not expert_mode:
                 soils = list(_SOIL_TABLE.keys())
                 curr_soil = st.session_state.get('soil_type', 'loam').lower()
                 if curr_soil not in soils: curr_soil = 'loam'
-                
-                selected_soil = st.selectbox(
-                    "Soil Texture Class", 
-                    options=[s.title() for s in soils], 
-                    index=soils.index(curr_soil)
-                )
+                selected_soil = st.selectbox("Soil Texture Class", options=[s.title() for s in soils], index=soils.index(curr_soil))
                 st.session_state['soil_type'] = selected_soil.lower()
-                
                 props = _SOIL_TABLE[st.session_state['soil_type']]
-                st.session_state['soil_layers'] = pd.DataFrame([{
-                    'depth_top': 0.0, 'depth_bottom': 1.5, 'texture': st.session_state['soil_type'],
-                    'field_capacity': props['field_capacity'], 'wilting_point': props['wilting_point'] 
-                }])
+                st.session_state['soil_layers'] = pd.DataFrame([{'depth_top': 0.0, 'depth_bottom': 1.5, 'texture': st.session_state['soil_type'], 'field_capacity': props['field_capacity'], 'wilting_point': props['wilting_point']}])
             
-            # NUTRIENT INPUTS (Manual Entry Enabled - mg/kg)
             st.markdown("###### Initial Soil Nutrient Levels (mg/kg)")
             c_n, c_p, c_k = st.columns(3)
-            with c_n:
-                st.session_state['initial_nitrogen'] = st.number_input(
-                    "Nitrogen (N)", 
-                    value=float(st.session_state.get('initial_nitrogen', 10.0)), 
-                    step=1.0, help="Available Nitrate-N (ppm)"
-                )
-            with c_p:
-                st.session_state['initial_phosphorus'] = st.number_input(
-                    "Phosphorus (P)", 
-                    value=float(st.session_state.get('initial_phosphorus', 20.0)), 
-                    step=1.0, help="Available P (Olsen ppm)"
-                )
-            with c_k:
-                st.session_state['initial_potassium'] = st.number_input(
-                    "Potassium (K)", 
-                    value=float(st.session_state.get('initial_potassium', 100.0)), 
-                    step=5.0, help="Exchangeable K (ppm)"
-                )
+            with c_n: st.session_state['initial_nitrogen'] = st.number_input("Nitrogen (N)", value=float(st.session_state.get('initial_nitrogen', 10.0)), step=1.0)
+            with c_p: st.session_state['initial_phosphorus'] = st.number_input("Phosphorus (P)", value=float(st.session_state.get('initial_phosphorus', 20.0)), step=1.0)
+            with c_k: st.session_state['initial_potassium'] = st.number_input("Potassium (K)", value=float(st.session_state.get('initial_potassium', 100.0)), step=5.0)
 
         with c_soil_info:
-            if expert_mode:
-                st.info("🔧 **Expert Mode Active**")
-                st.caption("Define custom soil horizons below.")
+            if expert_mode: st.info("🔧 **Expert Mode Active**")
             else:
                 props = _SOIL_TABLE[st.session_state['soil_type']]
                 st.info(f"**Physical Properties ({st.session_state['soil_type'].title()})**")
                 st.write(f"- Field Capacity: **{props['field_capacity']*100:.0f}%**")
                 st.write(f"- Wilting Point: **{props['wilting_point']*100:.0f}%**")
-
         if expert_mode:
-            st.markdown("###### Custom Soil Layers")
-            st.session_state['soil_layers'] = st.data_editor(
-                st.session_state['soil_layers'], num_rows="dynamic", key="editor_layers", use_container_width=True
-            )
+            st.session_state['soil_layers'] = st.data_editor(st.session_state['soil_layers'], num_rows="dynamic", key="editor_layers", use_container_width=True)
 
         st.divider()
 
-        # --- 2. MANAGEMENT SCHEDULES ---
+        # --- MANAGEMENT SCHEDULES ---
         c_fert, c_irr = st.columns(2)
         
-        # Initialize Service
+        # LOAD PRODUCTS INCLUDING PRUNING
         fert_service = FertilizerService()
         product_names = [p['name'] for p in fert_service.products]
         
         with c_fert:
-            st.markdown("##### 🧪 Fertilizer Schedule")
-            st.caption("Select commercial product and application rate (kg product/ha).")
+            st.markdown("##### 🧪 Fertilizer & Operations")
             
-            # Load existing schedule
+            # PHASE 3: PERENNIAL UI HINT
+            if is_perennial:
+                st.info("📅 **Recurring Schedule Mode:** Events entered here repeat annually for 10 years.")
+            else:
+                st.caption("Select commercial product or operation.")
+
             df_fert = st.session_state['fert_schedule']
             if df_fert.empty:
-                # Default structure if empty
-                df_fert = pd.DataFrame({
-                    "date": [date.today() + timedelta(days=30)],
-                    "product": ["NPK 15-15-15 Compound"],
-                    "amount": [100.0]
-                })
-            
-            # Ensure date column is datetime
-            if 'date' in df_fert.columns:
-                df_fert['date'] = pd.to_datetime(df_fert['date']).dt.date
+                df_fert = pd.DataFrame({"date": [date.today() + timedelta(days=30)], "product": ["NPK 15-15-15 Compound"], "amount": [100.0]})
+            if 'date' in df_fert.columns: df_fert['date'] = pd.to_datetime(df_fert['date']).dt.date
 
-            # Data Editor with Dropdown
             edited_fert = st.data_editor(
-                df_fert,
-                num_rows="dynamic",
+                df_fert, num_rows="dynamic",
                 column_config={
-                    "date": st.column_config.DateColumn("Date"),
-                    "product": st.column_config.SelectboxColumn(
-                        "Product",
-                        options=product_names,
-                        width="medium",
-                        required=True
-                    ),
-                    "amount": st.column_config.NumberColumn(
-                        "Amount (kg/ha)", 
-                        min_value=0, 
-                        max_value=1000,
-                        step=50
-                    )
-                },
-                key="editor_fert"
+                    "date": st.column_config.DateColumn("Date (Recurring)" if is_perennial else "Date"),
+                    "product": st.column_config.SelectboxColumn("Product/Action", options=product_names, width="medium", required=True),
+                    "amount": st.column_config.NumberColumn("Amount (kg/ha)", min_value=0, max_value=1000, step=50)
+                }, key="editor_fert"
             )
-            
-            # Save back to state
             st.session_state['fert_schedule'] = edited_fert
             
         with c_irr:
             st.markdown("##### 💧 Irrigation Schedule")
-            st.caption("Inputs in **mm**.")
+            if is_perennial:
+                 st.info("📅 **Recurring:** Irrigation dates repeat annually.")
+            else:
+                 st.caption("Inputs in **mm**.")
+                 
             df_irr = st.session_state['irr_schedule']
             if not df_irr.empty: df_irr['date'] = pd.to_datetime(df_irr['date']).dt.date
             st.session_state['irr_schedule'] = st.data_editor(

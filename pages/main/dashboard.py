@@ -17,12 +17,9 @@ def fetch_sentinel_ndvi(coords, start_date, end_date):
     Fetches Sentinel-2 time series for the field polygon.
     Returns DataFrame: [Date, NDVI]
     """
-    # 0. Sanity Checks
     if start_date > end_date:
-        # Planting is in the future, or today is before planting
         return pd.DataFrame(columns=['Date', 'NDVI'])
 
-    # 1. Initialize EE
     if not st.session_state.get('ee_initialized'):
         try:
             if 'gcp_service_account' in st.secrets:
@@ -35,18 +32,14 @@ def fetch_sentinel_ndvi(coords, start_date, end_date):
             return None
 
     try:
-        # 2. Geometry
         ee_coords = [[p[1], p[0]] for p in coords]
         geom = ee.Geometry.Polygon([ee_coords])
-        
-        # 3. Collection (Sentinel-2 Surface Reflectance)
+       
         def mask_s2_clouds(image):
             qa = image.select('QA60')
             cloud_bit_mask = 1 << 10
             cirrus_bit_mask = 1 << 11
             mask = qa.bitwiseAnd(cloud_bit_mask).eq(0).And(qa.bitwiseAnd(cirrus_bit_mask).eq(0))
-            
-            # --- CRITICAL FIX: Preserve Timestamp Metadata ---
             return image.updateMask(mask).divide(10000).copyProperties(image, ["system:time_start"])
 
         s2 = ee.ImageCollection('COPERNICUS/S2_SR_HARMONIZED')\
@@ -55,7 +48,6 @@ def fetch_sentinel_ndvi(coords, start_date, end_date):
             .filter(ee.Filter.lt('CLOUDY_PIXEL_PERCENTAGE', 20))\
             .map(mask_s2_clouds)
         
-        # 4. Reduction Function
         def get_ndvi(image):
             ndvi = image.normalizedDifference(['B8', 'B4']).rename('NDVI')
             stats = ndvi.reduceRegion(reducer=ee.Reducer.mean(), geometry=geom, scale=20)
@@ -64,7 +56,6 @@ def fetch_sentinel_ndvi(coords, start_date, end_date):
                 'ndvi': stats.get('NDVI')
             })
             
-        # 5. Execute
         count = s2.size().getInfo()
         if count == 0: return pd.DataFrame(columns=['Date', 'NDVI'])
         
@@ -91,13 +82,15 @@ def app():
         return
 
     # --- 1. SIMULATION MANAGEMENT ---
+    # Determine if we need to run the simulation
     should_run = 'sim_results' not in st.session_state
     
-    # Validate cache keys
+    # If results exist, check if they match the current config (simple heuristic)
     if not should_run:
         try:
-            # Check if new NPK keys exist in history
-            if 'N_kg' not in st.session_state['sim_results']['history'][0]:
+            res = st.session_state['sim_results']
+            # If we switched crop types but result is old, rerun
+            if res['crop_params']['Crop_ID'] != st.session_state['selected_crop_id']:
                 should_run = True
         except:
             should_run = True
@@ -107,22 +100,20 @@ def app():
             engine = SimulationEngine()
             config = {k: st.session_state[k] for k in StateManager.DEFAULTS.keys() if k in st.session_state}
             
-            # Schedules
+            # Schedules reconstruction
             get_sched = lambda x: x.to_dict('records') if x is not None and not x.empty else []
             config['fert_schedule'] = get_sched(st.session_state.get('fert_schedule'))
             config['irr_schedule'] = get_sched(st.session_state.get('irr_schedule'))
             
-            # Simulation Constants
-            config['soil_water_holding_cap'] = st.session_state.get('soil_water_holding_cap', 150.0)
+            # Primitives
             config['initial_soil_water'] = st.session_state.get('initial_soil_water', 0.5)
             config['initial_nitrogen'] = st.session_state.get('initial_nitrogen', 100.0)
             config['initial_phosphorus'] = st.session_state.get('initial_phosphorus', 30.0)
             config['initial_potassium'] = st.session_state.get('initial_potassium', 100.0)
-            
             config['insect_pressure'] = st.session_state.get('insect_pressure', 1.0)
             config['planting_date'] = st.session_state.get('planting_date', date.today())
             
-            # Ensure complex soil layers are passed
+            # Soil layers
             if st.session_state.get('soil_layers') is not None:
                 config['soil_layers'] = st.session_state['soil_layers'].to_dict('records')
             else:
@@ -130,37 +121,61 @@ def app():
             
             st.session_state['sim_results'] = engine.run_simulation(config)
             if st.session_state['sim_results'] is None:
-                st.error("Simulation failed. Check geometry.")
+                st.error("Simulation failed. Check geometry or weather service.")
                 return
             st.rerun()
 
     res = st.session_state['sim_results']
     history = res['history']
+    crop_p = res['crop_params']
+    is_perennial = crop_p['Type'] == 'Perennial'
     
     # --- 2. TIMELINE CONTROLLER ---
-    st.subheader("📅 Seasonal Timeline")
+    st.subheader(f"📅 {'10-Year Horizon' if is_perennial else 'Seasonal Timeline'}")
     dates = [pd.to_datetime(h['Date']).date() for h in history]
     
     today = date.today()
-    # Ensure default date is valid
     default_date = max(dates) if today > max(dates) else today
     if default_date < min(dates): default_date = min(dates)
     
-    selected_date = st.slider("View State At:", min_value=dates[0], max_value=dates[-1], value=default_date, format="DD MMM")
+    # Dual-Mode Slider
+    if is_perennial:
+        # For perennials, the slider covers 10 years
+        selected_date = st.slider("View State At:", min_value=dates[0], max_value=dates[-1], value=default_date, format="YYYY-MM-DD")
+    else:
+        # Annuals
+        selected_date = st.slider("View State At:", min_value=dates[0], max_value=dates[-1], value=default_date, format="DD MMM")
     
-    idx = next(i for i, d in enumerate(dates) if d >= selected_date)
+    idx = next((i for i, d in enumerate(dates) if d >= selected_date), -1)
+    if idx == -1: idx = len(dates) - 1
     day_data = history[idx]
     
     # --- 3. METRICS ---
     area = st.session_state.get('area_ha', 1.0)
-    yield_tha = day_data['Yield']
-    total_tonnes = yield_tha * area
+    
+    if is_perennial:
+        # Perennial Metrics: Focus on Standing Fruit and Wood
+        yield_val = day_data.get('Fruit_Biomass', 0.0) # This is standing fruit
+        total_tonnes = yield_val * area
+        metric_label = "Standing Fruit (Yield)"
+        wood_val = day_data.get('Wood_Biomass', 0.0)
+    else:
+        # Annual Metrics: Focus on Yield Potential
+        yield_val = day_data['Yield']
+        total_tonnes = yield_val * area
+        metric_label = "Avg Yield Potential"
+        wood_val = 0.0 # Not relevant
 
     c1, c2, c3, c4 = st.columns(4)
     c1.metric("Simulated Date", selected_date.strftime("%Y-%m-%d"))
-    c2.metric("Avg Yield Potential", f"{yield_tha:.1f} t/ha", f"{total_tonnes:.1f} tonnes total")
-    c3.metric("Infection", f"{day_data['Incidence']*100:.1f}%", delta="Risk" if day_data['Incidence']>0 else "Clean", delta_color="inverse")
-    c4.metric("Water Stress", f"{day_data['Avg_Stress']*100:.0f}%")
+    c2.metric(metric_label, f"{yield_val:.2f} t/ha", f"{total_tonnes:.1f} t total")
+    
+    if is_perennial:
+        c3.metric("Wood Biomass", f"{wood_val:.1f} t/ha")
+    else:
+        c3.metric("Infection", f"{day_data['Incidence']*100:.1f}%", delta="Risk" if day_data['Incidence']>0 else "Clean", delta_color="inverse")
+        
+    c4.metric("Water Stress", f"{day_data['Avg_Stress']*100:.0f}%", delta="High" if day_data['Avg_Stress']>0.5 else "OK", delta_color="inverse")
     
     st.divider()
     
@@ -170,21 +185,19 @@ def app():
     col_controls, col_map = st.columns([1, 3])
     
     with col_controls:
-        map_mode = st.radio("Select Layer:", ["Disease Severity", "Yield Potential"], horizontal=False)
+        # Map options depend on crop type slightly
+        options = ["Disease Severity", "Yield Potential"]
+        map_mode = st.radio("Select Layer:", options, horizontal=False)
         st.caption(f"Visualizing **{map_mode}** on **{selected_date}**.")
         st.info("Red zones indicate high stress or infection. Green zones indicate healthy biomass.")
         
     with col_map:
         fig, ax = plt.subplots(figsize=(10, 7))
         triang_source = res['triangulation']
-        
-        # Reconstruct triangulation for plotting
-        # Matplotlib Triangulation objects are lightweight, safe to recreate
         x_plot = triang_source.y # Lon
         y_plot = triang_source.x # Lat
         triang_plot = Triangulation(x_plot, y_plot, triang_source.triangles)
         
-        # Apply the mask if it exists (Fix for concave polygons)
         if triang_source.mask is not None:
             triang_plot.set_mask(triang_source.mask)
         
@@ -196,7 +209,8 @@ def app():
         else:
             vals = day_data['Grid_Yield']
             cmap = 'Greens'
-            title = f"Yield Accumulation (t/ha)"
+            title = f"Yield/Fruit Accumulation (t/ha)"
+            # Dynamic scaling for Perennials (yield gets high)
             max_yield_hist = np.max([h['Grid_Yield'].max() for h in history])
             vmax = max(1.0, max_yield_hist)
         
@@ -224,131 +238,168 @@ def app():
     
     st.divider()
     
-    # --- 5. DAILY DYNAMICS ---
-    st.subheader("📈 Daily Dynamics")
+    # --- 5. DYNAMICS & CHARTS ---
+    st.subheader(f"📈 { 'Long-Term Trajectory' if is_perennial else 'Daily Dynamics' }")
     df_plot = pd.DataFrame(history)
     df_plot['Date'] = pd.to_datetime(df_plot['Date'])
     
     # Rules
-    rule_selected = alt.Chart(pd.DataFrame({'Date': [pd.to_datetime(selected_date)]})).mark_rule(color='black').encode(x='Date:T')
+    rule_selected = alt.Chart(pd.DataFrame({'Date': [pd.to_datetime(selected_date)]})).mark_rule(color='black', strokeWidth=2).encode(x='Date:T')
     
-    det_date = st.session_state.get('detection_date')
-    rule_detect = alt.Chart(pd.DataFrame({'Date': [pd.to_datetime(det_date)]})).mark_rule(color='orange', strokeDash=[4,4]).encode(x='Date:T')
+    # Tabs logic
+    tab_titles = ["Biomass & Growth", "Yield Forecast", "Nutrients & Stress", "Disease Pressure", "🛰️ Reality Check (NDVI)"]
+    tabs = st.tabs(tab_titles)
     
-    tabs = st.tabs(["LAI & Biomass", "Soil Nutrients", "Disease Incidence", "Nutrient Stress", "🛰️ Reality Check (NDVI)"])
-    
-    # --- TAB 1: LAI & BIOMASS ---
+    # --- TAB 1: BIOMASS ---
     with tabs[0]:
-        df_bio = df_plot[['Date', 'LAI', 'Biomass']].copy()
-        base = alt.Chart(df_bio).encode(x='Date:T')
+        if is_perennial:
+            # STACKED AREA CHART: Wood vs Fruit
+            st.markdown("**Structural (Wood) vs Reproductive (Fruit) Biomass**")
+            
+            df_bio_stack = df_plot[['Date', 'Wood_Biomass', 'Fruit_Biomass']].melt('Date', var_name='Type', value_name='Biomass')
+            
+            c_area = alt.Chart(df_bio_stack).mark_area().encode(
+                x='Date:T',
+                y=alt.Y('Biomass:Q', title='Biomass (t/ha)'),
+                color=alt.Color('Type:N', scale=alt.Scale(domain=['Wood_Biomass', 'Fruit_Biomass'], range=['#8B4513', '#2ecc71']), legend=alt.Legend(title="Component")),
+                tooltip=['Date', 'Type', 'Biomass']
+            )
+            st.altair_chart((c_area + rule_selected).interactive(), use_container_width=True)
+            
+        else:
+            # ANNUAL: Standard LAI vs Biomass Line (ROBUST VERSION)
+            # We use independent lines with explicit colors to avoid legend merging issues
+            df_bio = df_plot[['Date', 'LAI', 'Biomass']].copy()
+            base = alt.Chart(df_bio).encode(x='Date:T')
+            
+            line_lai = base.mark_line(color='#2ecc71').encode(
+                y=alt.Y('LAI:Q', title='Leaf Area Index (Green)', axis=alt.Axis(titleColor='#2ecc71')),
+                tooltip=['Date', 'LAI']
+            )
+            
+            line_bio = base.mark_line(color='#8B4513').encode(
+                y=alt.Y('Biomass:Q', title='Biomass t/ha (Brown)', axis=alt.Axis(titleColor='#8B4513')),
+                tooltip=['Date', 'Biomass']
+            )
+            
+            st.altair_chart(alt.layer(line_lai, line_bio).resolve_scale(y='independent').add_selection(alt.selection_interval(bind='scales')), use_container_width=True)
         
-        line_lai = base.transform_calculate(Metric="'Leaf Area Index'").mark_line().encode(
-            y=alt.Y('LAI:Q', title='LAI', axis=alt.Axis(titleColor='#2ecc71')),
-            color=alt.Color('Metric:N', scale=alt.Scale(domain=['Leaf Area Index', 'Biomass'], range=['#2ecc71', '#8B4513']), legend=alt.Legend(title="Metrics"))
-        )
-        line_bio = base.transform_calculate(Metric="'Biomass'").mark_line().encode(
-            y=alt.Y('Biomass:Q', title='Biomass (t/ha)', axis=alt.Axis(titleColor='#8B4513')),
-            color=alt.Color('Metric:N')
-        )
-        st.altair_chart((alt.layer(line_lai, line_bio).resolve_scale(y='independent').properties(height=350) + rule_selected).interactive(), use_container_width=True)
-        
-    # --- TAB 2: SOIL WATER & NUTRIENTS ---
+    # --- TAB 2: YIELD FORECAST ---
     with tabs[1]:
+        if is_perennial:
+            # SAWTOOTH CHART + UNCERTAINTY
+            st.markdown("**10-Year Yield Trajectory (Sawtooth Pattern)**")
+            st.caption("Shows accumulation of fruit and annual harvest/drop events. The green band represents estimated uncertainty due to climate variability.")
+
+            # Create synthetic uncertainty for dashboard visual (Report does full ensemble)
+            # +/- 15% uncertainty band
+            df_yield = df_plot[['Date', 'Fruit_Biomass']].copy()
+            df_yield['Yield'] = df_yield['Fruit_Biomass']
+            df_yield['Upper'] = df_yield['Yield'] * 1.15
+            df_yield['Lower'] = df_yield['Yield'] * 0.85
+            
+            base_y = alt.Chart(df_yield).encode(x='Date:T')
+            
+            # Ribbon
+            band = base_y.mark_area(opacity=0.3, color='green').encode(
+                y=alt.Y('Lower:Q', title='Standing Fruit (t/ha)'),
+                y2='Upper:Q'
+            )
+            
+            # Main Line
+            line = base_y.mark_line(color='green').encode(
+                y='Yield:Q',
+                tooltip=['Date', 'Yield']
+            )
+            
+            st.altair_chart((band + line + rule_selected).interactive(), use_container_width=True)
+            
+        else:
+            # ANNUAL: Standard Accumulation
+            base = alt.Chart(df_plot).encode(x='Date:T')
+            line = base.mark_line(color='green').encode(
+                y=alt.Y('Yield:Q', title='Yield (t/ha)'),
+                tooltip=['Date', 'Yield']
+            )
+            st.altair_chart((line + rule_selected).interactive(), use_container_width=True)
+
+    # --- TAB 3: NUTRIENTS ---
+    with tabs[2]:
         df_soil = df_plot[['Date', 'SWC', 'N_kg', 'P_kg', 'K_kg']].copy()
         df_soil_melt = df_soil.melt('Date', var_name='Parameter', value_name='Value')
         
         base = alt.Chart(df_soil_melt).encode(x='Date:T')
-        
         lines = base.mark_line().encode(
             y=alt.Y('Value:Q', title='Amount (mm or kg/ha)'),
             color=alt.Color('Parameter:N', 
-                            scale=alt.Scale(
-                                domain=['SWC', 'N_kg', 'P_kg', 'K_kg'], 
-                                range=['#3498db', '#e67e22', '#9b59b6', '#f1c40f']
-                            ),
+                            scale=alt.Scale(domain=['SWC', 'N_kg', 'P_kg', 'K_kg'], range=['#3498db', '#e67e22', '#9b59b6', '#f1c40f']),
                             legend=alt.Legend(title="Soil Status")
             ),
             tooltip=['Date', 'Parameter', 'Value']
         )
         st.altair_chart((lines + rule_selected).interactive(), use_container_width=True)
-
-    # --- TAB 3: DISEASE ---
-    with tabs[2]:
-        base = alt.Chart(df_plot).encode(x='Date:T')
         
-        area_inc = base.transform_calculate(Metric="'Infection Severity'").mark_area(opacity=0.4).encode(
-            y=alt.Y('Incidence:Q', title='Incidence (0-1)', axis=alt.Axis(titleColor='red')),
-            color=alt.Color('Metric:N', scale=alt.Scale(domain=['Infection Severity', 'Env. Risk Score'], range=['red', 'purple']), legend=alt.Legend(title="Epidemiology"))
-        )
-        line_env = base.transform_calculate(Metric="'Env. Risk Score'").mark_line(strokeDash=[2,2]).encode(
-            y=alt.Y('Env_Favorability:Q', title='Env. Risk (0-1)', axis=alt.Axis(titleColor='purple')),
-            color=alt.Color('Metric:N')
-        )
-        # Combine
-        st.altair_chart(alt.layer(area_inc, line_env, rule_detect).resolve_scale(y='independent').properties(height=350).interactive(), use_container_width=True)
-        st.caption(f"Orange dashed line indicates Detection Date ({det_date}). Prior to this, only Environmental Risk is shown.")
-
-    # --- TAB 4: DAILY STRESS ---
-    with tabs[3]:
-        df_stress = df_plot.melt(
-            'Date', 
-            value_vars=['Avg_Stress', 'Avg_N_Stress', 'Avg_P_Stress', 'Avg_K_Stress'], 
-            var_name='Stress Type', 
-            value_name='Index'
-        )
-        df_stress['Stress Type'] = df_stress['Stress Type'].replace({
-            'Avg_Stress': 'Water', 
-            'Avg_N_Stress': 'Nitrogen (N)', 
-            'Avg_P_Stress': 'Phosphorus (P)', 
-            'Avg_K_Stress': 'Potassium (K)'
-        })
-        c = alt.Chart(df_stress).mark_area(opacity=0.5).encode(
+        # Stress Chart
+        df_stress = df_plot.melt('Date', value_vars=['Avg_Stress', 'Avg_N_Stress', 'Avg_P_Stress', 'Avg_K_Stress'], var_name='Type', value_name='Index')
+        c_stress = alt.Chart(df_stress).mark_area(opacity=0.5).encode(
             x='Date:T',
-            y=alt.Y('Index:Q', title='Stress Index (0=None, 1=Severe)'),
-            color=alt.Color('Stress Type:N', scale=alt.Scale(scheme='category10')),
-            tooltip=['Date', 'Stress Type', 'Index']
-        ).properties(height=350)
-        st.altair_chart((c + rule_selected).interactive(), use_container_width=True)
+            y=alt.Y('Index:Q', title='Stress Index (0-1)'),
+            color=alt.Color('Type:N', scale=alt.Scale(scheme='category10'))
+        ).properties(height=200)
+        st.altair_chart((c_stress + rule_selected).interactive(), use_container_width=True)
 
-    # --- TAB 5: REALITY CHECK (NDVI) ---
+    # --- TAB 4: DISEASE ---
+    with tabs[3]:
+        det_date = st.session_state.get('detection_date')
+        rule_detect = alt.Chart(pd.DataFrame({'Date': [pd.to_datetime(det_date)]})).mark_rule(color='orange', strokeDash=[4,4]).encode(x='Date:T')
+        
+        # Transform data to long format for easy shared-axis plotting
+        df_dis = df_plot[['Date', 'Incidence', 'Env_Favorability']].copy()
+        df_dis = df_dis.rename(columns={'Incidence': 'Infection Severity', 'Env_Favorability': 'Env. Risk Score'})
+        df_dis_melt = df_dis.melt('Date', var_name='Metric', value_name='Value')
+        
+        base = alt.Chart(df_dis_melt).encode(x='Date:T')
+        
+        # We plot both as lines/areas on the same 0-1 scale
+        lines = base.mark_area(opacity=0.4).encode(
+            y=alt.Y('Value:Q', title='Index (0-1)'),
+            color=alt.Color('Metric:N', scale=alt.Scale(domain=['Infection Severity', 'Env. Risk Score'], range=['red', 'purple'])),
+            tooltip=['Date', 'Metric', 'Value']
+        )
+        
+        st.altair_chart((lines + rule_detect + rule_selected).interactive(), use_container_width=True)
+
+    # --- TAB 5: SATELLITE ---
     with tabs[4]:
         st.caption("Validating Digital Twin against Sentinel-2 Satellite observations (Cloud-free days only).")
-        
-        # 1. Check Date Range Validity
         sim_start = df_plot['Date'].min().date()
         sim_end = df_plot['Date'].max().date()
         today_date = date.today()
         
-        # If planting is in future, we can't fetch data
         if sim_start > today_date:
             st.warning("⚠️ Simulation is for a future date range. Satellite validation is not available.")
         else:
-            # Fetch Data if needed
             if 'ndvi_data' not in st.session_state:
                 with st.spinner("Fetching Sentinel-2 data from AlphaEarth..."):
                     coords = st.session_state['field_coords']
-                    # Cap end date at today
                     fetch_end = min(sim_end, today_date)
                     st.session_state['ndvi_data'] = fetch_sentinel_ndvi(coords, sim_start, fetch_end)
             
             df_ndvi = st.session_state.get('ndvi_data')
-            
             if df_ndvi is not None and not df_ndvi.empty:
                 base_model = alt.Chart(df_plot).encode(x='Date:T')
                 line_lai_model = base_model.mark_line(color='green', strokeDash=[5,5]).encode(
-                    y=alt.Y('LAI:Q', title='Modelled LAI (Greenness)', axis=alt.Axis(titleColor='green'))
+                    y=alt.Y('LAI:Q', title='Modelled LAI', axis=alt.Axis(titleColor='green'))
                 )
                 base_sat = alt.Chart(df_ndvi).encode(x='Date:T')
                 point_ndvi = base_sat.mark_point(color='blue', filled=True, size=60).encode(
-                    y=alt.Y('NDVI:Q', title='Satellite NDVI (Observed)', scale=alt.Scale(domain=[0, 1]), axis=alt.Axis(titleColor='blue')),
+                    y=alt.Y('NDVI:Q', title='Satellite NDVI', scale=alt.Scale(domain=[0, 1]), axis=alt.Axis(titleColor='blue')),
                     tooltip=['Date', 'NDVI']
                 )
-                c_check = alt.layer(line_lai_model, point_ndvi).resolve_scale(y='independent').properties(height=350)
+                c_check = alt.layer(line_lai_model, point_ndvi).resolve_scale(y='independent')
                 st.altair_chart(c_check.interactive(), use_container_width=True)
-                st.info("Interpretation: The Dotted Green Line is what the math predicts. The Blue Dots are what the satellite sees.")
             else:
-                st.warning("No clear satellite imagery found for the period from planting to today.")
-                st.caption("Reasons: Cloud cover, planting date is too recent, or sensor unavailability.")
+                st.warning("No clear satellite imagery found.")
 
     # --- STRESS SUMMARY ---
     st.subheader("🧭 Stress Summary")

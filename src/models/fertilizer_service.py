@@ -4,8 +4,11 @@ import numpy as np
 class FertilizerService:
     def __init__(self):
         # Database based on the provided "Chunchao Products List"
-        # Types: 'Balanced', 'Nitrogen', 'High_P', 'High_K', 'High_N'
+        # Types: 'Balanced', 'Nitrogen', 'High_P', 'High_K', 'High_N', 'Operation'
         self.products = [
+            # --- 0. OPERATIONS (New Phase 3) ---
+            {'name': 'Canopy Pruning (Structural)', 'N': 0, 'P': 0, 'K': 0, 'type': 'Operation'},
+
             # --- 1. NPK Water Soluble Fertilizer ---
             {'name': 'NPK 20-20-20+TE (Soluble)', 'N': 20, 'P': 20, 'K': 20, 'type': 'Balanced'},
             {'name': 'NPK 19-19-19+TE (Soluble)', 'N': 19, 'P': 19, 'K': 19, 'type': 'Balanced'},
@@ -19,7 +22,7 @@ class FertilizerService:
             {'name': 'NPK 6-10-16+TE (Soluble)', 'N': 6, 'P': 10, 'K': 16, 'type': 'High_K'},
             {'name': 'NPK 25-15-5 (Soluble)', 'N': 25, 'P': 15, 'K': 5, 'type': 'High_N'},
             {'name': 'NPK 10-10-30+TE (Soluble)', 'N': 10, 'P': 10, 'K': 30, 'type': 'High_K'},
-            {'name': 'NPK 14-7-14+TE (Soluble)', 'N': 14, 'P': 7, 'K': 14, 'type': 'Balanced'}, # Leaning N/K
+            {'name': 'NPK 14-7-14+TE (Soluble)', 'N': 14, 'P': 7, 'K': 14, 'type': 'Balanced'}, 
             {'name': 'NPK 13-8-38+TE (Soluble)', 'N': 13, 'P': 8, 'K': 38, 'type': 'High_K'},
             {'name': 'NPK 20-10-10+TE (Soluble)', 'N': 20, 'P': 10, 'K': 10, 'type': 'High_N'},
             {'name': 'NPK 6-6-43+TE (Soluble)', 'N': 6, 'P': 6, 'K': 43, 'type': 'High_K'},
@@ -30,12 +33,12 @@ class FertilizerService:
             {'name': 'NPK 12-12-17 (Compound)', 'N': 12, 'P': 12, 'K': 17, 'type': 'High_K'},
             {'name': 'NPK 24-7-8 (Compound)', 'N': 24, 'P': 7, 'K': 8, 'type': 'High_N'},
             {'name': 'NPK 15-20-5 (Compound)', 'N': 15, 'P': 20, 'K': 5, 'type': 'High_P'},
-            {'name': 'NPK 22-4-22 (Compound)', 'N': 22, 'P': 4, 'K': 22, 'type': 'Balanced'}, # High N/K
+            {'name': 'NPK 22-4-22 (Compound)', 'N': 22, 'P': 4, 'K': 22, 'type': 'Balanced'}, 
             {'name': 'NPK 16-15-16 (Compound)', 'N': 16, 'P': 15, 'K': 16, 'type': 'Balanced'},
             {'name': 'NPK 20-5-10 (Compound)', 'N': 20, 'P': 5, 'K': 10, 'type': 'High_N'},
             {'name': 'NPK 20-8-15 (Compound)', 'N': 20, 'P': 8, 'K': 15, 'type': 'High_N'},
             {'name': 'NPK 20-15-10 (Compound)', 'N': 20, 'P': 15, 'K': 10, 'type': 'High_N'},
-            {'name': 'NPK 20-20-0 (Compound)', 'N': 20, 'P': 20, 'K': 0, 'type': 'High_N'}, # Also P
+            {'name': 'NPK 20-20-0 (Compound)', 'N': 20, 'P': 20, 'K': 0, 'type': 'High_N'}, 
             {'name': 'NPK 16-20-0 (Compound)', 'N': 16, 'P': 20, 'K': 0, 'type': 'High_P'},
             {'name': 'NPK 22-16-0 (Compound)', 'N': 22, 'P': 16, 'K': 0, 'type': 'High_N'},
             {'name': 'NPK 26-18-0 (Compound)', 'N': 26, 'P': 18, 'K': 0, 'type': 'High_N'},
@@ -73,7 +76,7 @@ class FertilizerService:
             # --- 5. Urea (Standard) ---
             {'name': 'Urea (Granular)', 'N': 46, 'P': 0, 'K': 0, 'type': 'Nitrogen'},
             
-            # --- Other (For manual selection, not usually optimized for) ---
+            # --- Other ---
             {'name': 'Humic Acid', 'N': 0, 'P': 0, 'K': 0, 'type': 'Other'} 
         ]
 
@@ -95,7 +98,6 @@ class FertilizerService:
         # Heuristic matching for dominant nutrient
         if n_ratio > 0.6:
             target_type = 'Nitrogen'
-            # If there is also significant P or K need, prefer High_N NPKs over pure Urea
             if p_ratio > 0.15 or k_ratio > 0.15:
                 target_type = 'High_N'
         elif p_ratio > 0.5:
@@ -103,18 +105,16 @@ class FertilizerService:
         elif k_ratio > 0.5:
             target_type = 'High_K'
 
-        # Filter candidates
+        # Filter candidates, excluding Operations
         candidates = [p for p in self.products if p['type'] == target_type]
         
-        # Fallback to Balanced if no specific match found (or if list empty)
+        # Fallback
         if not candidates: 
             candidates = [p for p in self.products if p['type'] == 'Balanced']
 
-        # Selection Strategy: Pick product with highest total nutrient content to minimize transport weight
+        # Selection: Highest nutrient content
         best_product = max(candidates, key=lambda x: x['N'] + x['P'] + x['K'])
 
-        # Calculate Application Rate based on the LIMITING factor (highest deficit)
-        # Avoid division by zero
         amount = 0
         if target_type in ['Nitrogen', 'High_N']:
             denom = best_product['N']
@@ -129,7 +129,6 @@ class FertilizerService:
             amount = def_k / (denom / 100.0) if denom > 0 else 0
             rationale = f"Potassium correction ({int(def_k)}kg/ha deficit) for stress tolerance."
         else:
-            # Balanced: Base rate on the average deficit to avoid over-applying one
             avg_def = (def_n + def_p + def_k) / 3
             avg_content = (best_product['N'] + best_product['P'] + best_product['K']) / 3
             amount = avg_def / (avg_content / 100.0) if avg_content > 0 else 0
