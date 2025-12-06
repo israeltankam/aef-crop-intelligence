@@ -6,13 +6,15 @@ import folium
 from streamlit_folium import st_folium
 from folium.plugins import Draw
 from geopy.geocoders import Nominatim
+from geopy.point import Point
+import math
 from src.models.state_manager import StateManager
 from datetime import date, timedelta
 import json
 import ee
 from google.oauth2.service_account import Credentials
 from src.models.fertilizer_service import FertilizerService
-import geocoder # NEW IMPORT
+import geocoder
 
 # --- CONSTANTS ---
 _SOIL_TABLE = {
@@ -77,8 +79,30 @@ def calculate_area_ha(coords):
     area_m2 = 0.5 * np.abs(np.dot(x, np.roll(y, 1)) - np.dot(y, np.roll(x, 1)))
     return round(area_m2 / 10000.0, 2)
 
-def validate_land_cover_ee(polygon_coords_latlon):
-    if not initialize_ee(): return True, "Offline mode", {}
+# --- GEOMETRY HELPERS ---
+def generate_square_polygon(lat, lon, area_ha):
+    """Generates a square polygon around a center point given area in hectares."""
+    area_m2 = area_ha * 10000.0
+    side_length_m = math.sqrt(area_m2)
+    half_side = side_length_m / 2.0
+    
+    m_per_deg_lat = 111132.0
+    m_per_deg_lon = 111132.0 * math.cos(math.radians(lat))
+    
+    delta_lat = half_side / m_per_deg_lat
+    delta_lon = half_side / m_per_deg_lon
+    
+    p1 = [lat - delta_lat, lon - delta_lon] # SW
+    p2 = [lat - delta_lat, lon + delta_lon] # SE
+    p3 = [lat + delta_lat, lon + delta_lon] # NE
+    p4 = [lat + delta_lat, lon - delta_lon] # NW
+    p5 = [lat - delta_lat, lon - delta_lon] # Close loop
+    
+    return [p1, p2, p3, p4, p5]
+
+def get_land_cover_stats(polygon_coords_latlon):
+    """Raw helper to get stats from EE without business logic."""
+    if not initialize_ee(): return None
     ee_coords = [[p[1], p[0]] for p in polygon_coords_latlon]
     if ee_coords[0] != ee_coords[-1]: ee_coords.append(ee_coords[0])
     geom = ee.Geometry.Polygon([ee_coords])
@@ -86,17 +110,92 @@ def validate_land_cover_ee(polygon_coords_latlon):
         img = ee.ImageCollection("ESA/WorldCover/v100").filterBounds(geom).mosaic().select("Map").clip(geom)
         stats = img.reduceRegion(reducer=ee.Reducer.frequencyHistogram(), geometry=geom, scale=10, maxPixels=1e9)
         hist = stats.get('Map').getInfo()
-        if not hist: return True, "No Data", {}
-        total_pixels = sum(hist.values())
-        class_names = {'10':'Trees','20':'Shrubland','30':'Grassland','40':'Cropland','50':'Urban/Street','60':'Bare/Dirt','70':'Snow/Ice','80':'Water','90':'Wetland','95':'Mangrove'}
-        breakdown = {class_names.get(k, k): v for k, v in hist.items()}
-        urban_count = hist.get('50', 0)
-        if (urban_count / total_pixels) > 0.01: return False, f"Detected Street/Building ({urban_count} pixels).", breakdown
-        water_count = hist.get('80', 0) + hist.get('90', 0) + hist.get('95', 0)
-        if (water_count / total_pixels) > 0.05: return False, "Area contains water or wetland.", breakdown
-        return True, "Land valid", breakdown
-    except Exception as e:
-        return True, "Validation skipped (Error)", {}
+        return hist
+    except:
+        return None
+
+def analyze_risk_level(hist):
+    """
+    Classifies the land cover histogram into SAFE, WARNING, or CRITICAL.
+    Returns: (level_string, color_string, explanation_string)
+    """
+    if not hist: return "UNKNOWN", "gray", "No satellite data available."
+    
+    total_pixels = sum(hist.values())
+    if total_pixels == 0: return "UNKNOWN", "gray", "Empty region."
+
+    # ESA WorldCover Keys:
+    # 10: Trees, 20: Shrubland, 30: Grassland, 40: Cropland (ALL GOOD/SAFE)
+    # 50: Urban (BAD), 60: Bare (OK), 70: Snow, 80: Water (BAD), 90: Wetland (BAD), 95: Mangrove
+    
+    urban_pixels = hist.get('50', 0)
+    water_pixels = hist.get('80', 0) + hist.get('90', 0) + hist.get('95', 0)
+    
+    urban_pct = (urban_pixels / total_pixels) * 100
+    water_pct = (water_pixels / total_pixels) * 100
+    
+    # 1. CRITICAL: Definitely a building or lake
+    if urban_pct > 5.0:
+        return "CRITICAL", "red", f"High urban density detected ({urban_pct:.1f}%). Likely a building."
+    if water_pct > 10.0:
+        return "CRITICAL", "red", f"Deep water detected ({water_pct:.1f}%)."
+        
+    # 2. WARNING: Edge cases (dirt road, small pond, garden shed)
+    if urban_pixels > 0: # Any urban pixel is suspicious but might be a path
+        return "WARNING", "orange", f"Potential structure or road detected ({urban_pixels} pixels)."
+    if water_pct > 0:
+        return "WARNING", "orange", f"Minor water/wetland features detected ({water_pct:.1f}%)."
+        
+    # 3. SAFE
+    return "SAFE", "green", "Area is composed of vegetation/soil."
+
+def optimize_field_location(center_lat, center_lon, area_ha):
+    """
+    Scans the center AND 8 surrounding points to find the location with the lowest risk.
+    Returns: (best_poly, best_risk_level, best_breakdown)
+    """
+    # 1. Define Search Grid (Center + 8 directions)
+    # Offset roughly 1/3 of the field width to snap to adjacent plots
+    area_m2 = area_ha * 10000.0
+    side_len_deg = math.sqrt(area_m2) / 111132.0 # Approx degree shift
+    shift = side_len_deg * 0.5 
+
+    offsets = [
+        (0,0), # Center
+        (shift, 0), (-shift, 0), (0, shift), (0, -shift), # Cardinal
+        (shift, shift), (shift, -shift), (-shift, shift), (-shift, -shift) # Diagonals
+    ]
+    
+    candidates = []
+    
+    for d_lat, d_lon in offsets:
+        test_lat = center_lat + d_lat
+        test_lon = center_lon + d_lon
+        poly = generate_square_polygon(test_lat, test_lon, area_ha)
+        hist = get_land_cover_stats(poly)
+        
+        level, color, msg = analyze_risk_level(hist)
+        
+        # Score: SAFE=0, WARNING=1, CRITICAL=2, UNKNOWN=3
+        score = 0 if level == "SAFE" else (1 if level == "WARNING" else (2 if level == "CRITICAL" else 3))
+        
+        # Tie-breaker: Urban pixel count
+        urban_count = hist.get('50', 0) if hist else 9999
+        
+        candidates.append({
+            'poly': poly,
+            'level': level,
+            'color': color,
+            'msg': msg,
+            'score': score,
+            'urban': urban_count
+        })
+    
+    # Sort by Score (ascending), then by Urban Count (ascending)
+    candidates.sort(key=lambda x: (x['score'], x['urban']))
+    
+    best = candidates[0]
+    return best['poly'], best['level'], best['color'], best['msg']
 
 def get_auto_soil_profile(coords):
     """
@@ -107,7 +206,6 @@ def get_auto_soil_profile(coords):
         return False, {}, "Earth Engine API is offline or not authenticated."
 
     try:
-        # Create Geometry
         ee_coords = [[p[1], p[0]] for p in coords]
         geom = ee.Geometry.Polygon([ee_coords])
         
@@ -123,12 +221,8 @@ def get_auto_soil_profile(coords):
         detected_texture = usda_map.get(tex_class_id, 'loam') 
         
         # 2. Organic Carbon (g/kg)
-        # Asset stores values scaled by 5 (e.g., pixel 2 = 10 g/kg). 
-        # We assume the reduceRegion returns the raw pixel value, so we multiply by 5.
         oc_img = ee.Image("OpenLandMap/SOL/SOL_ORGANIC-CARBON_USDA-6A1C_M/v02").select('b0').clip(geom)
         oc_raw = oc_img.reduceRegion(reducer=ee.Reducer.mean(), geometry=geom, scale=250).get('b0').getInfo()
-        
-        # Handle cases where OC data might be missing (use 5 g/kg as generic floor)
         organic_carbon_g_kg = (oc_raw * 5.0) if oc_raw is not None else 5.0
         
         # 3. Clay Content (%)
@@ -136,25 +230,15 @@ def get_auto_soil_profile(coords):
         clay_content = clay_img.reduceRegion(reducer=ee.Reducer.mean(), geometry=geom, scale=250).get('b0').getInfo() or 20.0
 
         # --- SOPHISTICATED N CALCULATION (C:N Ratio Method) ---
-        # 1. Estimate Total Nitrogen (mg/kg) using C:N Ratio of ~10:1
-        # 1 g/kg Carbon ~= 1000 mg/kg Carbon.
-        # Total N ~= Total C / 10.
         total_n_mg_kg = (organic_carbon_g_kg * 1000.0) / 10.0
-
-        # 2. Estimate "Available" Mineral Nitrogen (NO3 + NH4)
-        # Only ~1-3% of Total N is mineralized and available to plants at any moment.
-        # Sandy soils leach fast (lower availability factor), Clays hold more.
         if 'sand' in detected_texture:
-            availability_factor = 0.015 # 1.5%
+            availability_factor = 0.015
         elif 'clay' in detected_texture:
-            availability_factor = 0.025 # 2.5%
+            availability_factor = 0.025
         else:
-            availability_factor = 0.02  # 2.0%
+            availability_factor = 0.02 
 
         available_n = total_n_mg_kg * availability_factor
-        
-        # 3. Safety Floor
-        # Even depleted soils rarely drop below 10-15 mg/kg available N (mineral).
         available_n = max(15.0, available_n)
 
         return True, {
@@ -170,15 +254,11 @@ def get_auto_soil_profile(coords):
         
 # --- NEW HELPER: LOCATION DETECTION ---
 def get_default_location():
-    """Attempts to get user location via IP. Returns (lat, lon) or default."""
     try:
         g = geocoder.ip('me')
-        if g.latlng:
-            return g.latlng[0], g.latlng[1]
-    except:
-        pass
-    # Fallback to a neutral location if IP fails (e.g. Center of Africa or Map Center)
-    return 4.0, 11.5 # Cameroon center approx, or 0,0
+        if g.latlng: return g.latlng[0], g.latlng[1]
+    except: pass
+    return 4.0, 11.5
 
 def app():
     if 'step' not in st.session_state: StateManager.initialize()
@@ -204,79 +284,188 @@ def app():
     if st.session_state['step'] == 1:
         st.subheader("🌍 Step 1: Define Field Geography")
         
-        # --- AUTO-LOCATE ON FIRST LOAD ---
-        if 'center_lat' not in st.session_state or st.session_state['center_lat'] == 9.30: # Check if still default
+        if 'center_lat' not in st.session_state or st.session_state['center_lat'] == 9.30: 
              lat, lon = get_default_location()
-             # Only update if it's not the hardcoded fallback to ensure we actually got something
              if lat != 4.0 and lon != 11.5: 
                  st.session_state['center_lat'] = lat
                  st.session_state['center_lon'] = lon
 
-        with st.expander("📂 Load Saved Configuration (.json)", expanded=False):
+        tab_auto, tab_manual, tab_upload = st.tabs(["✨ Assisted Setup", "✍️ Manual Draw", "📂 Load Config"])
+
+        # TAB 1: ASSISTED (SMART SEARCH)
+        with tab_auto:
+            st.info("Enter coordinates. We will auto-scan the area to avoid buildings/water and place the field in valid cropland/vegetation.")
+            
+            c_input, c_area = st.columns([2, 1])
+            with c_input:
+                coord_str = st.text_input(
+                    "Center Coordinate", 
+                    value="", 
+                    placeholder="e.g., 4°34′ N 11°07′ E  OR  4.56, 11.12",
+                    help="Accepts Decimal Degrees or DMS format."
+                )
+            with c_area:
+                area_input = st.number_input("Field Area (hectares)", min_value=0.1, max_value=1000.0, value=1.0, step=0.1)
+
+            if st.button("Generate Smart Field", type="primary"):
+                if coord_str:
+                    try:
+                        p = Point(coord_str)
+                        lat, lon = p.latitude, p.longitude
+                        
+                        st.session_state['center_lat'] = lat
+                        st.session_state['center_lon'] = lon
+                        
+                        # SMART SEARCH LOGIC
+                        with st.spinner("🛰️ Scanning surrounding area for optimal placement..."):
+                            poly, level, color, msg = optimize_field_location(lat, lon, area_input)
+                        
+                        # HANDLE RESULT
+                        if level == "CRITICAL":
+                            st.error(f"🛑 **Blocking Issue:** {msg}")
+                            st.warning("The area seems heavily urban or water. We generated a shape, but you should move it manually.")
+                            # We allow them to keep it if they insist, but show error
+                        elif level == "WARNING":
+                            st.warning(f"⚠️ **Note:** {msg}")
+                            st.success("We found the best possible spot nearby. You can adjust it below.")
+                        else:
+                            st.success(f"✅ **Perfect Match:** {msg}")
+
+                        # Update State regardless of warning (allow user to fix)
+                        st.session_state['field_coords'] = poly
+                        st.session_state['area_ha'] = area_input
+                        st.session_state['last_validation'] = msg
+                        st.rerun()
+
+                    except Exception as e:
+                        st.error(f"Could not parse coordinates: {e}")
+                else:
+                    st.warning("Please enter coordinates.")
+
+        # TAB 2: MANUAL DRAW
+        with tab_manual:
+            st.info("Use the Polygon tool (pentagon icon) to draw.")
+            c1, c2 = st.columns([3, 1])
+            with c1: search = st.text_input("Search Location", key="search_manual")
+            with c2:
+                st.write("")
+                if st.button("🔍 Locate", key="btn_locate"):
+                    try:
+                        geolocator = Nominatim(user_agent="aef_app_v2")
+                        if not search: 
+                             lat, lon = st.session_state['center_lat'], st.session_state['center_lon']
+                        else:
+                            loc = geolocator.geocode(search)
+                            if loc:
+                                st.session_state['center_lat'] = loc.latitude
+                                st.session_state['center_lon'] = loc.longitude
+                                st.rerun()
+                    except: st.error("Location not found.")
+
+        # TAB 3: LOAD CONFIG
+        with tab_upload:
             uploaded_file = st.file_uploader("Drop your field_config.json here", type="json")
             if uploaded_file is not None:
                 if StateManager.load_config_from_json(uploaded_file):
                     st.success("Configuration loaded!")
                     if st.button("🚀 Jump to Review"): st.session_state['step'] = 5; st.rerun()
-        
-        c1, c2 = st.columns([3, 1])
-        with c1: search = st.text_input("Search Location", "") # Empty default
-        with c2:
-            st.write("")
-            if st.button("🔍 Locate"):
-                try:
-                    geolocator = Nominatim(user_agent="aef_app_v2")
-                    if not search: # If empty search, try "me" again or current coords
-                         lat, lon = st.session_state['center_lat'], st.session_state['center_lon']
-                         st.info(f"Centering on {lat}, {lon}")
-                    else:
-                        loc = geolocator.geocode(search)
-                        if loc:
-                            st.session_state['center_lat'] = loc.latitude
-                            st.session_state['center_lon'] = loc.longitude
-                            st.rerun()
-                except: st.error("Location not found.")
 
+        st.divider()
+
+        # --- MAP DISPLAY ---
         if st.session_state['field_coords']:
-            area = st.session_state.get('area_ha', 0.0)
-            c_msg, c_next, c_reset = st.columns([2, 1, 1])
-            with c_msg: st.success(f"✅ Boundary Captured. **Area: {area} ha**")
-            with c_next: 
-                if st.button("Next Step ➡️", type="primary", use_container_width=True): st.session_state['step'] = 2; st.rerun()
-            with c_reset:
-                if st.button("🔄 Redraw", type="secondary", use_container_width=True):
-                    st.session_state['field_coords'] = []; st.session_state['area_ha'] = 0.0; st.rerun()
-        else: st.info("👆 Use the polygon tool on the left of the map to draw your field.")
+            st.markdown("##### 📐 Fine-Tune Position")
+            
+            # Show last validation status
+            if 'last_validation' in st.session_state:
+                st.caption(f"Current Status: {st.session_state['last_validation']}")
 
-        m = folium.Map(location=[st.session_state['center_lat'], st.session_state['center_lon']], zoom_start=16, max_zoom=20)
-        if not st.session_state['field_coords']:
-            Draw(export=False, position='topleft', draw_options={'polyline':False,'rectangle':False,'circle':False,'marker':False,'circlemarker':False,'polygon':True}, edit_options={'edit': False}).add_to(m)
-        else:
-            folium.Polygon(locations=st.session_state['field_coords'], color="blue", fill=True, fill_opacity=0.3).add_to(m)
+            c_nudge, c_info = st.columns([2, 2])
+            with c_nudge:
+                col_l, col_u, col_d, col_r = st.columns(4)
+                # Smaller shift for fine-tuning
+                shift_amt = 0.00005 # approx 5 meters
+                if col_l.button("⬅️"): 
+                    st.session_state['field_coords'] = [[p[0], p[1] - shift_amt] for p in st.session_state['field_coords']]
+                    st.rerun()
+                if col_u.button("⬆️"):
+                    st.session_state['field_coords'] = [[p[0] + shift_amt, p[1]] for p in st.session_state['field_coords']]
+                    st.rerun()
+                if col_d.button("⬇️"):
+                    st.session_state['field_coords'] = [[p[0] - shift_amt, p[1]] for p in st.session_state['field_coords']]
+                    st.rerun()
+                if col_r.button("➡️"):
+                    st.session_state['field_coords'] = [[p[0], p[1] + shift_amt] for p in st.session_state['field_coords']]
+                    st.rerun()
+            with c_info:
+                 area = st.session_state.get('area_ha', 0.0)
+                 st.metric("Area", f"{area} ha")
 
+        m = folium.Map(location=[st.session_state['center_lat'], st.session_state['center_lon']], zoom_start=17, max_zoom=20)
+        
+        # Add Satellite Layer for Visual Verification
+        folium.TileLayer(
+            tiles='https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+            attr='Esri',
+            name='Esri Satellite',
+            overlay=False,
+            control=True
+        ).add_to(m)
+
+        # Add existing polygon
+        if st.session_state['field_coords']:
+            folium.Polygon(
+                locations=st.session_state['field_coords'], 
+                color="#00FF00", weight=3, fill=True, fill_opacity=0.2, 
+                popup="Field Boundary"
+            ).add_to(m)
+        
+        # Draw Control
+        Draw(
+            export=False, 
+            position='topleft', 
+            draw_options={'polyline':False,'rectangle':False,'circle':False,'marker':False,'circlemarker':False,'polygon':True}, 
+            edit_options={'edit': True} # Allowed editing of user-drawn shapes
+        ).add_to(m)
+
+        folium.LayerControl().add_to(m)
         output = st_folium(m, height=500, width=800, key="map_step_1")
 
-        if output['all_drawings'] and not st.session_state['field_coords']:
+        # Handle Manual Drawing
+        if output['all_drawings']:
             last_draw = output['all_drawings'][-1]
             if last_draw['geometry']['type'] == 'Polygon':
                 raw = last_draw['geometry']['coordinates'][0]
-                coords = [[p[1], p[0]] for p in raw]
-                with st.spinner("🛰️ Validating land cover with AlphaEarth..."):
-                    is_valid, reason, breakdown = validate_land_cover_ee(coords)
-                if breakdown:
-                    sorted_bd = dict(sorted(breakdown.items(), key=lambda item: item[1], reverse=True))
-                    st.info(f"**Satellite Analysis:** {sorted_bd}")
-                if is_valid:
+                coords = [[p[1], p[0]] for p in raw] 
+                
+                current = st.session_state.get('field_coords', [])
+                if not current or (coords != current):
+                    # Validate the new manual drawing
+                    hist = get_land_cover_stats(coords)
+                    level, color, msg = analyze_risk_level(hist)
+                    
+                    if level == "CRITICAL":
+                        st.error(f"🛑 {msg}")
+                    elif level == "WARNING":
+                        st.warning(f"⚠️ {msg}")
+                    else:
+                        st.success(f"✅ {msg}")
+                        
                     st.session_state['field_coords'] = coords
                     st.session_state['area_ha'] = calculate_area_ha(coords)
+                    st.session_state['last_validation'] = msg
                     st.rerun()
-                else: st.error(f"🚫 Invalid Field: {reason}")
 
         if st.session_state['field_coords']:
             st.divider()
             c_back, c_next = st.columns([1, 6])
             with c_next:
-                if st.button("Next ➡️"): st.session_state['step'] = 2; st.rerun()
+                if st.button("Next Step ➡️"): st.session_state['step'] = 2; st.rerun()
+            with c_back:
+                 if st.button("🗑️ Clear"):
+                     st.session_state['field_coords'] = []
+                     st.session_state['area_ha'] = 0.0
+                     st.rerun()
 
     # ==========================================================================
     # STEP 2: CROP SELECTION
@@ -390,43 +579,27 @@ def app():
     elif st.session_state['step'] == 4:
         st.subheader("🪨 Step 4: Soil & Management Operations")
         
-        # Check Crop Type for UI Hints
         c_id = st.session_state.get('selected_crop_id')
         row = st.session_state['df_crops'][st.session_state['df_crops']['Crop_ID'] == c_id].iloc[0]
         is_perennial = row['Type'] == 'Perennial'
 
-        # --- SOIL PROFILE SECTION ---
         st.markdown("##### Soil Profile & Nutrient Intelligence")
-        
-        # Status Container for feedback
         status_container = st.container()
-
         c_auto, c_hist = st.columns([1, 2])
         
-        # 1. AUTO-DETECT BUTTON
         with c_auto:
             if st.button("🛰️ Auto-Detect Soil (AlphaEarth)", help="Derives soil physics and nutrients from OpenLandMap (0-30cm)."):
                 with st.spinner("Analyzing soil geostatistics (Texture, Carbon, C:N Ratio)..."):
                     success, data, error_msg = get_auto_soil_profile(st.session_state['field_coords'])
                     
                     if success:
-                        # Update State
                         st.session_state['soil_type'] = data['texture']
-                        
-                        # Apply Historical Depletion Logic
                         years_farming = st.session_state.get('history_years', 0)
                         
-                        # Nitrogen: Use the calculated Available N
                         base_n = data['n_available']
-                        
-                        # Phosphorus: Empirical estimation based on Carbon and Clay
-                        # (Organic matter releases P, Clay fixes P)
                         base_p = max(8.0, (15.0 + (data['carbon'] * 0.3)) - (data['clay'] * 0.15))
-                        
-                        # Potassium: Clay usually provides high K
                         base_k = max(60.0, 50.0 + (data['clay'] * 2.0))
                         
-                        # Apply Depletion factor
                         final_n = base_n * ((1 - 0.05) ** years_farming)
                         final_p = base_p * ((1 - 0.02) ** years_farming)
                         final_k = base_k * ((1 - 0.03) ** years_farming)
@@ -435,7 +608,6 @@ def app():
                         st.session_state['initial_phosphorus'] = round(final_p, 1)
                         st.session_state['initial_potassium'] = round(final_k, 1)
                         
-                        # Visual Feedback
                         status_container.success(
                             f"✅ **Analysis Successful**\n\n"
                             f"**Texture:** {data['texture'].upper()}\n"
@@ -444,7 +616,6 @@ def app():
                             f"**Available N (Start):** {final_n:.1f} mg/kg"
                         )
                         import time; time.sleep(2.0); st.rerun()
-                        
                     else:
                         status_container.error(f"❌ **Detection Failed:** {error_msg}")
 
@@ -457,7 +628,6 @@ def app():
 
         st.divider()
 
-        # 2. SOIL CONFIGURATION UI
         c_soil_cfg, c_soil_info = st.columns([1, 1])
         with c_soil_cfg:
             expert_mode = st.toggle("Expert Mode (Edit Soil Physics)", value=st.session_state.get('use_expert_soil', False))
@@ -471,7 +641,6 @@ def app():
                 selected_soil = st.selectbox("Soil Texture Class", options=[s.title() for s in soils], index=soils.index(curr_soil))
                 st.session_state['soil_type'] = selected_soil.lower()
                 
-                # Update layers based on selection
                 props = _SOIL_TABLE[st.session_state['soil_type']]
                 st.session_state['soil_layers'] = pd.DataFrame([{
                     'depth_top': 0.0, 
@@ -518,7 +687,6 @@ def app():
 
         st.divider()
 
-        # --- MANAGEMENT SCHEDULES ---
         c_fert, c_irr = st.columns(2)
         fert_service = FertilizerService()
         product_names = [p['name'] for p in fert_service.products]
