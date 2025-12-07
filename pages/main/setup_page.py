@@ -294,7 +294,10 @@ def app():
 
         # TAB 1: ASSISTED (SMART SEARCH)
         with tab_auto:
-            st.info("Enter coordinates. We will auto-scan the area to avoid buildings/water and place the field in valid cropland/vegetation.")
+            st.info(
+                "💡 **Pro Tip:** Use this **Assisted Setup** to find your location and generate a safe baseline shape. "
+                "Once generated, you can switch to the **✍️ Manual Draw** tab to trace the exact boundaries over the satellite image."
+            )
             
             c_input, c_area = st.columns([2, 1])
             with c_input:
@@ -344,7 +347,7 @@ def app():
 
         # TAB 2: MANUAL DRAW
         with tab_manual:
-            st.info("Use the Polygon tool (pentagon icon) to draw.")
+            st.info("Use the Polygon tool (pentagon icon) to draw your field. If you used Assisted Setup, use the shape as a guide.")
             c1, c2 = st.columns([3, 1])
             with c1: search = st.text_input("Search Location", key="search_manual")
             with c2:
