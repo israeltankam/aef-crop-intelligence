@@ -297,6 +297,7 @@ def app():
             st.info(
                 "💡 **Pro Tip:** Use this **Assisted Setup** to find your location and generate a safe baseline shape. "
                 "Once generated, you can switch to the **✍️ Manual Draw** tab to trace the exact boundaries over the satellite image."
+                "If you have already configured and saved your field in a previous use: **📂 Load Config**."
             )
             
             c_input, c_area = st.columns([2, 1])

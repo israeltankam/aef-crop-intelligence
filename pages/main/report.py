@@ -162,8 +162,7 @@ def app():
                 config['soil_layers'] = []
 
             # --- 2. RUN DISEASE ENSEMBLE ---
-            # Automatically handles 10-year horizon for perennials inside SimulationEngine
-            with st.spinner(f"Running 50 Stochastic Scenarios for {'10-Year' if is_perennial else 'Seasonal'} Risk..."):
+            with st.spinner(f"Running 50 Stochastic Scenarios for {'20-Year' if is_perennial else 'Seasonal'} Risk..."):
                 ens_res = engine.run_ensemble_inference(config, n_runs=50)
                 
             if ens_res is None:
@@ -190,7 +189,6 @@ def app():
                 # Extract Potential Curve
                 hist_potential = res_potential['history'] if res_potential else []
                 if is_perennial:
-                    # For perennials, potential is the standing fruit curve
                     pot_yield_curve = [day.get('Fruit_Biomass', day['Yield']) for day in hist_potential]
                 else:
                     pot_yield_curve = [day['Yield'] for day in hist_potential]
@@ -207,44 +205,46 @@ def app():
                 
                 # --- METRICS LOGIC ---
                 if is_perennial:
-                    # ROI: Analyze Peaks (Harvests) over 10 years
+                    # ROI: Analyze Peaks (Harvests) over 20 years
                     df_ens = pd.DataFrame({'Date': stats['Date'], 'Yield': stats['Yield_Mean']})
                     df_ens['Year'] = pd.to_datetime(df_ens['Date']).dt.year
                     
-                    # Get max standing fruit per year (proxy for harvestable amount)
                     yearly_peaks = df_ens.groupby('Year')['Yield'].max()
                     
                     # 1. Average Annual Yield
                     final_y_mean = yearly_peaks.mean() 
                     
-                    # 2. Total Production (Sum of all years)
+                    # 2. Total Production
                     total_production_mean = yearly_peaks.sum() * area
                     
-                    # Uncertainty (approx based on last year's std dev ratio)
+                    # Uncertainty
                     last_std = stats['Yield_Std'][-1]
                     last_mean = stats['Yield_Mean'][-1]
                     cv = last_std / (last_mean + 1e-6)
                     final_y_ci = 1.96 * (final_y_mean * cv)
                     total_prod_ci = 1.96 * (total_production_mean * cv)
                     
-                    # Gap Analysis (Potential vs Realized)
+                    # Gap Analysis
                     df_pot = pd.DataFrame({'Date': pot_yield_dates, 'Yield': pot_yield_curve})
                     df_pot['Year'] = pd.to_datetime(df_pot['Date']).dt.year
                     pot_peaks = df_pot.groupby('Year')['Yield'].max()
                     
-                    pot_avg = pot_peaks.mean() # Average Potential
-                    pot_total = pot_peaks.sum() # Total Potential
+                    pot_avg = pot_peaks.mean() 
+                    pot_total = pot_peaks.sum()
                     
-                    # Gap based on Totals (mathematically equivalent to gap based on averages)
+                    # Gap based on Totals
                     yield_gap_t = pot_total - yearly_peaks.sum()
                     loss_pct = (yield_gap_t / (pot_total + 1e-6)) * 100
                     
-                    # UPDATED LABELS: Showing 10y Average instead of Cumulative
-                    potential_label = f"{pot_avg:.2f} t/ha (10y Average)"
-                    forecast_label = f"{final_y_mean:.2f} +/- {final_y_ci:.2f} t/ha (10y Average)"
+                    # Calculate true 20-year average for potential
+                    # Use mean() of peaks, not the sum or the raw curve average
+                    final_pot_avg = pot_peaks.mean()
+
+                    # UPDATED LABELS: Showing 20y Average
+                    potential_label = f"{final_pot_avg:.2f} t/ha (20y Average)"
+                    forecast_label = f"{final_y_mean:.2f} +/- {final_y_ci:.2f} t/ha (20y Average)"
                     
                 else:
-                    # ANNUAL: Single final value
                     final_y_mean = stats['Yield_Mean'][-1]
                     final_y_std = stats['Yield_Std'][-1]
                     final_y_ci = 1.96 * final_y_std
@@ -265,15 +265,14 @@ def app():
                 peak_stress_w = df_hist['Avg_Stress'].max()
                 peak_stress_n = df_hist['Avg_N_Stress'].max()
                 
-                # Drought Events Count (Days > 0.6 stress)
                 drought_days = (df_hist['Avg_Stress'] > 0.6).sum()
-                drought_events = drought_days // 7 # Approx weeks of severe stress
+                drought_events = drought_days // 7 
 
                 # --- CHAPTER 1: CONFIG ---
                 pdf.chapter_title("1. Field Configuration")
                 conf_txt = (
                     f"Location: {st.session_state['center_lat']:.4f}, {st.session_state['center_lon']:.4f}\n"
-                    f"Crop: {crop_p['Crop_Name']} - {crop_p['Variety']} ({'Perennial - 10 Year Horizon' if is_perennial else f'Annual - {crop_p['Cycle_Days']} days'})\n"
+                    f"Crop: {crop_p['Crop_Name']} - {crop_p['Variety']} ({'Perennial - 20 Year Horizon' if is_perennial else f'Annual - {crop_p['Cycle_Days']} days'})\n"
                     f"Soil Type: {st.session_state['soil_type'].title()}\n"
                     f"Initial Nutrients (mg/kg): N={st.session_state['initial_nitrogen']}, P={st.session_state.get('initial_phosphorus',20)}, K={st.session_state.get('initial_potassium',100)}\n"
                     f"Disease Target: {dis_info['Disease_Name'] if dis_info is not None else 'None'}"
@@ -293,7 +292,7 @@ def app():
                 )
                 
                 if is_perennial:
-                    diag_txt += f"\n**Long-Term Risk:** {drought_events} severe drought weeks projected over the next decade."
+                    diag_txt += f"\n**Long-Term Risk:** {drought_events} severe drought weeks projected over the next 20 years."
                 
                 pdf.chapter_body(diag_txt)
                 
@@ -302,36 +301,24 @@ def app():
                 dates = pd.to_datetime(stats['Date'])
                 
                 if is_perennial:
-                    # SAWTOOTH PLOT
                     ax1.plot(dates, stats['Yield_Mean'], 'g-', linewidth=2, label='Forecast (Standing Fruit)')
-                    
-                    # Uncertainty Ribbon
                     lower = stats['Yield_Mean'] - (1.96 * stats['Yield_Std'])
                     upper = stats['Yield_Mean'] + (1.96 * stats['Yield_Std'])
-                    # Clip lower at 0
                     lower = np.maximum(lower, 0)
-                    
                     ax1.fill_between(dates, lower, upper, color='green', alpha=0.2, label='95% Uncertainty')
                     
-                    # Formatting
                     ax1.set_ylabel('Standing Fruit (t/ha)', color='g')
-                    ax1.set_title("Simulation Trajectory (10 Year Horizon)")
-                    
-                    # Format X-axis to show Years
-                    ax1.xaxis.set_major_locator(mdates.YearLocator())
+                    ax1.set_title("Simulation Trajectory (20 Year Horizon)")
+                    ax1.xaxis.set_major_locator(mdates.YearLocator(2)) 
                     ax1.xaxis.set_major_formatter(mdates.DateFormatter('%Y'))
-                    
                 else:
-                    # SIGMOID PLOT (Annual)
                     if pot_yield_curve:
                         ax1.plot(pot_yield_dates, pot_yield_curve, 'k--', alpha=0.6, linewidth=1.5, label='Potential')
                     
                     ax1.plot(dates, stats['Yield_Mean'], 'g-', linewidth=2, label='Forecast')
-                    
                     lower = stats['Yield_Mean'] - (1.96 * stats['Yield_Std'])
                     upper = stats['Yield_Mean'] + (1.96 * stats['Yield_Std'])
                     ax1.fill_between(dates, lower, upper, color='green', alpha=0.2, label='95% Uncertainty')
-                    
                     ax1.set_ylabel('Yield (t/ha)', color='g')
                     ax1.set_title("Yield Accumulation Forecast")
 
@@ -362,7 +349,6 @@ def app():
                     pdf.cell(40, 7, "Amount (L/ha)", 1, 0, 'C', 1)
                     pdf.cell(90, 7, "Rationale", 1, 1, 'L', 1)
                     
-                    # Limit displayed rows for PDF to avoid overflow
                     display_limit = 15
                     for i, event in enumerate(opt_irr_schedule):
                         if i >= display_limit:
@@ -371,12 +357,11 @@ def app():
                             pdf.cell(90, 7, f"and {len(opt_irr_schedule)-display_limit} more events.", 1, 1, 'L')
                             break
                         
-                        # CONVERSION LOGIC: mm -> L/ha
                         amount_mm = event['amount']
                         amount_l_ha = amount_mm * 10000.0
                         
                         pdf.cell(40, 7, str(event['date']), 1, 0, 'C')
-                        pdf.cell(40, 7, f"{amount_l_ha:,.0f} L/ha", 1, 0, 'C') # Formatted with commas
+                        pdf.cell(40, 7, f"{amount_l_ha:,.0f} L/ha", 1, 0, 'C') 
                         pdf.cell(90, 7, "Refill Soil Moisture to 90% FC", 1, 1, 'L')
                     
                     pdf.ln(5)
@@ -415,14 +400,11 @@ def app():
                         rate_str = f"{event['amount']} kg"
                         rat_str = event['rationale']
                         
-                        # Dynamic row height
                         num_lines = max(1, len(rat_str) // 45 + 1)
                         row_height = 6 * num_lines
                         
-                        # Page break check
                         if pdf.get_y() + row_height > 270:
                             pdf.add_page()
-                            # Re-print header
                             pdf.set_font('Arial', 'B', 9)
                             pdf.cell(30, 7, "Date", 1, 0, 'C', 1)
                             pdf.cell(50, 7, "Product", 1, 0, 'L', 1)
@@ -462,6 +444,8 @@ def app():
 
                 if df_ndvi is not None and not df_ndvi.empty:
                     fig_sat, ax1 = plt.subplots(figsize=(8, 4))
+                    
+                    # UPDATED PLOT: Uses df_hist['LAI'] (green dashed) + NDVI (blue dots) matching Dashboard
                     l1, = ax1.plot(dates, df_hist['LAI'], 'g--', linewidth=1.5, label='Model LAI')
                     ax1.set_ylabel('Leaf Area Index', color='g')
                     ax1.tick_params(axis='y', labelcolor='g')

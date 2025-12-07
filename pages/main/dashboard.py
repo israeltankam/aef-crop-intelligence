@@ -131,7 +131,7 @@ def app():
     is_perennial = crop_p['Type'] == 'Perennial'
     
     # --- 2. TIMELINE CONTROLLER ---
-    st.subheader(f"📅 {'10-Year Horizon' if is_perennial else 'Seasonal Timeline'}")
+    st.subheader(f"📅 {'20-Year Horizon' if is_perennial else 'Seasonal Timeline'}")
     dates = [pd.to_datetime(h['Date']).date() for h in history]
     
     today = date.today()
@@ -140,7 +140,7 @@ def app():
     
     # Dual-Mode Slider
     if is_perennial:
-        # For perennials, the slider covers 10 years
+        # For perennials, the slider covers 20 years
         selected_date = st.slider("View State At:", min_value=dates[0], max_value=dates[-1], value=default_date, format="YYYY-MM-DD")
     else:
         # Annuals
@@ -288,7 +288,7 @@ def app():
     with tabs[1]:
         if is_perennial:
             # SAWTOOTH CHART + UNCERTAINTY
-            st.markdown("**10-Year Yield Trajectory (Sawtooth Pattern)**")
+            st.markdown("**20-Year Yield Trajectory (Sawtooth Pattern)**")
             st.caption("Shows accumulation of fruit and annual harvest/drop events. The green band represents estimated uncertainty due to climate variability.")
 
             # Create synthetic uncertainty for dashboard visual (Report does full ensemble)
@@ -413,7 +413,7 @@ def app():
     
     with st.expander("📋 View Raw Daily Data"):
         st.dataframe(df_plot.drop(columns=['Grid_Incidence', 'Grid_Yield']))
-    
+
     if st.button("🔄 Rerun Simulation"):
         if 'sim_results' in st.session_state: del st.session_state['sim_results']
         if 'ndvi_data' in st.session_state: del st.session_state['ndvi_data']

@@ -20,21 +20,15 @@ class SimulationEngine:
         self.physics = PhysicsEngine()
         self.fert_service = FertilizerService()
 
-    def _expand_schedule_for_perennials(self, schedule_list, years=10):
-        """
-        Replicates a 1-year schedule across a multi-year horizon (e.g., 2023 -> 2023...2032).
-        """
+    def _expand_schedule_for_perennials(self, schedule_list, years=20):
         if not schedule_list: return []
-        
         expanded = []
         for i in range(years):
             offset_year = i
             for event in schedule_list:
                 try:
                     orig_date = pd.to_datetime(event['date'])
-                    # Shift date by i years
                     new_date = orig_date.replace(year=orig_date.year + offset_year).date()
-                    
                     new_event = event.copy()
                     new_event['date'] = new_date
                     expanded.append(new_event)
@@ -45,17 +39,31 @@ class SimulationEngine:
     def _prepare_physics(self, config):
         """
         Initializes Weather, Soil State, and Management Schedules.
-        Handles Perennial (10-yr) vs Annual (Cycle) logic.
-        Parses Pruning vs Fertilization.
+        Handles Perennial (20-yr) vs Annual (Cycle) logic.
+        Calculates DYNAMIC WOOD CAPACITY based on Density.
         """
         df_c = st.session_state['df_crops']
-        crop_p = df_c[df_c['Crop_ID'] == config['selected_crop_id']].iloc[0]
+        # Convert Series to dict to allow injection of new keys (Max_Wood_Capacity)
+        crop_p = df_c[df_c['Crop_ID'] == config['selected_crop_id']].iloc[0].to_dict()
         
+        # --- DYNAMIC CAPACITY LOGIC ---
+        # Read per-tree capacity (kg) from DB (default to 0 if missing)
+        per_tree_kg = float(crop_p.get('Per_Tree_Wood_Capacity_kg', 0.0))
+        # Read user density (plants/ha)
+        density = float(config.get('planting_density', 1000.0))
+        
+        # Calculate Max Wood in t/ha
+        # formula: (kg_per_tree * trees_per_ha) / 1000 = tonnes_per_ha
+        max_wood_t_ha = (per_tree_kg * density) / 1000.0
+        
+        # Inject into crop parameters
+        crop_p['Max_Wood_Capacity'] = max_wood_t_ha
+
         # --- 1. HORIZON LOGIC ---
         is_perennial = crop_p['Type'] == 'Perennial'
         
         if is_perennial:
-            duration_days = 3650 # 10 Years
+            duration_days = 7300 # 20 Years
         else:
             duration_days = int(crop_p['Cycle_Days'])
 
@@ -87,7 +95,6 @@ class SimulationEngine:
         fc_mm = total_fc_pct * root_depth_mm
         wp_mm = total_wp_pct * root_depth_mm
         
-        # FIX: Ensure robust default if config is missing key (default to 0.8)
         init_water_frac = config.get('initial_soil_water', 0.8)
         init_water = init_water_frac * fc_mm 
         if init_water < wp_mm: init_water = wp_mm
@@ -107,12 +114,10 @@ class SimulationEngine:
         raw_fert = config['fert_schedule']
         raw_irr = config['irr_schedule']
 
-        # If perennial, expand the user's 1-year inputs to 10 years
         if is_perennial:
-            raw_fert = self._expand_schedule_for_perennials(raw_fert)
-            raw_irr = self._expand_schedule_for_perennials(raw_irr)
+            raw_fert = self._expand_schedule_for_perennials(raw_fert, years=20)
+            raw_irr = self._expand_schedule_for_perennials(raw_irr, years=20)
 
-        # Parse Fertilizers & Operations
         fert_df = pd.DataFrame(raw_fert)
         fert_n_map, fert_p_map, fert_k_map = {}, {}, {}
         pruning_days = set() 
@@ -122,14 +127,11 @@ class SimulationEngine:
                 for _, row in fert_df.iterrows():
                     d = pd.to_datetime(row['date']).date()
                     prod_name = row['product']
-                    
                     if 'Canopy Pruning' in prod_name:
                         pruning_days.add(d)
                         continue 
-
                     amount = float(row['amount'])
                     prod_info = next((p for p in self.fert_service.products if p['name'] == prod_name), None)
-                    
                     if prod_info and prod_info['type'] != 'Operation':
                         fert_n_map[d] = fert_n_map.get(d, 0) + (amount * prod_info['N'] / 100.0)
                         fert_p_map[d] = fert_p_map.get(d, 0) + (amount * prod_info['P'] / 100.0)
@@ -152,8 +154,6 @@ class SimulationEngine:
 
         # --- 5. RUN PHYSICS LOOP ---
         bio_history = []
-        
-        # Accumulators
         biomass_cum = 0.0      
         biomass_perfect_cum = 0.0  
         wood_cum = 0.0
@@ -167,16 +167,14 @@ class SimulationEngine:
             'wood_biomass': 0.0 
         }
 
-        # EXTRACT LATITUDE FOR ET0
         lat = config.get('center_lat', 0.0)
 
         for t, row in weather.iterrows():
             curr_date = row['DATE'].date()
-            
             mgmt['pruning'] = curr_date in pruning_days
             plant_state['wood_biomass'] = wood_cum
 
-            # PASS LATITUDE TO PHYSICS
+            # Physics Step (Dict is mutable, so crop_p carries Max_Wood_Capacity)
             bio = self.physics.stics_lite_step(t, row, crop_p, soil_state, plant_state, mgmt, lat_deg=lat)
             
             if is_perennial:
@@ -213,9 +211,9 @@ class SimulationEngine:
         path = Path(field_poly)
         min_x, min_y = np.min(field_poly, axis=0)
         max_x, max_y = np.max(field_poly, axis=0)
+        
         N = 40 
-        x = np.linspace(min_x, max_x, N);
-        y = np.linspace(min_y, max_y, N)
+        x = np.linspace(min_x, max_x, N); y = np.linspace(min_y, max_y, N)
         xv, yv = np.meshgrid(x, y)
         points = np.vstack((xv.flatten(), yv.flatten())).T
         mask = path.contains_points(points).reshape(N, N)
@@ -255,7 +253,6 @@ class SimulationEngine:
             if 'fungal' in str(dis_p['Type']).lower() or 'bacterial' in str(dis_p['Type']).lower(): is_fungal = True
 
         I_grid = np.zeros((N, N))
-        
         try:
             detect_date = pd.to_datetime(config['detection_date']).date()
         except:
@@ -265,30 +262,23 @@ class SimulationEngine:
         beta = dis_p['Beta_Infection'] if dis_p is not None else 0
         if dis_p is not None: beta *= crop_p['Resistance_Score']
 
-        # Recovery Parameters
-        hygiene_factor = float(dis_p.get('Pruning_Hygiene_Factor', 1.0)) if dis_p is not None else 1.0
         base_recovery_rate = float(dis_p.get('Daily_Recovery_Rate', 0.0)) if dis_p is not None else 0.0
 
         history_realization = []
         n_valid = len(valid_points)
-        
-        # --- STOCHASTIC INITIALIZATION (AR1 Process) ---
         yield_noise_val = 0.0
         env_noise_val = 0.0
         
         for bio in bio_history:
-            # 1. APPLY STOCHASTICITY (If enabled)
             if stochastic_mode:
                 yield_noise_val = 0.95 * yield_noise_val + np.random.normal(0, 0.05)
                 env_noise_val = 0.95 * env_noise_val + np.random.normal(0, 0.05)
-                
                 yield_factor = max(0.5, 1.0 + yield_noise_val) 
                 env_factor = max(0.5, 1.0 + env_noise_val)
             else:
                 yield_factor = 1.0
                 env_factor = 1.0
 
-            # 2. APPLY YIELD VARIABILITY
             biomass_val = bio['cumulative_biomass'] 
             if crop_p['Type'] == 'Perennial':
                 yield_base = bio['Fruit_Biomass'] * yield_factor
@@ -298,24 +288,19 @@ class SimulationEngine:
             weather_row = bio['weather_row']
             curr_date = weather_row['DATE'].date()
             
-            # 3. APPLY ENVIRONMENT VARIABILITY (Disease Risk)
             env_risk = 0
             if dis_p is not None:
                 t_score = np.exp(-((weather_row['TMIN'] + weather_row['TMAX'])/2 - dis_p['Opt_Temp'])**2 / 50)
                 h_score = 1.0 if weather_row['HUMIDITY'] > dis_p['Opt_Humidity'] else weather_row['HUMIDITY']/100
-                
-                # Base Risk
                 raw_risk = t_score * h_score
                 env_risk = np.clip(raw_risk * env_factor, 0.0, 1.0)
 
-            # --- DISEASE UPDATE STEP ---
             if curr_date < detect_date:
                 pass 
             elif curr_date == detect_date:
                 I_grid = np.maximum(I_grid, I_grid_init)
             else:
                 if dis_p is not None:
-                    # A. GROWTH
                     if is_fungal:
                         wind_speed = weather_row.get('WIND_SPEED', 2.0)
                         spread_driver = (wind_speed / 5.0) 
@@ -325,22 +310,17 @@ class SimulationEngine:
                     pressure = convolve2d(I_grid, kernel, mode='same')
                     growth = beta * spread_driver * env_risk * pressure * (1 - I_grid)
                     
-                    # B. DISPERSAL JUMPS
                     jump_prob = 0.0005 * (1.5 if is_fungal else 1.0)
                     jumps = (np.random.rand(N, N) < jump_prob) * (I_grid.sum() > 0) * 0.1
                     
-                    # C. NATURAL RECOVERY & ENVIRONMENTAL RESET
                     seasonality_multiplier = 1.0 + (3.0 * (1.0 - env_risk)) 
                     effective_decay = base_recovery_rate * seasonality_multiplier
                     
-                    # Update Grid
                     I_grid = I_grid + growth + jumps - (I_grid * effective_decay)
-                    
                     I_grid = np.clip(I_grid, 0, 1)
                     I_grid = I_grid * mask
 
             inf_values = I_grid[mask]
-            
             damage_factor = np.ones(n_valid)
             if dis_p is not None and np.mean(inf_values) > 0:
                 retained = dis_p.get('Yield_Retained_Infected', 0.5)
@@ -406,7 +386,6 @@ class SimulationEngine:
         
         for _ in range(n_runs):
             run_hist = self._run_disease_realization(config, crop_p, bio_history, N, mask, valid_points, I_grid_init, stochastic_mode=True)
-            
             y_series = [day['Yield'] for day in run_hist]
             i_series = [day['Incidence'] for day in run_hist]
             ensemble_yields.append(y_series)
@@ -433,16 +412,11 @@ class SimulationEngine:
         }
 
     def optimize_irrigation_schedule(self, config):
-        """
-        Reactive Optimization.
-        Handles Perennial repetition automatically in _prepare_physics logic manually re-implemented here for iterative loop.
-        """
         res_physics = self._prepare_physics(config)
         if res_physics is None: return [], 0.0
         crop_p, weather, base_hist = res_physics
         
         max_irr_limit = float(crop_p.get('Max_Irr_Event_mm', 40.0))
-        # Constrain perennials to max one event every 60 days
         if crop_p['Type'] == 'Perennial':
             min_interval_days = 60 
         else:
@@ -465,10 +439,7 @@ class SimulationEngine:
         fc_mm = total_fc_pct * root_depth_mm
         wp_mm = total_wp_pct * root_depth_mm
         taw = fc_mm - wp_mm
-        
         conv_factor = 4.0
-        
-        # FIX: Consistently use the same default as _prepare_physics
         init_water_frac = config.get('initial_soil_water', 0.8)
         soil_state = {
             'water_mm': init_water_frac * fc_mm,
@@ -481,12 +452,12 @@ class SimulationEngine:
         
         raw_irr = config['irr_schedule']
         if crop_p['Type'] == 'Perennial':
-            raw_irr = self._expand_schedule_for_perennials(raw_irr)
+            raw_irr = self._expand_schedule_for_perennials(raw_irr, years=20)
         user_irr_dates = {pd.to_datetime(r['date']).date(): float(r['amount']) for r in raw_irr}
         
         raw_fert = config['fert_schedule']
         if crop_p['Type'] == 'Perennial':
-            raw_fert = self._expand_schedule_for_perennials(raw_fert)
+            raw_fert = self._expand_schedule_for_perennials(raw_fert, years=20)
         
         fert_df = pd.DataFrame(raw_fert)
         fert_n_map, fert_p_map, fert_k_map = {}, {}, {}
@@ -507,11 +478,8 @@ class SimulationEngine:
         
         new_irrigation_log = []
         last_auto_irr_day = -999 
-        
         plant_state = {'lai': 0.0, 'stunting_factor': 1.0, 'cum_dd': 0.0, 'age_days': 0, 'wood_biomass': 0.0}
-        wood_cum = 0.0 # Track wood locally for pruning
-
-        # EXTRACT LATITUDE
+        wood_cum = 0.0 
         lat = config.get('center_lat', 0.0)
 
         for t, row in weather.iterrows():
@@ -531,8 +499,6 @@ class SimulationEngine:
                     refill_target = fc_mm * 0.90
                     req_water = max(0, refill_target - projected_water_mm)
                     actual_app = min(req_water, max_irr_limit)
-                    
-                    # FIX: Lower threshold from 10 to 2 to catch stress earlier
                     if actual_app > 2.0: 
                         added_water = actual_app
                         new_irrigation_log.append({
@@ -550,8 +516,6 @@ class SimulationEngine:
             mgmt_step['irr'][curr_date] = user_input + added_water
             
             plant_state['wood_biomass'] = wood_cum
-            
-            # PASS LATITUDE
             bio = self.physics.stics_lite_step(t, row, crop_p, soil_state, plant_state, mgmt_step, lat_deg=lat)
             
             if crop_p['Type'] == 'Perennial':
@@ -559,8 +523,7 @@ class SimulationEngine:
                 if wood_cum < 0: wood_cum = 0
 
         df_log = pd.DataFrame(new_irrigation_log)
-        if df_log.empty:
-            return [], soil_state['water_mm']
+        if df_log.empty: return [], soil_state['water_mm']
             
         df_log['date'] = pd.to_datetime(df_log['date'])
         df_log['Week_Num'] = df_log['date'].dt.isocalendar().week
@@ -610,15 +573,14 @@ class SimulationEngine:
             'wilting_point_mm': wp_mm
         }
 
-        # Expand inputs
         raw_irr = config['irr_schedule']
         if crop_p['Type'] == 'Perennial':
-            raw_irr = self._expand_schedule_for_perennials(raw_irr)
+            raw_irr = self._expand_schedule_for_perennials(raw_irr, years=20)
         irr_map = {pd.to_datetime(r['date']).date(): float(r['amount']) for r in raw_irr}
 
         raw_fert = config['fert_schedule']
         if crop_p['Type'] == 'Perennial':
-            raw_fert = self._expand_schedule_for_perennials(raw_fert)
+            raw_fert = self._expand_schedule_for_perennials(raw_fert, years=20)
 
         fert_df = pd.DataFrame(raw_fert)
         fert_n_map, fert_p_map, fert_k_map = {}, {}, {}
@@ -640,11 +602,8 @@ class SimulationEngine:
         rec_log = []
         last_fert_day = -45
         min_interval_days = 45
-        
         plant_state = {'lai': 0.0, 'stunting_factor': 1.0, 'cum_dd': 0.0, 'age_days': 0, 'wood_biomass': 0.0}
         wood_cum = 0.0
-        
-        # EXTRACT LATITUDE
         lat = config.get('center_lat', 0.0)
 
         for i, (t, row) in enumerate(weather.iterrows()):
@@ -672,7 +631,6 @@ class SimulationEngine:
                 
                 if (i - last_fert_day) >= min_interval_days:
                     product_name, amount_kg_ha, rationale = self.fert_service.recommend_product(def_n, def_p, def_k)
-                    
                     if product_name and amount_kg_ha > 10: 
                         rec_log.append({
                             'date': curr_date,
@@ -680,17 +638,13 @@ class SimulationEngine:
                             'amount': amount_kg_ha,
                             'rationale': rationale
                         })
-                        
                         prod_info = next(p for p in self.fert_service.products if p['name'] == product_name)
                         soil_state['n_kg'] += amount_kg_ha * (prod_info['N'] / 100)
                         soil_state['p_kg'] += amount_kg_ha * (prod_info['P'] / 100)
                         soil_state['k_kg'] += amount_kg_ha * (prod_info['K'] / 100)
-                        
                         last_fert_day = i
             
             plant_state['wood_biomass'] = wood_cum
-            
-            # PASS LATITUDE
             bio = self.physics.stics_lite_step(i, row, crop_p, soil_state, plant_state, mgmt_step, lat_deg=lat)
             
             if crop_p['Type'] == 'Perennial':
