@@ -5,7 +5,8 @@ from src.models.state_manager import StateManager
 from src.utils.access_control import check_access
 from pages.main import setup_page
 from pages.main import dashboard
-from pages.main import report 
+from pages.main import report
+from pages.main import surveillance # NEW IMPORT
 
 # 1. App Config
 st.set_page_config(
@@ -16,7 +17,6 @@ st.set_page_config(
 )
 
 # --- AUTHENTICATION WALL ---
-# Define the secret key for decoding (In production, use st.secrets if possible)
 ACCESS_KEY_SECRET = "default_secret" 
 
 if 'access_granted' not in st.session_state:
@@ -26,7 +26,6 @@ if not st.session_state['access_granted']:
     # Centered Login Screen
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
-        # Uncomment if you have the logo file present
         # st.image("src/images/logo/logo.png", width=200) 
         st.title("🔐 Access Restricted")
         st.markdown("Welcome to **AEF Crop Intelligence** (Alpha Version).")
@@ -59,6 +58,7 @@ if 'step' not in st.session_state:
 menu_data = [
     {'icon': "fa fa-map-marker", 'label': "Site Setup"},
     {'icon': "fas fa-satellite", 'label': "Intelligence Dashboard"},
+    {'icon': "fa fa-chart-line", 'label': "Adaptive Surveillance"}, # NEW TAB
     {'icon': "fa fa-file-pdf", 'label': "Report"},
 ]
 
@@ -94,6 +94,12 @@ elif menu_id == "Intelligence Dashboard":
         st.warning("⚠️ Please complete the configuration in 'Site Setup' first.")
     else:
         dashboard.app()
+
+elif menu_id == "Adaptive Surveillance":
+    if not st.session_state.get('setup_complete'):
+        st.warning("⚠️ Please complete the configuration in 'Site Setup' first.")
+    else:
+        surveillance.app()
 
 elif menu_id == "Report":
     if 'sim_results' not in st.session_state:

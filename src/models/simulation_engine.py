@@ -41,14 +41,24 @@ class SimulationEngine:
         Initializes Weather, Soil State, and Management Schedules.
         Handles Perennial (20-yr) vs Annual (Cycle) logic.
         Calculates DYNAMIC WOOD CAPACITY based on Density.
+        
+        NEW: Injects Calibrated Parameters from config['calibrated_params']
         """
         df_c = st.session_state['df_crops']
         # Convert Series to dict to allow injection of new keys (Max_Wood_Capacity)
         crop_p = df_c[df_c['Crop_ID'] == config['selected_crop_id']].iloc[0].to_dict()
         
+        # --- OVERRIDE WITH CALIBRATED PARAMS ---
+        if 'calibrated_params' in config and config['calibrated_params']:
+            cal = config['calibrated_params']
+            for k, v in cal.items():
+                if k in crop_p or k in ['RUE_g_MJ', 'Max_LAI', 'Harvest_Index', 'Per_Tree_Wood_Capacity_kg']:
+                    crop_p[k] = v
+        
         # --- DYNAMIC CAPACITY LOGIC ---
         # Read per-tree capacity (kg) from DB (default to 0 if missing)
         per_tree_kg = float(crop_p.get('Per_Tree_Wood_Capacity_kg', 0.0))
+        
         # Read user density (plants/ha)
         density = float(config.get('planting_density', 1000.0))
         
@@ -101,6 +111,7 @@ class SimulationEngine:
 
         conv_factor = 4.0 
         
+        # Initial Nutrients (Potentially overridden by calibration, handled in config passing)
         soil_state = {
             'water_mm': init_water,
             'n_kg': config['initial_nitrogen'] * conv_factor,
@@ -411,6 +422,7 @@ class SimulationEngine:
             'crop_params': crop_p
         }
 
+    # ... (Optimization methods remain the same, just ensured they use the new _prepare_physics) ...
     def optimize_irrigation_schedule(self, config):
         res_physics = self._prepare_physics(config)
         if res_physics is None: return [], 0.0

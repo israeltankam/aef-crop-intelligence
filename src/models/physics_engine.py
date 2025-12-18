@@ -9,6 +9,7 @@ class PhysicsEngine:
         """
         Dual-Mode Physics Engine (Annual vs Perennial).
         Includes Pruning Logic & Nutrient Recycling.
+        IMPORTANT: 'crop' dict usually contains overrides from calibration.
         """
 
         # --- INPUTS ---
@@ -88,7 +89,7 @@ class PhysicsEngine:
             rew = (soil_state['water_mm'] - wp_mm) / taw
             rew = min(1.0, max(0.0, rew))
             rew_raw = (raw / taw) if taw > 0 else 0.5
-            
+        
             if rew >= rew_raw:
                 ks = 1.0
             else:
@@ -158,7 +159,8 @@ class PhysicsEngine:
         current_stunting = prev_stunting * (1.0 - stunting_decay) + nutrient_stress * stunting_decay
         plant_state['stunting_factor'] = np.clip(current_stunting, 0.01, 1.0)
 
-        max_lai = crop['Max_LAI']
+        max_lai = float(crop['Max_LAI']) # Ensure float
+        
         if is_perennial:
             target_mature_lai = max_lai
             
@@ -171,7 +173,7 @@ class PhysicsEngine:
             
             recovery_factor = 1.0
             if plant_state.get('days_since_pruning', 999) < 60:
-                 recovery_factor = 0.7 + (0.3 * (plant_state['days_since_pruning'] / 60.0))
+                recovery_factor = 0.7 + (0.3 * (plant_state['days_since_pruning'] / 60.0))
             
             lai_pot = (baseline_lai + seasonal_flux) * recovery_factor
             
@@ -205,11 +207,13 @@ class PhysicsEngine:
         k_ext = 0.7
         f_ipar = (1.0 - np.exp(-k_ext * lai))
         
-        rue_actual = crop['RUE_g_MJ'] * ks
+        # Override RUE if optimized
+        rue_val = float(crop.get('RUE_g_MJ', 2.0))
+        rue_actual = rue_val * ks
         d_bio_g_m2 = rue_actual * par * f_ipar
         d_bio_t_ha = d_bio_g_m2 * 0.01
         
-        d_bio_perfect_t_ha = (crop['RUE_g_MJ'] * par * (1.0 - np.exp(-k_ext * lai_pot))) * 0.01
+        d_bio_perfect_t_ha = (rue_val * par * (1.0 - np.exp(-k_ext * lai_pot))) * 0.01
 
         # --- 5. PARTITIONING ---
         d_wood_t_ha = 0.0
@@ -249,8 +253,10 @@ class PhysicsEngine:
                 
         else:
             biomass_cum = plant_state.get('cum_biomass', 0.0) + d_bio_t_ha
-            d_wood_t_ha = d_bio_t_ha * (1 - crop['Harvest_Index']) 
-            d_fruit_t_ha = d_bio_t_ha * crop['Harvest_Index']
+            # Use harvest index from config/db
+            hi = float(crop.get('Harvest_Index', 0.5))
+            d_wood_t_ha = d_bio_t_ha * (1 - hi) 
+            d_fruit_t_ha = d_bio_t_ha * hi
 
         # --- 6. UPTAKE & RECYCLING ---
         n_demand = d_bio_t_ha * 1000.0 * 0.020

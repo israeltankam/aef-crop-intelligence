@@ -38,8 +38,6 @@ class StateManager:
         # --- Step 4: Soil ---
         'soil_type': 'loam',
         'use_expert_soil': False,
-        # CHANGE: Add default initial soil water (0.8 = 80% of Field Capacity)
-        # This prevents the simulation from starting in a "Bone Dry" state if user ignores it.
         'initial_soil_water': 0.8,
         
         # Nutrients (mg/kg / ppm)
@@ -49,7 +47,11 @@ class StateManager:
         
         'soil_layers': None, 
         'fert_schedule': None, 
-        'irr_schedule': None   
+        'irr_schedule': None,
+
+        # --- NEW: Adaptive Surveillance ---
+        'surveillance_logs': [],      # List of user observations
+        'calibrated_params': {}       # Dictionary of fine-tuned physics parameters
     }
 
     @staticmethod
@@ -63,8 +65,6 @@ class StateManager:
         StateManager._initialize_complex_state()
         
         # 3. Knowledge Base
-        # We ensure the DBs are loaded into session state.
-        # If files don't exist, _ensure_knowledge_base will create them once.
         if 'df_diseases' not in st.session_state or 'df_crops' not in st.session_state:
             StateManager._ensure_knowledge_base()
 
@@ -96,7 +96,6 @@ class StateManager:
         # --- 1. CROPS DB ---
         crops_path = "src/data/crops_db.csv"
         
-        # UPDATED: Added Per_Tree_Wood_Capacity_kg, p_factor, end_of_early, end_of_mature
         if not os.path.exists(crops_path):
             data = [
                 ["C_CAS_01","Cassava","TME 419 (Improved)","Annual",365,0,18,26,35,2.4,5,0.8,0.8,2,100,0.2,10000,150,40,0.0,0.0,0.0,0.50,0,0],
@@ -122,37 +121,10 @@ class StateManager:
             pd.DataFrame(data, columns=cols).to_csv(crops_path, index=False)
             
         st.session_state['df_crops'] = pd.read_csv(crops_path)
-        
-        # UPDATED: Added Per_Tree_Wood_Capacity_kg (Last Column)
-        if not os.path.exists(crops_path):
-            data = [
-                ["C_CAS_01","Cassava","TME 419 (Improved)","Annual",365,0,18,26,35,2.4,5,0.8,0.8,2,100,0.2,10000,150,40,0.0,0.0,0.0],
-                ["C_CAS_02","Cassava","Local White (Landrace)","Annual",365,0,18,26,35,2,4.5,0.7,0.8,2,100,1,10000,150,40,0.0,0.0,0.0],
-                ["C_MAI_01","Maize","Pioneer P1197 (Hybrid)","Annual",120,1600,8,30,35,3.9,6.5,0.52,1.2,1.5,180,0.3,60000,50,50,0.0,0.0,0.0],
-                ["C_MAI_02","Maize","Local Open Pollinated","Annual",130,1700,8,30,36,3.2,5,0.4,1.15,1.1,160,0.9,55000,50,50,0.0,0.0,0.0],
-                ["C_COT_01","Cotton","DeltaPine (Bt)","Annual",150,2200,12,28,38,1.7,3.5,0.35,1.15,1.8,150,0.4,80000,20,60,0.0,0.0,0.0],
-                ["C_COT_02","Cotton","Conventional Local","Annual",160,2300,12,28,38,1.5,3,0.3,1.15,1.6,140,0.9,70000,20,60,0.0,0.0,0.0],
-                ["C_COC_01","Cocoa","Forastero (Amelonado)","Perennial",365,0,20,25,32,1.5,5,0.15,1.1,2,120,0.6,1100,100,120,0.20,0.30,25.0],
-                ["C_COC_02","Cocoa","Trinitario (Hybrid)","Perennial",365,0,20,25,32,1.6,5.5,0.18,1.1,2,130,0.4,1100,100,120,0.20,0.30,28.0],
-                ["C_WHT_01","Wheat","Winter Red (Intensive)","Annual",240,2000,0,20,30,2.8,6,0.48,1.15,1.5,150,0.4,3000000,30,50,0.0,0.0,0.0],
-                ["C_RIC_01","Rice","IR64 (Indica)","Annual",115,1500,10,30,38,2.2,6,0.5,1.2,0.8,120,0.5,250000,60,80,0.0,0.0,0.0],
-                ["C_SOY_01","Soybean","Roundup Ready","Annual",110,1400,10,28,35,1.8,4.5,0.38,1.1,1.2,50,0.3,300000,40,40,0.0,0.0,0.0],
-                ["C_COF_01","Coffee","Arabica (Typica)","Perennial",365,0,15,20,25,1.2,4,0.3,0.95,1.5,100,0.8,1600,40,120,0.15,0.25,15.0],
-                ["C_COF_02","Coffee","Robusta (Nganda)","Perennial",365,0,20,26,34,1.4,4.5,0.35,1,2,120,0.3,1100,40,120,0.15,0.25,18.0]
-            ]
-            cols = ["Crop_ID","Crop_Name","Variety","Type","Cycle_Days","GDD_Maturity",
-                    "T_Base","T_Opt","T_Max","RUE_g_MJ","Max_LAI","Harvest_Index","Kc_Mid",
-                    "Root_Depth_Max_m","Critical_Soil_N_kg_ha","Resistance_Score", "Default_Density", 
-                    "Harvest_Rain_Limit_mm", "Max_Irr_Event_mm", "Pruning_Biomass_Removal_Pct", 
-                    "Pruning_LAI_Removal_Pct", "Per_Tree_Wood_Capacity_kg"] 
-            pd.DataFrame(data, columns=cols).to_csv(crops_path, index=False)
-            
-        st.session_state['df_crops'] = pd.read_csv(crops_path)
 
         # --- 2. DISEASES DB ---
         dis_path = "src/data/diseases_db.csv"
         
-        # UPDATED: Added Pruning_Hygiene_Factor and Daily_Recovery_Rate
         if not os.path.exists(dis_path):
             data = [
                 ["D_CAS_01","Cassava","Cassava Mosaic Disease (CMD)","Viral","Whitefly",28.0,60.0,0.12,50.0,0.60,"**Immediate Action:** Rogue (uproot and burn) all symptomatic plants immediately to reduce inoculum.\n**Resistant Varieties:** Deploy TME 419, TME 204, or TMS-IBA varieties which show high field resistance.\n**Vector Control:** Monitor Bemisia tabaci populations; avoid planting new fields downwind of old infected fields.",0.2,0.000],
@@ -166,7 +138,7 @@ class StateManager:
                 ["D_MAI_05","Maize","Southern Corn Rust","Fungal","Wind",27.0,90.0,0.08,500.0,0.60,"**Scouting:** Monitor weekly during warm, humid weather. This rust spreads explosively.\n**Fungicide:** Apply Tebuconazole immediately if pustules are found on upper leaves.\n**Timing:** Early planting often escapes the peak spore load arriving from tropical zones.",1.0,0.020],
                 ["D_COT_01","Cotton","Cotton Leaf Curl (CLCuD)","Viral","Whitefly",30.0,60.0,0.20,50.0,0.50,"**Varietal:** Use CLCuD-resistant cultivars (e.g., specific Bt hybrids validated for your region).\n**Sanitation:** Eradicate alternative hosts like Okra and Abutilon weeds near fields.\n**Chemical:** Systemic insecticides (Acetamiprid) for whitefly control during early vegetative stages.",0.5,0.000],
                 ["D_COT_02","Cotton","Bacterial Blight","Bacterial","Rain/Wind",30.0,85.0,0.08,30.0,0.50,"**Seed Hygiene:** Use acid-delinted seed only to eliminate seed-borne bacteria.\n**Chemical:** Preventative Copper Oxychloride sprays at the 2-leaf stage if weather is wet.\n**Water:** Avoid overhead sprinkler irrigation; use furrow or drip to minimize leaf wetness duration.",1.1,0.008],
-                ["D_COC_01","Cocoa","Black Pod (Phytophthora)","Fungal","Rain/Splash",24.0,95.0,0.09,20.0,0.20,"**Pruning:** Aggressive canopy pruning to allow 30% light penetration and air circulation.\n**Harvest:** Frequent harvest (weekly) of ripe pods. Remove and bury all black pods away from the plantation.\n**Chemical:** Copper Hydroxide sprays every 3 weeks during peak rains; switch to Metalaxyl for curative action.",2.0,0.015],
+                ["D_COC_01","Cocoa","Black Pod (Phytophthora),","Fungal","Rain/Splash",24.0,95.0,0.09,20.0,0.20,"**Pruning:** Aggressive canopy pruning to allow 30% light penetration and air circulation.\n**Harvest:** Frequent harvest (weekly) of ripe pods. Remove and bury all black pods away from the plantation.\n**Chemical:** Copper Hydroxide sprays every 3 weeks during peak rains; switch to Metalaxyl for curative action.",2.0,0.015],
                 ["D_COC_02","Cocoa","Swollen Shoot Virus (CSSV)","Viral","Mealybug",26.0,60.0,0.05,15.0,0.00,"**Eradication:** 'Cordon Sanitaire'—cut out infected trees plus a ring of contact trees (10m radius).\n**Barriers:** Plant barrier crops (Citrus, Oil Palm) to block mealybug movement between blocks.\n**Vector:** Treat attendant ants which farm the mealybugs using baits.",0.1,0.000],
                 ["D_COC_03","Cocoa","Witches' Broom","Fungal","Wind",25.0,85.0,0.07,100.0,0.30,"**Phytosanitation:** Prune all 'broom' vegetative growths and burn them.\n**Genetic:** Graft resistant Scavina clones.\n**Fungicide:** Protect developing pods with copper sprays during the first 3 months of formation.",1.8,0.010],
                 ["D_WHT_01","Wheat","Yellow Rust (Stripe Rust)","Fungal","Wind",15.0,90.0,0.10,800.0,0.60,"**Scouting:** Monitor weekly. Threshold: 1 stripe per m². Pathogen travels long distances via wind.\n**Fungicide:** Immediate application of Tebuconazole or Epoxiconazole upon detection.\n**Genetic:** Deploy 'Slow Rusting' adult plant resistance genes (e.g., Yr18) for durable protection.",1.0,0.025],
@@ -218,7 +190,11 @@ class StateManager:
             
             'soil_layers': st.session_state['soil_layers'].to_dict('records') if st.session_state['soil_layers'] is not None else [],
             'fert_schedule': st.session_state['fert_schedule'].astype(str).to_dict('records') if st.session_state['fert_schedule'] is not None else [],
-            'irr_schedule': st.session_state['irr_schedule'].astype(str).to_dict('records') if st.session_state['irr_schedule'] is not None else []
+            'irr_schedule': st.session_state['irr_schedule'].astype(str).to_dict('records') if st.session_state['irr_schedule'] is not None else [],
+            
+            # Save Surveillance Data
+            'surveillance_logs': st.session_state.get('surveillance_logs', []),
+            'calibrated_params': st.session_state.get('calibrated_params', {})
         }
         return json.dumps(config, indent=4)
 
@@ -256,6 +232,10 @@ class StateManager:
                 df = pd.DataFrame(data['irr_schedule'])
                 if not df.empty and 'date' in df.columns: df['date'] = pd.to_datetime(df['date']).dt.date
                 st.session_state['irr_schedule'] = df
+            
+            # Load Surveillance Logs
+            st.session_state['surveillance_logs'] = data.get('surveillance_logs', [])
+            st.session_state['calibrated_params'] = data.get('calibrated_params', {})
                 
             return True
         except Exception as e:
