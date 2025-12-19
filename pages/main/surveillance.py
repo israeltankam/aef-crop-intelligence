@@ -10,7 +10,7 @@ import altair as alt
 from src.models.state_manager import StateManager
 from src.models.calibration_engine import CalibrationEngine
 
-# --- HELPER ---
+# --- HELPER FUNCTIONS ---
 def is_point_in_polygon(point, polygon_coords):
     """
     Ray-casting algorithm to check if point (lat, lon) is inside polygon.
@@ -36,15 +36,16 @@ def get_bounds(coords):
     lons = [p[1] for p in coords]
     return [[min(lats), min(lons)], [max(lats), max(lons)]]
 
+# --- MAIN APP ---
 def app():
     st.title("📈 Adaptive Surveillance & Calibration")
     
     st.markdown("""
     **Fine-Tune your Digital Twin.**
-    Enter real-world field measurements below. The system will run an optimization loop to adjust 
-    internal physics (Photosynthesis Efficiency, Harvest Index, Spread Rates) to match your reality.
+    Enter real-world field measurements below.
     """)
     
+    # Initialize Log State
     if 'surveillance_logs' not in st.session_state:
         st.session_state['surveillance_logs'] = []
 
@@ -74,7 +75,6 @@ def app():
                 try:
                     data = json.load(uploaded_file)
                     if isinstance(data, list):
-                        # Merge or Replace? Let's Replace to avoid duplicates, but warn.
                         if st.button("⚠️ Overwrite Current Logs"):
                             st.session_state['surveillance_logs'] = data
                             st.success(f"Loaded {len(data)} observations.")
@@ -171,8 +171,8 @@ def app():
                             if is_point_in_polygon([lat, lon], coords):
                                 # Avoid duplicate clicks (simple debounce)
                                 if not any(abs(s['lat'] - lat) < 1e-5 and abs(s['lon'] - lon) < 1e-5 for s in st.session_state['temp_spots']):
-                                    # Default count 1, user can edit below
-                                    st.session_state['temp_spots'].append({'lat': lat, 'lon': lon, 'count': 5}) # Default cluster size
+                                    # Default count 5 (cluster), user can edit below
+                                    st.session_state['temp_spots'].append({'lat': lat, 'lon': lon, 'count': 5}) 
                                     st.rerun()
                             else:
                                 st.toast("⚠️ Point outside field boundary.", icon="🚫")
@@ -254,15 +254,15 @@ def app():
     # ==========================================================================
     # 2. CALIBRATION CONTROL
     # ==========================================================================
-    st.subheader("⚙️ Model Calibration")
+    st.subheader("⚙️ Engine Calibration")
     
     c_cal, c_info = st.columns([1, 2])
     
     with c_cal:
-        st.markdown("Run optimization to minimize error between observed data and simulation.")
+        st.markdown("Run the calibration loop to minimize errors.")
         # Only enable if logs exist
         if st.button("🚀 Run Calibration Loop", type="primary", disabled=len(current_logs) < 1):
-            with st.spinner("Running optimization (L-BFGS-B)..."):
+            with st.spinner("Running optimization (Differential Evolution + Hessian)..."):
                 cal_engine = CalibrationEngine()
                 
                 # Reconstruct Config
@@ -292,9 +292,39 @@ def app():
                     st.error(msg)
     
     with c_info:
-        if st.session_state.get('calibrated_params'):
-            st.success("✅ Model is Calibrated")
-            st.json(st.session_state['calibrated_params'])
+        params = st.session_state.get('calibrated_params', {})
+        if params:
+            st.markdown("##### 🧬 Calibrated Genotype")
+            
+            # Extract Uncertainties if present
+            unc = params.get('uncertainty', {})
+            
+            # Metrics Display
+            c_p1, c_p2, c_p3 = st.columns(3)
+            with c_p1:
+                base_rue = float(st.session_state['df_crops'][st.session_state['df_crops']['Crop_ID'] == st.session_state['selected_crop_id']].iloc[0]['RUE_g_MJ'])
+                mult_rue = params['RUE_g_MJ'] / base_rue
+                std_rue = unc.get('RUE_mult_std', 0.0)
+                st.metric("RUE (Photosynthesis)", f"{params['RUE_g_MJ']:.2f} g/MJ", f"x{mult_rue:.2f} ±{std_rue:.2f}")
+
+            with c_p2:
+                base_hi = float(st.session_state['df_crops'][st.session_state['df_crops']['Crop_ID'] == st.session_state['selected_crop_id']].iloc[0]['Harvest_Index'])
+                mult_hi = params['Harvest_Index'] / base_hi
+                std_hi = unc.get('HI_mult_std', 0.0)
+                st.metric("Harvest Index", f"{params['Harvest_Index']:.2f}", f"x{mult_hi:.2f} ±{std_hi:.2f}")
+
+            with c_p3:
+                # Disease Beta
+                if 'Beta_Infection' in params:
+                    base_beta = 0.0
+                    if st.session_state['selected_disease_id']:
+                         base_beta = float(st.session_state['df_diseases'][st.session_state['df_diseases']['Disease_ID'] == st.session_state['selected_disease_id']].iloc[0]['Beta_Infection'])
+                    
+                    if base_beta > 0:
+                        mult_beta = params['Beta_Infection'] / base_beta
+                        std_beta = unc.get('Beta_std', 0.0)
+                        st.metric("Spread Rate (Beta)", f"{params['Beta_Infection']:.3f}", f"x{mult_beta:.2f} ±{std_beta:.2f}")
+
             if st.button("❌ Reset Calibration"):
                 st.session_state['calibrated_params'] = {}
                 st.rerun()
