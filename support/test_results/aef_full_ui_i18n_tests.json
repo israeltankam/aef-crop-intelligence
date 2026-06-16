@@ -1,0 +1,52 @@
+{
+  "total": 9,
+  "passed": 9,
+  "failed": [],
+  "tests": [
+    {
+      "name": "i18n_has_tr_function",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "all_pages_import_tr_as_needed",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "language_selector_still_accepts_key",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "dashboard_map_options_preserve_values",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "surveillance_category_preserves_values",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "setup_location_radio_preserves_values",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "no_bad_nested_fstring_quotes",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "no_detectable_untranslated_ui_literals",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "french_catalog_has_dashboard_setup_surveillance_report_terms",
+      "pass": true,
+      "detail": ""
+    }
+  ]
+}

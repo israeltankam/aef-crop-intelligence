@@ -6,6 +6,7 @@ from datetime import date, timedelta
 import streamlit as st
 from google.oauth2.service_account import Credentials
 from scipy.optimize import curve_fit
+from src.models.satellite_disease_triage import SatelliteDiseaseTriage
 
 class DiseaseService:
     def __init__(self):
@@ -30,7 +31,7 @@ class DiseaseService:
         2. Calculate LAI & NDMI.
         3. Identify Disease Pixels (Low LAI + High NDMI).
         4. Calculate realistic infected plant count based on Density.
-        5. Return exact date of detection and precise centroid.
+        5. Return the latest satellite anomaly observation date and precise centroid.
         """
         if not st.session_state.get('ee_initialized'):
             return False, "Earth Engine not initialized.", None, None, None
@@ -155,28 +156,55 @@ class DiseaseService:
             if significant_days.empty:
                 return True, "Crop appears healthy (Disease likelihood < 5%).", None, [], None
 
-            # Use the latest significant day for the "Detection"
+            # Use the latest significant satellite day as the anomaly observation date.
             detection_event = significant_days.iloc[-1]
-            detection_date = detection_event['date']
+            satellite_anomaly_date = detection_event['date']
             
-            # Parameter Estimation using the whole history up to that point
+            # Parameter estimation and probabilistic disease triage. Sentinel-2
+            # detects a canopy anomaly, not a pathogen name. We therefore rank
+            # plausible crop-specific diseases and auto-select the most likely
+            # candidate while preserving alternatives for one-click validation.
             est_beta, est_sigma = self._estimate_gibson_parameters(df, coords)
-            
-            generic_disease = {
-                'Disease_ID': 'D_GEN_01',
-                'Target_Crop_Name': 'Unknown',
-                'Disease_Name': 'Unidentified Satellite Anomaly',
-                'Type': 'Unknown (Modeled)',
-                'Vector_Type': 'Unknown',
-                'Opt_Temp': 25.0,
-                'Opt_Humidity': 80.0,
-                'Beta_Infection': round(est_beta, 3),
-                'Dispersal_Sigma_m': round(est_sigma, 1),
-                'Yield_Retained_Infected': 0.5,
-                'Control_Methods': "**Surveillance:** Ground-truth required.\n**Sanitation:** Remove symptomatic plants.\n**Nutrition:** Boost Potassium and Silicon.",
-                'Pruning_Hygiene_Factor': 0.5,
-                'Daily_Recovery_Rate': 0.01
-            }
+            triage = SatelliteDiseaseTriage()
+            crop_id = st.session_state.get('selected_crop_id')
+            crop_name = 'Unknown'
+            if crop_id and 'df_crops' in st.session_state:
+                crop_rows = st.session_state['df_crops'][st.session_state['df_crops']['Crop_ID'] == crop_id]
+                if not crop_rows.empty:
+                    crop_name = crop_rows.iloc[0]['Crop_Name']
+            spectral_signature = {'wet_thin_canopy': float(detection_event['incidence'])}
+            candidates = triage.rank_candidates(crop_name, st.session_state.get('df_diseases'), satellite_anomaly_date, spectral_signature)
+
+            if candidates:
+                top = candidates[0]
+                disease_row = st.session_state['df_diseases'][st.session_state['df_diseases']['Disease_ID'] == top.disease_id].iloc[0].to_dict()
+                disease_row['Beta_Infection'] = round(max(float(disease_row.get('Beta_Infection', 0.05)), est_beta), 3)
+                disease_row['Dispersal_Sigma_m'] = round(est_sigma, 1)
+                disease_row['Auto_Detection_Confidence'] = top.confidence
+                disease_row['Candidate_Diseases'] = [c.to_dict() for c in candidates]
+                disease_row['Control_Methods'] = (
+                    "**Validation:** Satellite detection is probabilistic; confirm symptoms in the field before irreversible actions.\n"
+                    + str(disease_row.get('Control_Methods', ''))
+                )
+                generic_disease = disease_row
+            else:
+                generic_disease = {
+                    'Disease_ID': 'D_GEN_01',
+                    'Target_Crop_Name': crop_name,
+                    'Disease_Name': 'Unidentified Satellite Anomaly',
+                    'Type': 'Unknown (Modeled)',
+                    'Vector_Type': 'Unknown',
+                    'Opt_Temp': 25.0,
+                    'Opt_Humidity': 80.0,
+                    'Beta_Infection': round(est_beta, 3),
+                    'Dispersal_Sigma_m': round(est_sigma, 1),
+                    'Yield_Retained_Infected': 0.5,
+                    'Control_Methods': "**Validation:** Ground-truth required.\n**Sanitation:** Remove confirmed symptomatic plants only after field confirmation.\n**Nutrition:** Correct potassium or water stress if observed.",
+                    'Pruning_Hygiene_Factor': 0.5,
+                    'Daily_Recovery_Rate': 0.01,
+                    'Auto_Detection_Confidence': 0.35,
+                    'Candidate_Diseases': []
+                }
 
             # 6. Realistic Spot Generation
             spots = []
@@ -196,10 +224,10 @@ class DiseaseService:
                     'lat': c_lat,
                     'lon': c_lon,
                     'plants': estimated_plants,
-                    'date': str(detection_date)
+                    'date': str(satellite_anomaly_date)
                 })
 
-            return True, "Disease Signature Detected", generic_disease, spots, detection_date
+            return True, "Disease Signature Detected", generic_disease, spots, satellite_anomaly_date
 
         except Exception as e:
             return False, f"Analysis Error: {str(e)}", None, None, None

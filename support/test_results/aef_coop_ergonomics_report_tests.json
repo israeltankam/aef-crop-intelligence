@@ -1,0 +1,476 @@
+{
+  "date": "2026-06-12",
+  "working_copy": "C:\\Users\\tankamch\\AppData\\Local\\Temp\\aef_corrected_1781125311822",
+  "total": 93,
+  "passed": 93,
+  "failed": 0,
+  "failures": [],
+  "tests": [
+    {
+      "name": "backup_created_for_this_round",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "detector_default_max_240",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "detector_precision_passes_parameter",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "detector_dense_step_uses_precision",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "detector_multiple_attempts_per_centroid",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "detector_irregular_polygon_function",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "detector_uses_6_to_9_vertices",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "detector_no_rectangular_generator",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "detector_overlap_function",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "detector_segment_intersection",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "detector_rejects_overlap",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "detector_inside_perimeter_guard",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "detector_non_overlapping_source",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "detector_non_overlap_note",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "detector_total_area_cap",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "detector_stable_sorting",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "generate_button_after_dms_button",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "generate_button_after_dms_input",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "generate_uses_updated_center",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "coop_wrapper_uses_precision_2",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "coop_wrapper_uses_variability_072",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "coop_wrapper_max_240",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "map_view_mode_available",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "map_plot_labels_present",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "map_reused_for_soil",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "soil_reference_caption",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "plot_names_editable_step1",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "plot_names_editable_step4",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "step4_name_saved_back",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "review_plot_reference_table",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "config_download_still_present",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "manual_disease_tab_present",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "automatic_disease_tab_present",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "manual_disease_marker_helper",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "manual_disease_plot_assignment",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "manual_disease_plants_input",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "manual_disease_severity_input",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "manual_disease_uses_marker_map",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "manual_disease_outside_warning",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "manual_disease_duplicate_guard",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "manual_disease_spot_has_plot_id",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "manual_disease_spot_has_plot_name",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "manual_disease_editor_restored",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "manual_disease_clear_button",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "satellite_detection_still_today",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "coop_engine_optimization_method",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "coop_engine_optimizes_irrigation",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "coop_engine_optimizes_fertilization",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "coop_engine_runs_optimized_simulation",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "coop_engine_compares_baseline_optimized",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "coop_engine_aggregates_water",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "coop_engine_aggregates_fertilizer",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "coop_engine_prioritizes_high_risk",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "report_imports_coop_engine",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "report_has_plot_limit_control",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "report_has_optimization_spinner",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "report_calls_optimized_plan",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "report_has_optimized_comparison_chapter",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "report_has_no_action_vs_optimized_columns",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "report_has_gain_column",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "report_has_scope_note",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "report_recommendations_include_full_optimization_hint",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "report_uses_chr10_join",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "report_no_broken_newline_join",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "state_saves_cooperative_parcels",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "state_loads_cooperative_parcels",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "i18n_Manual disease scouting",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "i18n_Parcel reference map",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "i18n_Maximum plots optimized in this rep",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "i18n_Optimized management comparison",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "i18n_Automatic parcel candidates are non",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "i18n_Non-overlapping irregular candidate",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "i18n_Use the optimized scenario as a pla",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "rough_balanced_src/models/cooperative_parcel_detector.py",
+      "pass": true,
+      "detail": "rough bracket/string balance"
+    },
+    {
+      "name": "rough_balanced_pages/main/setup_page.py",
+      "pass": true,
+      "detail": "rough bracket/string balance"
+    },
+    {
+      "name": "rough_balanced_src/models/cooperative_engine.py",
+      "pass": true,
+      "detail": "rough bracket/string balance"
+    },
+    {
+      "name": "rough_balanced_pages/main/report.py",
+      "pass": true,
+      "detail": "rough bracket/string balance"
+    },
+    {
+      "name": "rough_balanced_src/models/state_manager.py",
+      "pass": true,
+      "detail": "rough bracket/string balance"
+    },
+    {
+      "name": "rough_balanced_src/utils/i18n.py",
+      "pass": true,
+      "detail": "rough bracket/string balance"
+    },
+    {
+      "name": "no_broken_string_lines_src/models/cooperative_parcel_detector.py",
+      "pass": true,
+      "detail": "detects f-string line break corruption"
+    },
+    {
+      "name": "no_broken_string_lines_pages/main/setup_page.py",
+      "pass": true,
+      "detail": "detects f-string line break corruption"
+    },
+    {
+      "name": "no_broken_string_lines_src/models/cooperative_engine.py",
+      "pass": true,
+      "detail": "detects f-string line break corruption"
+    },
+    {
+      "name": "no_broken_string_lines_pages/main/report.py",
+      "pass": true,
+      "detail": "detects f-string line break corruption"
+    },
+    {
+      "name": "no_broken_string_lines_src/models/state_manager.py",
+      "pass": true,
+      "detail": "detects f-string line break corruption"
+    },
+    {
+      "name": "no_broken_string_lines_src/utils/i18n.py",
+      "pass": true,
+      "detail": "detects f-string line break corruption"
+    },
+    {
+      "name": "no_tab_indent_src/models/cooperative_parcel_detector.py",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "no_tab_indent_pages/main/setup_page.py",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "no_tab_indent_src/models/cooperative_engine.py",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "no_tab_indent_pages/main/report.py",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "no_tab_indent_src/models/state_manager.py",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "no_tab_indent_src/utils/i18n.py",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "setup_still_has_coop_steps",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "report_still_routes_cooperative_mode",
+      "pass": true,
+      "detail": ""
+    }
+  ],
+  "note": "Static verification only; Streamlit live execution was unavailable in this tool environment."
+}

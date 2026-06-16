@@ -1,0 +1,89 @@
+{
+  "generated_at": "2026-06-12T00:05:00Z",
+  "suite": "pdf_i18n_and_prudent_uncertainty_static_checks",
+  "total": 16,
+  "passed": 16,
+  "failed": 0,
+  "tests": [
+    {
+      "name": "pdf_header_uses_translator",
+      "passed": true,
+      "details": ""
+    },
+    {
+      "name": "pdf_config_labels_translated",
+      "passed": true,
+      "details": ""
+    },
+    {
+      "name": "pdf_diagnostic_labels_translated",
+      "passed": true,
+      "details": ""
+    },
+    {
+      "name": "pdf_water_status_translated",
+      "passed": true,
+      "details": ""
+    },
+    {
+      "name": "pdf_fertilizer_rationale_translator_present",
+      "passed": true,
+      "details": ""
+    },
+    {
+      "name": "pdf_control_methods_translated",
+      "passed": true,
+      "details": ""
+    },
+    {
+      "name": "pdf_roguing_rule_translated",
+      "passed": true,
+      "details": ""
+    },
+    {
+      "name": "pdf_epidemiology_labels_translated",
+      "passed": true,
+      "details": ""
+    },
+    {
+      "name": "pdf_recommendation_alerts_translated",
+      "passed": true,
+      "details": ""
+    },
+    {
+      "name": "i18n_pdf_keys_present",
+      "passed": true,
+      "details": ""
+    },
+    {
+      "name": "ensemble_uncertainty_profile_method_present",
+      "passed": true,
+      "details": ""
+    },
+    {
+      "name": "ensemble_yield_floor_nonzero",
+      "passed": true,
+      "details": ""
+    },
+    {
+      "name": "ensemble_incidence_floor_nonzero",
+      "passed": true,
+      "details": ""
+    },
+    {
+      "name": "ensemble_raw_and_conservative_std_recorded",
+      "passed": true,
+      "details": ""
+    },
+    {
+      "name": "perennial_ci_uses_peak_dates_not_final_day",
+      "passed": true,
+      "details": ""
+    },
+    {
+      "name": "old_pdf_english_constructors_removed",
+      "passed": true,
+      "details": ""
+    }
+  ]
+}

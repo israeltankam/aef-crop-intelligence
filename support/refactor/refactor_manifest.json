@@ -1,0 +1,750 @@
+{
+  "created_at": "2026-06-10T23:24:40.674Z",
+  "appRoot": "C:\\Users\\tankamch\\AppData\\Local\\Temp\\aef_corrected_1781125311822",
+  "backup": "backups/pre_refactor_snapshot",
+  "changed_files": [
+    {
+      "path": "app.py",
+      "bytes": 3912,
+      "sha256": "f986ee0a38d1708cebae86b789e14b3dda26ec4a802592a5b04cab7362b7f125"
+    },
+    {
+      "path": "docs/CHANGELOG_AEF_REFACTOR.md",
+      "bytes": 12188,
+      "sha256": "f70ef9391f96c726d2efdef1fe1393e36d27e587359726219cb015d7d2ecaa7c"
+    },
+    {
+      "path": "docs/RAPPORT_AEF_CROP_INTELLIGENCE_50_PAGES.md",
+      "bytes": 32538,
+      "sha256": "5707de87d3b7f77de5500123215a662b371ec3b98f881581ce3e72e917bd6d2c"
+    },
+    {
+      "path": "docs/SCIENTIFIC_MODELS.md",
+      "bytes": 7095,
+      "sha256": "a4f034434e22ead554e1f16095e226a52469606a016ae0a8ead7ff5b15af101e"
+    },
+    {
+      "path": "pages/main/dashboard.py",
+      "bytes": 24370,
+      "sha256": "986a7425747ad2282d7ce9ecc681bb6e998e41ee082ff74e3dd18b2ce0666c16"
+    },
+    {
+      "path": "pages/main/report.py",
+      "bytes": 53933,
+      "sha256": "aec0b3ac9c28b274f60cbe3d535d7c80984d82f79d56a1068cd19a8e2cb0f3a1"
+    },
+    {
+      "path": "pages/main/setup_page.py",
+      "bytes": 56383,
+      "sha256": "46254e224f635bbb0b37f9f1a32f2a2bc9da0bdb5473c2284e3bbffb803b37e5"
+    },
+    {
+      "path": "pages/main/surveillance.py",
+      "bytes": 18376,
+      "sha256": "570378e35da1fd633bf213439904b8e95ed83e597b563368bb8745f6fe012c2f"
+    },
+    {
+      "path": "src/models/adaptive_calibration.py",
+      "bytes": 3218,
+      "sha256": "61538a2d57b84b40d197714d8fec8a793176202f1f3384882074e207acea77ba"
+    },
+    {
+      "path": "src/models/disease_models.py",
+      "bytes": 24443,
+      "sha256": "4eca4aae197ef61151da6ab93554efb4fc5cb77017b0dc91375449890e866a5d"
+    },
+    {
+      "path": "src/models/disease_service.py",
+      "bytes": 11868,
+      "sha256": "b5bb965e93c765e500c4e7a55b4688261f0a9c1936820c22f580f6bdc3145298"
+    },
+    {
+      "path": "src/models/growth_model_selector.py",
+      "bytes": 4267,
+      "sha256": "a8c1801d05b7991ac8dad252c39a3d0f575d5ca24621831b18e2e3aafcb4f776"
+    },
+    {
+      "path": "src/models/satellite_disease_triage.py",
+      "bytes": 2927,
+      "sha256": "ed1765fc351defcabbbacacf7bf9a9d5fc418b5268714d332a8622b6fe3cfcf6"
+    },
+    {
+      "path": "src/models/simulation_engine.py",
+      "bytes": 35546,
+      "sha256": "5601c67b22431319eb7a50c4132d2fca83c4cda511c0c68eaa5f25a98c186f7e"
+    },
+    {
+      "path": "src/utils/i18n.py",
+      "bytes": 41161,
+      "sha256": "1a470fc47792fb136d0f3d5cbbc7d7840c7b93cc734aa085a804d738e15a6794"
+    },
+    {
+      "path": "src/utils/progress.py",
+      "bytes": 785,
+      "sha256": "cdff0a52f9f008f564859079c4fbbea559b5f98baae6036534c3ef6428539652"
+    },
+    {
+      "path": "support/refactor/refactor_manifest.json",
+      "bytes": 10679,
+      "sha256": "16c93426794cf9ebeffa6e58f1cba7008c89790610d6419da9c05aa051b56c86"
+    },
+    {
+      "path": "support/test_results/aef_1000_checks.json",
+      "bytes": 136,
+      "sha256": "f15d9fe24e076b16bd2482df735e3c287f437a312d1eb4c7b4a196d7c448507c"
+    },
+    {
+      "path": "support/test_results/aef_dashboard_setup_i18n_deep_tests.json",
+      "bytes": 1627,
+      "sha256": "0853f181c277d360395e1eda916673de1b5bd57e2d2bc98a0dd8e78f9ee3264e"
+    },
+    {
+      "path": "support/test_results/aef_dashboard_uncertainty_floor_tests.json",
+      "bytes": 1291,
+      "sha256": "e7906af79c12dfb76e6437aa834894a0c9a515c2c259138f22a7352e68439ad7"
+    },
+    {
+      "path": "support/test_results/aef_full_ui_i18n_tests.json",
+      "bytes": 1016,
+      "sha256": "363bc6c6c9ce22d6bd65eabd9d912ae483d61347e6b4e6a8b2c388b71b9c4438"
+    },
+    {
+      "path": "support/test_results/aef_intermediate_roguing_tests.json",
+      "bytes": 1800,
+      "sha256": "984a87fd411af57ab30ac3675ed929ec0d91db4405abeae19a3b2ac6e70d6186"
+    },
+    {
+      "path": "support/test_results/aef_pdf_i18n_uncertainty_fix_tests.json",
+      "bytes": 1863,
+      "sha256": "532f0e4e3c168f3dd2cea9901a1b1bbe99759788b2d5647abd90933eef20b501"
+    },
+    {
+      "path": "support/test_results/aef_pdf_latin1_unicode_fix_tests.json",
+      "bytes": 1005,
+      "sha256": "f851c403ad3205d7e228a0faa308bfa3ca07eeac73da305487f3b72a2f034886"
+    },
+    {
+      "path": "support/test_results/aef_reality_detection_jumps_uncertainty_tests.json",
+      "bytes": 2465,
+      "sha256": "94a7a60920fd0008541e88432da6cda575e660cae3d891bf20022c603d38020b"
+    },
+    {
+      "path": "support/test_results/aef_two_scenario_report_speedup_tests.json",
+      "bytes": 1431,
+      "sha256": "0fc0d9c245d79ae84a99403958063bb77d8dcfa405d8a713417402155d64e659"
+    },
+    {
+      "path": "tools/rollback_selected_changes.py",
+      "bytes": 3060,
+      "sha256": "901c10e536a62af10a3a99de42204a75b3d35ee4d8739863291ecee3f0a82cb8"
+    },
+    {
+      "path": "tools/run_1000_model_checks.py",
+      "bytes": 1890,
+      "sha256": "8d25e7d44af41dacee2f22586ad3f907dbcbac41fe9de9d154e25d118c287e0b"
+    }
+  ],
+  "files": [
+    "src/data/crops_db.csv",
+    "src/data/diseases_db.csv",
+    "docs/CSV_SCIENTIFIC_REVIEW.md",
+    "docs/CHANGELOG_AEF_REFACTOR.md",
+    "pages/main/setup_page.py",
+    "src/models/state_manager.py",
+    "requirements.txt",
+    "app.py",
+    "docs/GEOSPATIAL_SOIL_AUDIT.md",
+    "docs/RAPPORT_AEF_CROP_INTELLIGENCE_50_PAGES.md",
+    "support/test_results/aef_50_targeted_tests.json",
+    "src/utils/i18n.py",
+    "pages/main/dashboard.py",
+    "pages/main/report.py",
+    "src/models/disease_service.py",
+    "src/models/disease_models.py",
+    "docs/SCIENTIFIC_MODELS.md",
+    "support/test_results/aef_reality_detection_jumps_uncertainty_tests.json",
+    "support/refactor/refactor_manifest.json",
+    "src/models/simulation_engine.py",
+    "support/test_results/aef_pdf_i18n_uncertainty_fix_tests.json",
+    "support/test_results/aef_dashboard_uncertainty_floor_tests.json",
+    "support/test_results/aef_two_scenario_report_speedup_tests.json"
+  ],
+  "latest_csv_backup": "backups/pre_csv_scientific_review_2026-06-11T00-30-17-874Z",
+  "csv_review": {
+    "date": "2026-06-11",
+    "crops": 13,
+    "diseases": 28,
+    "note": "Scientific CSV review with traceability and disease model parameters."
+  },
+  "smart_field_soil_update": {
+    "date": "2026-06-11",
+    "backup": "backups/pre_smart_field_soil_2026-06-11T03-36-25-703Z",
+    "notes": "Non-square candidate field generation, place search, editable polygon tools, safer auto soil profile handling, contact update and requirements update."
+  },
+  "report_50_pages": {
+    "date": "2026-06-11",
+    "path": "docs/RAPPORT_AEF_CROP_INTELLIGENCE_50_PAGES.md",
+    "tests": "50/50 passed"
+  },
+  "language_selector_update": {
+    "date": "2026-06-11",
+    "backup": "backups/pre_language_toggle_2026-06-11T10-46-40-947Z",
+    "note": "Language selector visible on login page and in sidebar after authentication."
+  },
+  "last_updated": "2026-06-12T10:24:05.041Z",
+  "notes": [
+    "Added intermediate scenario and benefit-cost roguing balance in dossier and disease scenarios.",
+    "Internationalized remaining visible UI/PDF strings with display-only translations; business option values preserved.",
+    "Completed deep i18n pass for dashboard and field setup visible labels while preserving internal workflow values.",
+    "Added latin-1-safe PDF text sanitizer for French Unicode glyphs in generated dossiers.",
+    "Restricted satellite reality checks to real observed windows only.",
+    "Separated satellite anomaly date from today-based management detection date.",
+    "Added non-local disease jump dispersal and visible ensemble margins of error.",
+    "Cleaned remaining French PDF English traces.",
+    "Added conservative operational uncertainty floor to avoid false zero-width margins.",
+    "Dashboard uncertainty margins no longer collapse to zero.",
+    "Dashboard uncertainty caption now mentions the conservative operational floor.",
+    "Report scenario generation reduced to no action vs Optimized Management.",
+    "Vectorization audit completed; no forced vectorization applied.",
+    "Added cooperative agricultural perimeter mode for many smallholder plots.",
+    "Added distance-kernel metapopulation disease coupling for cooperative mode.",
+    "Ran 100 targeted cooperative-mode checks: 100 passed, 0 failed."
+  ],
+  "reality_detection_uncertainty_update": {
+    "date": "2026-06-11",
+    "backup": "backups/pre_reality_detection_jumps_uncertainty_2026-06-11T19-44-05-347Z",
+    "tests": "20/20 passed",
+    "result_file": "support/test_results/aef_reality_detection_jumps_uncertainty_tests.json",
+    "notes": [
+      "Reality check uses only observed satellite dates from planting/simulation start to today/latest Sentinel-2 observation.",
+      "Automatic disease detection keeps satellite anomaly date but sets intervention detection_date to today.",
+      "Disease tau-leaping includes non-local jump seeding for vector and other dispersal pathways.",
+      "Dashboard and dossier display stochastic margins of error from ensemble runs."
+    ]
+  },
+  "pdf_i18n_uncertainty_fix": {
+    "date": "2026-06-12",
+    "backup": "backups/pre_pdf_i18n_uncertainty_fix_2026-06-12T00-00-00-000Z",
+    "audited_pdf": "Exemple_report_AEF_Report_2026-06-12.pdf",
+    "tests": "16/16 passed",
+    "result_file": "support/test_results/aef_pdf_i18n_uncertainty_fix_tests.json",
+    "notes": [
+      "French report output now translates model-generated report prose and disease-control protocol lines.",
+      "Margins of error now combine raw ensemble dispersion with a conservative operational uncertainty floor.",
+      "Adaptive surveillance observations and calibrated parameters reduce the uncertainty floor."
+    ]
+  },
+  "dashboard_uncertainty_floor_fix": {
+    "date": "2026-06-12",
+    "backup": "backups/pre_dashboard_uncertainty_floor_2026-06-12T00-20-00-000Z",
+    "tests": "10/10 passed",
+    "result_file": "support/test_results/aef_dashboard_uncertainty_floor_tests.json",
+    "notes": [
+      "Dashboard now applies the same conservative operational uncertainty floor used by the report.",
+      "Raw ensemble dispersion can increase the margin but cannot collapse it to zero.",
+      "Caption explains that adaptive surveillance is needed to reduce uncertainty."
+    ]
+  },
+  "report_two_scenario_speedup": {
+    "date": "2026-06-12",
+    "backup": "backups/pre_report_two_scenarios_speedup_2026-06-12T00-45-00-000Z",
+    "tests": "11/11 passed",
+    "result_file": "support/test_results/aef_two_scenario_report_speedup_tests.json",
+    "notes": [
+      "PDF scenario comparison now runs only no action and Optimized Management ensembles.",
+      "Minimum and intermediate scenarios are no longer generated or displayed in the dossier.",
+      "Vectorization scan found no safe quick vectorization candidate without changing stateful model behavior."
+    ]
+  },
+  "cooperative_mode_update": {
+    "date": "2026-06-12",
+    "backup": "backups/pre_cooperative_mode_2026-06-12T01-30-00-000Z",
+    "test_result": "support/test_results/aef_cooperative_mode_100_tests.json",
+    "tests": {
+      "targeted_static_tests": 100,
+      "passed": 100,
+      "failed": 0
+    },
+    "docs": [
+      "docs/COOPERATIVE_MODE_LOG.md",
+      "docs/COOPERATIVE_SURVEILLANCE_LOG.md",
+      "docs/COOPERATIVE_METAPOPULATION_MODELS.md"
+    ],
+    "changed_files": [
+      {
+        "path": "app.py",
+        "bytes": 5555,
+        "sha256": "7d088019a95213aa4bf288533aee6a722916528c195763de2703c50c04d646d0"
+      },
+      {
+        "path": "src/models/state_manager.py",
+        "bytes": 10711,
+        "sha256": "0f3b2a2aa4e67f3a73fadee3033fb1fdbe275953ad756bf0bce05dc170ec2d61"
+      },
+      {
+        "path": "src/models/cooperative_engine.py",
+        "bytes": 10540,
+        "sha256": "4307389d2d05e1229476bff1623a000122b385aed1c4c05818c2ff446f54d2b8"
+      },
+      {
+        "path": "pages/main/setup_page.py",
+        "bytes": 83310,
+        "sha256": "769e1414c584bdc6a6d41ef2fd547d925da56a29762f67597fd1da9a73eee767"
+      },
+      {
+        "path": "pages/main/dashboard.py",
+        "bytes": 29072,
+        "sha256": "f728ba577c229bbf37a9d28899e4dd21b027590e0e0413467b7ef4932b4f3e9b"
+      },
+      {
+        "path": "pages/main/surveillance.py",
+        "bytes": 22331,
+        "sha256": "8663146c828e9ac80173b57c06aed6dde9c91614eb320f9cc4228f875c0d8d7c"
+      },
+      {
+        "path": "pages/main/report.py",
+        "bytes": 57595,
+        "sha256": "a93804e7cacb5c25a3ee97b69ffa6e136842498eae2bb3bb72e5194decf069b4"
+      },
+      {
+        "path": "src/utils/i18n.py",
+        "bytes": 47719,
+        "sha256": "1b3cf5c358184bb01d353f00c5f7113b9a801a0e5f7a4f349c02631852bf7a3b"
+      },
+      {
+        "path": "docs/COOPERATIVE_MODE_LOG.md",
+        "bytes": 2314,
+        "sha256": "02690d8fada84f5b81eef33032c334453f432ad6079c2d1f8a6b2d79cf4a86bf"
+      },
+      {
+        "path": "docs/COOPERATIVE_SURVEILLANCE_LOG.md",
+        "bytes": 1616,
+        "sha256": "067e7183624ea192c2caa7374f27fddf53a792662f7b893612c019ffdad176c6"
+      },
+      {
+        "path": "docs/COOPERATIVE_METAPOPULATION_MODELS.md",
+        "bytes": 3155,
+        "sha256": "c09f9e2438f8d7279c7bc5de269dae8a44464e5693b03c4dee3be898f14b54c4"
+      },
+      {
+        "path": "docs/CHANGELOG_AEF_REFACTOR.md",
+        "bytes": 13940,
+        "sha256": "c04b1fb174db30d2a805a0a24b7e8a96302e8e8d9601603ad757fe03f3f54495"
+      },
+      {
+        "path": "support/test_results/aef_cooperative_mode_100_tests.json",
+        "bytes": 10005,
+        "sha256": "da1d325066b06319b8603efe74c3cd92249a9175fa4d595e3ab4432c8afded78"
+      }
+    ],
+    "notes": [
+      "Single-field workflow preserved; cooperative mode is selected before navigation.",
+      "Cooperative plot detection is an editable geometric candidate generator on the satellite map; users can delete, add and redraw parcels.",
+      "Crop phenology/soil/weather models remain the existing per-plot engine; disease spread gains a light distance-kernel metapopulation coupling.",
+      "Manual irrigation and fertilization calendars are disabled in cooperative mode; soil profile is shared but initial nutrients and land-use history are plot-specific.",
+      "Generated cooperative report stays lightweight and does not run the removed minimum/intermediate scenarios."
+    ]
+  },
+  "ux_agro_refinement_update": {
+    "date": "2026-06-12",
+    "backup": "backups/pre_ux_agro_coop_refinement_2026-06-12T11-15-00-000Z",
+    "log": "docs/UX_AGRO_REFINEMENT_LOG.md",
+    "tests": "support/test_results/aef_ux_agro_refinement_tests.json",
+    "static_test_count": 152,
+    "focus": [
+      "cooperative parcel definition",
+      "DMS coordinates",
+      "adaptive calibration uncertainty",
+      "fertilizer vector scoring",
+      "operational feasibility",
+      "output clarity"
+    ]
+  },
+  "cooperative_ergonomics_precision_report_update": {
+    "date": "2026-06-12",
+    "backup": "backups/pre_coop_ergonomics_precision_report_2026-06-12T13-30-00-000Z",
+    "log": "docs/COOPERATIVE_ERGONOMICS_PRECISION_REPORT_LOG.md",
+    "tests": "support/test_results/aef_coop_ergonomics_report_tests.json",
+    "static_test_count": 93,
+    "focus": [
+      "non-overlapping irregular parcel candidates",
+      "DMS workflow order",
+      "manual cooperative disease scouting",
+      "soil map parcel reference",
+      "editable plot names",
+      "cooperative report optimizations"
+    ]
+  },
+  "latest_recommendation_integration": {
+    "completed_at": "2026-06-12T16:40:00.000Z",
+    "backup": "backups/pre_recommendations_integration_2026-06-12T15-45-00-000Z",
+    "primary_backup": "backups/pre_full_ux_recommendations_2026-06-12T15-00-00-000Z",
+    "test_result": "support/test_results/aef_full_recommendations_1000_tests.json",
+    "tests_passed": 1000,
+    "tests_failed": 0,
+    "requirements_changed": false,
+    "changed_files": [
+      {
+        "path": "docs/FULL_RECOMMENDATIONS_IMPLEMENTATION_LOG.md",
+        "bytes": 3874,
+        "sha256": "60b460972dd07a98b65670fad06c2e58b68c79e4baf08076bc0aec3ebaabf09f"
+      },
+      {
+        "path": "pages/main/setup_page.py",
+        "bytes": 105957,
+        "sha256": "cc1db09bc9ac7ec1b6cf92bf50692e8af0205ab92884af6c1506144db5d8d7f7"
+      },
+      {
+        "path": "pages/main/dashboard.py",
+        "bytes": 34637,
+        "sha256": "3db65937f6fffbb6d930b68dc881f98a57ae4537685b971adc72d7329bb291a6"
+      },
+      {
+        "path": "pages/main/report.py",
+        "bytes": 69845,
+        "sha256": "7566f8cfbd56cc23b11ccc26754c58273929b18c55fd8d0dc72b5747b544b44e"
+      },
+      {
+        "path": "src/models/state_manager.py",
+        "bytes": 17214,
+        "sha256": "eff5f1caf92386ec01deea69f20676ba786e6264a9659c5c0dc74fe493be5e88"
+      },
+      {
+        "path": "src/models/model_validity.py",
+        "bytes": 2962,
+        "sha256": "51c17b5150cb9344444b197878f92f332a22820c7340c3850de39e2f6c2a6bb3"
+      },
+      {
+        "path": "src/models/cooperative_constraints.py",
+        "bytes": 2194,
+        "sha256": "dca21141a7adfb06eb795e692b8bada962f7930fa69a2af4aa72b503a0aa3700"
+      },
+      {
+        "path": "src/utils/diagnostic_quality.py",
+        "bytes": 6977,
+        "sha256": "01e85c8e1dd4d9a83a013a1e9822e5614e5967cf70b3e380cf846074ae62c792"
+      },
+      {
+        "path": "src/utils/disease_evidence.py",
+        "bytes": 2942,
+        "sha256": "9c8ac8f248fd94f27af824757a7ca8b50f662dee4779375e0453c69977609803"
+      },
+      {
+        "path": "src/utils/i18n.py",
+        "bytes": 76838,
+        "sha256": "f2ff5fa43643d345ea5c1461b7ae71df79d256daf7eefc4b7bc4aed66972e808"
+      },
+      {
+        "path": "support/test_results/aef_full_recommendations_1000_tests.json",
+        "bytes": 452541,
+        "sha256": "4c87d1861f32e53a18184f4553bd93c2bea1ab6a5f8557cb068609d9370c51ee"
+      },
+      {
+        "path": "support/refactor/refactor_manifest.json",
+        "bytes": 17873,
+        "sha256": "c42d6b49aa3d24923303a3740114c7df2c08e6ff9fa98ff7f0bb8126285de12f"
+      }
+    ]
+  },
+  "latest_dashboard_calendar_date_input": {
+    "completed_at": "2026-06-13T00:15:00.000Z",
+    "backup": "backups/pre_dashboard_calendar_date_input_2026-06-13T00-00-00-000Z",
+    "test_result": "support/test_results/aef_dashboard_calendar_date_input_tests.json",
+    "tests_passed": 6,
+    "tests_failed": 0,
+    "changed_files": [
+      {
+        "path": "pages/main/dashboard.py",
+        "bytes": 35225,
+        "sha256": "f5254c81c477d7dfc8f6499cbde11679bb8ce1e86fad8e12da6223c05374f91f"
+      },
+      {
+        "path": "src/utils/i18n.py",
+        "bytes": 77139,
+        "sha256": "655212af7b1431bcd77db676a6e3632e743cc0dded40ebb50f29b41a39897e17"
+      },
+      {
+        "path": "docs/DASHBOARD_CALENDAR_DATE_INPUT_LOG.md",
+        "bytes": 940,
+        "sha256": "248acbfec61562258078b254bc07a02dcbb2af71ad780e24f3e0d5cd74689f90"
+      },
+      {
+        "path": "support/test_results/aef_dashboard_calendar_date_input_tests.json",
+        "bytes": 387,
+        "sha256": "3b33b6101eccd7b042e7b2789121d3068fe9610801d6fb2535e2cd29dc2fff67"
+      }
+    ]
+  },
+  "economic_recommendations_update": {
+    "updated_at": "2026-06-13",
+    "backup": "backups/pre_economic_recommendations_2026-06-13T00-30-00-000Z/BACKUP_MANIFEST.json",
+    "log": "docs/ECONOMIC_RECOMMENDATIONS_IMPLEMENTATION_LOG.md",
+    "test_results": "support/test_results/aef_economic_recommendations_100_tests.json",
+    "requirements_changed": false,
+    "changed_files": [
+      {
+        "path": "app.py",
+        "bytes": 5940,
+        "sha256": "fd52782b9123a9a35a104c0f79bde5918a9971d80946df81791ff66c9b70630f"
+      },
+      {
+        "path": "src/models/economic_engine.py",
+        "bytes": 21277,
+        "sha256": "0f530902e49d11fdd62276f17be9d1723779b55b7f22290dfc95f3dcfb172cdb"
+      },
+      {
+        "path": "src/models/state_manager.py",
+        "bytes": 18874,
+        "sha256": "a4a24c1599c9bf5fb5e59dc0d1a25c4e067d643edfeb615bab76c99124832003"
+      },
+      {
+        "path": "pages/main/setup_page.py",
+        "bytes": 117508,
+        "sha256": "22f08c85f617a80ff572e4f8ea82f26b184ae871abff852455d85c9d79b8089b"
+      },
+      {
+        "path": "pages/main/recommendations.py",
+        "bytes": 8383,
+        "sha256": "e0ed6f29764c1ddb4fbd4b3d7f0ba638dc011b16c3c5e4b2c4be097c40e314c3"
+      },
+      {
+        "path": "pages/main/report.py",
+        "bytes": 75587,
+        "sha256": "66bd6fbb26fb0b2a23ca387475f14b3aa1074a78507c0c4f6034de6b4a87bce5"
+      },
+      {
+        "path": "src/utils/i18n.py",
+        "bytes": 87818,
+        "sha256": "1ea07047b91c27920a7375c816a0293efdfa038f412d5f8cf0749a71a46a60c5"
+      },
+      {
+        "path": "docs/ECONOMIC_RECOMMENDATIONS_IMPLEMENTATION_LOG.md",
+        "bytes": 5386,
+        "sha256": "d01403796f8d0e5bcd541f7add879546ddf084714ff3b89bad35668f5b255551"
+      },
+      {
+        "path": "support/test_results/aef_economic_recommendations_100_tests.json",
+        "bytes": 13918,
+        "sha256": "aa9784388da95bfcdf55c8d979a37e8c9ec96f9d09c922d48fce16280c656c94"
+      }
+    ]
+  },
+  "cacao_perennial_economic_horizon_fix": {
+    "updated_at": "2026-06-13",
+    "backup": "backups/pre_cacao_economic_horizon_2026-06-13T00-00-00-000Z/BACKUP_MANIFEST.json",
+    "user_config": "C:\\Users\\tankamch\\Downloads\\field_config (1).json",
+    "log": "docs/CACAO_ECONOMIC_HORIZON_FIX_LOG.md",
+    "test_results": [
+      "support/test_results/aef_cacao_economic_horizon_1000_simulations.json",
+      "support/test_results/aef_cacao_economic_horizon_static_100_checks.json"
+    ],
+    "requirements_changed": false,
+    "changed_files": [
+      {
+        "path": "src/models/economic_engine.py",
+        "bytes": 30297,
+        "sha256": "51d9f285dc52cd694a9cf487b7646ca0803e44726e64cff03de331bda212e87f"
+      },
+      {
+        "path": "src/models/simulation_engine.py",
+        "bytes": 38771,
+        "sha256": "ef64a44d9b0b713fae3449163e4ea1633e633fa133fda0332177b8ff334700ba"
+      },
+      {
+        "path": "src/models/cooperative_engine.py",
+        "bytes": 17821,
+        "sha256": "608a33951c418954996c96d8783d0fe782b467f0572edb75dcff1897d41265d1"
+      },
+      {
+        "path": "src/models/state_manager.py",
+        "bytes": 19146,
+        "sha256": "1be35db50e93a86b9b647c68372c33049d02a9873851b448afd32115dacbb2be"
+      },
+      {
+        "path": "pages/main/setup_page.py",
+        "bytes": 118324,
+        "sha256": "922e3af5a94f165554595c71bf57ef72a8881a3d0f1dde153a314e673a500d9d"
+      },
+      {
+        "path": "pages/main/recommendations.py",
+        "bytes": 10055,
+        "sha256": "80823bab4e2e4bf2a5d5fea97059b98dd4dda59af5cd8bae5d46dbda763d3271"
+      },
+      {
+        "path": "pages/main/report.py",
+        "bytes": 77649,
+        "sha256": "0bf19e26ba91cbeb03bc16da367cb888733bb50ca87afcb0da2830fedbb3313b"
+      },
+      {
+        "path": "src/utils/i18n.py",
+        "bytes": 89878,
+        "sha256": "e96921be412cc3d3e6b0d662d52e13162aae23248562530f4e7341cb2b773861"
+      },
+      {
+        "path": "docs/CACAO_ECONOMIC_HORIZON_FIX_LOG.md",
+        "bytes": 4368,
+        "sha256": "00b53815b70397ba46fbc2a28439de599e415438e59e3367bbe73e9a9371a3ab"
+      },
+      {
+        "path": "support/test_results/aef_cacao_economic_horizon_1000_simulations.json",
+        "bytes": 3338,
+        "sha256": "41a80239c632add691450142c03bfd20cc3c6191339b4012e98bd9984b2ae7a0"
+      },
+      {
+        "path": "support/test_results/aef_cacao_economic_horizon_static_100_checks.json",
+        "bytes": 9770,
+        "sha256": "a52ea6b18a458fec7c2d2ad5a522233c55c64145fa6fe8a6aa810f4f3d57754e"
+      }
+    ]
+  },
+  "recommendation_calendars_detail_update": {
+    "updated_at": "2026-06-13T00:00:00.000Z",
+    "backup": "backups/pre_recommendation_calendars_2026-06-13T00-00-00-000Z",
+    "purpose": "Expose full optimized irrigation, fertilization, and disease-control operational details in agronomic and economic recommendation tabs.",
+    "requirements_changed": false,
+    "test_results": "support/test_results/aef_recommendation_calendars_static_100_checks.json",
+    "log": "docs/RECOMMENDATION_CALENDARS_DETAIL_LOG.md",
+    "changed_files": [
+      {
+        "path": "pages/main/recommendations.py",
+        "bytes": 24153,
+        "sha256": "0eea91dbf9bf170d54115b9e181ef49c751030ccd0f41d23c9eab0d0529367cb"
+      },
+      {
+        "path": "src/utils/i18n.py",
+        "bytes": 93551,
+        "sha256": "bc442f5b67538158a015905c2959626c6d9edc86993bd56c77829d0abcffa5e9"
+      },
+      {
+        "path": "src/models/cooperative_engine.py",
+        "bytes": 18269,
+        "sha256": "593e5b7ae4b1afa426c8ec0d3f6919afd49466a2d94acddfefd212db4e02f4d4"
+      },
+      {
+        "path": "docs/RECOMMENDATION_CALENDARS_DETAIL_LOG.md",
+        "bytes": 2530,
+        "sha256": "79858fcc11ff95213a565cd57e9f62f49f9f65028ceb563a3182b20f6d619a80"
+      },
+      {
+        "path": "support/test_results/aef_recommendation_calendars_static_100_checks.json",
+        "bytes": 15193,
+        "sha256": "2b30dffbf1e07d2ab877531eeb1083606f94def090d1509cacaa3299fadec4e7"
+      }
+    ]
+  },
+  "what_if_scenarios_update": {
+    "updated_at": "2026-06-14T00:00:00.000Z",
+    "backup": "backups/pre_what_if_scenarios_2026-06-14T00-00-00-000Z",
+    "purpose": "Add an interactive What-if tab next to Recommendations, with editable optimized calendars, deterministic yield/economic comparison, and PDF export.",
+    "requirements_changed": false,
+    "test_results": "support/test_results/aef_what_if_scenarios_static_100_checks.json",
+    "log": "docs/WHAT_IF_SCENARIOS_LOG.md",
+    "changed_files": [
+      {
+        "path": "app.py",
+        "bytes": 6269,
+        "sha256": "75e3b3c2f124d1e45b7e37f3c3836bc67ac2e1d96aee0456e26eb1d880dfff04"
+      },
+      {
+        "path": "pages/main/what_if.py",
+        "bytes": 33066,
+        "sha256": "83970c12388218389d3a811c3efc331588d1e496aede8da0e3413787d3f6ce97"
+      },
+      {
+        "path": "src/utils/i18n.py",
+        "bytes": 96998,
+        "sha256": "00769c04fc1b811f9b587b2a4b794727653027d98777c7d8fc795ccedfbc962f"
+      },
+      {
+        "path": "docs/WHAT_IF_SCENARIOS_LOG.md",
+        "bytes": 2157,
+        "sha256": "faebdf123e1d7ddd41a1670cae1db41faafed6bf0caf48c85c13b18e6a175f98"
+      },
+      {
+        "path": "support/test_results/aef_what_if_scenarios_static_100_checks.json",
+        "bytes": 14861,
+        "sha256": "0f4002d7e3da5ce9ae478b0c4830bebd11a9dc85a3921205695ca8db200aaacf"
+      }
+    ]
+  },
+  "recommendation_economic_logic_fix": {
+    "updated_at": "2026-06-14T00:00:00.000Z",
+    "backup": "backups/pre_recommendation_economic_logic_2026-06-14T00-00-00-000Z",
+    "purpose": "Fix recommendation run gating, baseline net return display, and economic optimum selection by total net return; align What-if and report labels.",
+    "requirements_changed": false,
+    "test_results": "support/test_results/aef_recommendation_economic_logic_100_checks.json",
+    "log": "docs/RECOMMENDATION_ECONOMIC_LOGIC_FIX.md",
+    "changed_files": [
+      {
+        "path": "src/models/economic_engine.py",
+        "bytes": 36452,
+        "sha256": "ec3d1ff0b878f69a15fdb6cd8fba6ae39b98d7778133ca5a5fd597d44e803b90"
+      },
+      {
+        "path": "pages/main/recommendations.py",
+        "bytes": 26096,
+        "sha256": "8b7ce769e1b824a7d7dc013871e37b992216594bb8d81fdac5599a776f71cd64"
+      },
+      {
+        "path": "pages/main/what_if.py",
+        "bytes": 33817,
+        "sha256": "24929ef49871d3ab9448574633fc6ea7663fe1d4949b0da0cf32b341ee4d8217"
+      },
+      {
+        "path": "pages/main/report.py",
+        "bytes": 78073,
+        "sha256": "154192f20281a4d26c4a00692e20a6d8084f828a1b01847f885c9d9c08c81730"
+      },
+      {
+        "path": "src/utils/i18n.py",
+        "bytes": 100448,
+        "sha256": "d1bbfe58c5a820826996407359ca7848ebfa198f05d9ed7f6e118f067298ef5b"
+      },
+      {
+        "path": "docs/RECOMMENDATION_ECONOMIC_LOGIC_FIX.md",
+        "bytes": 3628,
+        "sha256": "a727032c8363ba8663ee92221ca5040162f1f19d2d606ffbd92f002af2e71414"
+      },
+      {
+        "path": "support/test_results/aef_recommendation_economic_logic_100_checks.json",
+        "bytes": 14348,
+        "sha256": "ce50bedfc308fd94ac0d77fa31aeb0177bdaacb21ba5f22dfdb4606df3f050ea"
+      }
+    ]
+  },
+  "price_source_effect_fix": {
+    "updated_at": "2026-06-14T00:00:00.000Z",
+    "backup": "backups/pre_price_source_effect_2026-06-14T00-00-00-000Z",
+    "purpose": "Make economy Price source affect automatic price references, confidence, notes, widget stability and downstream recommendation assumptions.",
+    "requirements_changed": false,
+    "test_results": "support/test_results/aef_price_source_effect_100_checks.json",
+    "log": "docs/PRICE_SOURCE_EFFECT_FIX.md",
+    "changed_files": [
+      {
+        "path": "src/models/economic_engine.py",
+        "bytes": 39166,
+        "sha256": "0961dbe0c916ed86718d3428537532db432bbda7e545fd1a3288f40dee2690b4"
+      },
+      {
+        "path": "pages/main/setup_page.py",
+        "bytes": 119311,
+        "sha256": "559018d8559cfbde9877801754b3c07446d90818c4d382afb17e953dcf93afbb"
+      },
+      {
+        "path": "src/utils/i18n.py",
+        "bytes": 102172,
+        "sha256": "997dde181df25d7aa758fedcc4b46f428f749e9c984715466bec39117534eb53"
+      },
+      {
+        "path": "docs/PRICE_SOURCE_EFFECT_FIX.md",
+        "bytes": 2287,
+        "sha256": "173ee6677259fa7e038a2b44ed260c69438137e49c913c5ef1352ba795cca0cf"
+      },
+      {
+        "path": "support/test_results/aef_price_source_effect_100_checks.json",
+        "bytes": 14646,
+        "sha256": "6c6a35898206d369ee6930490200a19a8ba17b1b12e846a28c4c58be3a3641ed"
+      }
+    ]
+  }
+}

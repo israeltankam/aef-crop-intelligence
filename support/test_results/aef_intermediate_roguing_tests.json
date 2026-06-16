@@ -1,0 +1,92 @@
+{
+  "total": 17,
+  "passed": 17,
+  "failed": [],
+  "tests": [
+    {
+      "name": "engine_has_intermediate_scenario",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "report_table_has_intermediate",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "i18n_has_scenario_spinner_en",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "i18n_has_scenario_spinner_fr",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "disease_has_intermediate_profile",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "disease_has_roguing_balance_helper",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "disease_roguing_not_automatic",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "perennial_stricter_margin",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "annual_focus_condition_documented",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "perennial_durable_cost_documented",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "scenario_roguing_metrics_in_stats",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "scenario_roguing_metrics_in_report",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "scenario_schedules_intermediate_between_min_and_opt",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "no_auto_remove_phrase_in_report",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "scenario_spinner_uses_translation",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "report_roguing_newlines_are_escaped",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "no_broken_roguing_string",
+      "pass": true,
+      "detail": ""
+    }
+  ]
+}

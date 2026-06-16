@@ -1,0 +1,82 @@
+{
+  "total": 15,
+  "passed": 15,
+  "failed": [],
+  "tests": [
+    {
+      "name": "dashboard_metrics_translated",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "dashboard_radio_caption_translates_value",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "dashboard_tabs_translated",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "dashboard_chart_legends_translated",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "dashboard_raw_table_columns_translated",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "setup_step_tabs_translated",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "setup_soil_options_display_only_translation",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "setup_soil_editor_columns_translated",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "setup_infection_log_columns_translated",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "setup_upload_shape_buttons_translated",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "setup_detection_messages_translated",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "catalog_has_new_dashboard_terms",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "catalog_has_new_setup_terms",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "no_bad_nested_fstring_quotes",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "no_detectable_untranslated_dashboard_setup_ui",
+      "pass": true,
+      "detail": ""
+    }
+  ]
+}

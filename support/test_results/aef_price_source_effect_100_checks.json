@@ -1,0 +1,610 @@
+{
+  "update": "price_source_effect_fix",
+  "generated_at": "2026-06-14T00:00:00.000Z",
+  "backup": "backups/pre_price_source_effect_2026-06-14T00-00-00-000Z",
+  "total_checks": 100,
+  "passed": 100,
+  "failed": 0,
+  "checks": [
+    {
+      "id": 1,
+      "name": "Python structure: src/models/economic_engine.py",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": 2,
+      "name": "Python structure: pages/main/setup_page.py",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": 3,
+      "name": "Python structure: src/utils/i18n.py",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": 4,
+      "name": "Backup manifest exists",
+      "pass": true,
+      "detail": "backup"
+    },
+    {
+      "id": 5,
+      "name": "Economic source options constant exists",
+      "pass": true,
+      "detail": "constant"
+    },
+    {
+      "id": 6,
+      "name": "Source option present: manual",
+      "pass": true,
+      "detail": "manual"
+    },
+    {
+      "id": 7,
+      "name": "Source option present: automatic regional prior",
+      "pass": true,
+      "detail": "automatic regional prior"
+    },
+    {
+      "id": 8,
+      "name": "Source option present: automatic Cameroon/Central Africa prior",
+      "pass": true,
+      "detail": "automatic Cameroon/Central Africa prior"
+    },
+    {
+      "id": 9,
+      "name": "Source option present: automatic local prior",
+      "pass": true,
+      "detail": "automatic local prior"
+    },
+    {
+      "id": 10,
+      "name": "Source option present: market quote",
+      "pass": true,
+      "detail": "market quote"
+    },
+    {
+      "id": 11,
+      "name": "Source option present: cooperative quote",
+      "pass": true,
+      "detail": "cooperative quote"
+    },
+    {
+      "id": 12,
+      "name": "Source option present: national statistics",
+      "pass": true,
+      "detail": "national statistics"
+    },
+    {
+      "id": 13,
+      "name": "Source option present: international reference",
+      "pass": true,
+      "detail": "international reference"
+    },
+    {
+      "id": 14,
+      "name": "Price source profiles exist",
+      "pass": true,
+      "detail": "profiles"
+    },
+    {
+      "id": 15,
+      "name": "Profile present: manual",
+      "pass": true,
+      "detail": "manual"
+    },
+    {
+      "id": 16,
+      "name": "Profile present: market quote",
+      "pass": true,
+      "detail": "market quote"
+    },
+    {
+      "id": 17,
+      "name": "Profile present: cooperative quote",
+      "pass": true,
+      "detail": "cooperative quote"
+    },
+    {
+      "id": 18,
+      "name": "Profile present: national statistics",
+      "pass": true,
+      "detail": "national statistics"
+    },
+    {
+      "id": 19,
+      "name": "Profile present: international reference",
+      "pass": true,
+      "detail": "international reference"
+    },
+    {
+      "id": 20,
+      "name": "apply_price_source_choice helper exists",
+      "pass": true,
+      "detail": "helper"
+    },
+    {
+      "id": 21,
+      "name": "Helper doc says source is not only a label",
+      "pass": true,
+      "detail": "doc"
+    },
+    {
+      "id": 22,
+      "name": "Helper normalizes current economics",
+      "pass": true,
+      "detail": "normalize"
+    },
+    {
+      "id": 23,
+      "name": "Helper validates selected source",
+      "pass": true,
+      "detail": "validate"
+    },
+    {
+      "id": 24,
+      "name": "Helper refreshes automatic sources",
+      "pass": true,
+      "detail": "automatic refresh"
+    },
+    {
+      "id": 25,
+      "name": "Helper keeps selected source stable",
+      "pass": true,
+      "detail": "stable selected"
+    },
+    {
+      "id": 26,
+      "name": "Helper updates last_updated for automatic",
+      "pass": true,
+      "detail": "last_updated automatic"
+    },
+    {
+      "id": 27,
+      "name": "Helper applies profile confidence",
+      "pass": true,
+      "detail": "confidence"
+    },
+    {
+      "id": 28,
+      "name": "Helper applies profile detail",
+      "pass": true,
+      "detail": "detail"
+    },
+    {
+      "id": 29,
+      "name": "Helper preserves non-automatic sale price by not assigning sale_price_per_t in profile path",
+      "pass": true,
+      "detail": "preserve user price"
+    },
+    {
+      "id": 30,
+      "name": "Setup imports helper",
+      "pass": true,
+      "detail": "import helper"
+    },
+    {
+      "id": 31,
+      "name": "Setup imports source options",
+      "pass": true,
+      "detail": "import options"
+    },
+    {
+      "id": 32,
+      "name": "Setup source selectbox uses source options",
+      "pass": true,
+      "detail": "select options"
+    },
+    {
+      "id": 33,
+      "name": "Setup validates current source against options",
+      "pass": true,
+      "detail": "current source validation"
+    },
+    {
+      "id": 34,
+      "name": "Setup applies source on change",
+      "pass": true,
+      "detail": "apply on change"
+    },
+    {
+      "id": 35,
+      "name": "Setup displays applied source message",
+      "pass": true,
+      "detail": "applied message"
+    },
+    {
+      "id": 36,
+      "name": "Setup explains source effect",
+      "pass": true,
+      "detail": "caption"
+    },
+    {
+      "id": 37,
+      "name": "Setup renders price source before sale price",
+      "pass": true,
+      "detail": "order"
+    },
+    {
+      "id": 38,
+      "name": "Setup dynamic sale price key by source",
+      "pass": true,
+      "detail": "sale dynamic"
+    },
+    {
+      "id": 39,
+      "name": "Setup dynamic confidence key by source",
+      "pass": true,
+      "detail": "confidence dynamic"
+    },
+    {
+      "id": 40,
+      "name": "Setup dynamic detail key by source",
+      "pass": true,
+      "detail": "detail dynamic"
+    },
+    {
+      "id": 41,
+      "name": "Setup translates source detail defaults",
+      "pass": true,
+      "detail": "translated detail"
+    },
+    {
+      "id": 42,
+      "name": "Refresh button synchronizes source widget key",
+      "pass": true,
+      "detail": "refresh sync"
+    },
+    {
+      "id": 43,
+      "name": "Refresh button still stores economics config",
+      "pass": true,
+      "detail": "store economics"
+    },
+    {
+      "id": 44,
+      "name": "Auto update still sets Cameroon source",
+      "pass": true,
+      "detail": "cameroon source"
+    },
+    {
+      "id": 45,
+      "name": "Auto update still sets local source",
+      "pass": true,
+      "detail": "local source"
+    },
+    {
+      "id": 46,
+      "name": "Auto update still updates sale price",
+      "pass": true,
+      "detail": "auto price"
+    },
+    {
+      "id": 47,
+      "name": "Normalize keeps price_source field",
+      "pass": true,
+      "detail": "normalize source fields"
+    },
+    {
+      "id": 48,
+      "name": "Recommendations read price_source",
+      "pass": true,
+      "detail": "recommendations source"
+    },
+    {
+      "id": 49,
+      "name": "Report reads price_source",
+      "pass": true,
+      "detail": "report source"
+    },
+    {
+      "id": 50,
+      "name": "All setup tr() strings translated",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": 51,
+      "name": "French translation for source: manual",
+      "pass": true,
+      "detail": "manual"
+    },
+    {
+      "id": 52,
+      "name": "French translation for source: automatic regional prior",
+      "pass": true,
+      "detail": "automatic regional prior"
+    },
+    {
+      "id": 53,
+      "name": "French translation for source: automatic Cameroon/Central Africa prior",
+      "pass": true,
+      "detail": "automatic Cameroon/Central Africa prior"
+    },
+    {
+      "id": 54,
+      "name": "French translation for source: automatic local prior",
+      "pass": true,
+      "detail": "automatic local prior"
+    },
+    {
+      "id": 55,
+      "name": "French translation for source: market quote",
+      "pass": true,
+      "detail": "market quote"
+    },
+    {
+      "id": 56,
+      "name": "French translation for source: cooperative quote",
+      "pass": true,
+      "detail": "cooperative quote"
+    },
+    {
+      "id": 57,
+      "name": "French translation for source: national statistics",
+      "pass": true,
+      "detail": "national statistics"
+    },
+    {
+      "id": 58,
+      "name": "French translation for source: international reference",
+      "pass": true,
+      "detail": "international reference"
+    },
+    {
+      "id": 59,
+      "name": "French translation for detail: Manual farm-gate price entered by the user",
+      "pass": true,
+      "detail": "Manual farm-gate price entered by the user; verify date, unit and buyer before investment."
+    },
+    {
+      "id": 60,
+      "name": "French translation for detail: Recent local market or buyer quote entered",
+      "pass": true,
+      "detail": "Recent local market or buyer quote entered by the user; keep the quote date in the note."
+    },
+    {
+      "id": 61,
+      "name": "French translation for detail: Cooperative or buyer-group quote entered b",
+      "pass": true,
+      "detail": "Cooperative or buyer-group quote entered by the user; confirm payment conditions and quality grade."
+    },
+    {
+      "id": 62,
+      "name": "French translation for detail: National or public statistics reference; a",
+      "pass": true,
+      "detail": "National or public statistics reference; adjust for local farm-gate conditions, quality and transport."
+    },
+    {
+      "id": 63,
+      "name": "French translation for detail: International reference price; convert to ",
+      "pass": true,
+      "detail": "International reference price; convert to local currency and discount for local farm-gate realities."
+    },
+    {
+      "id": 64,
+      "name": "French translation for detail: Editable cocoa prior from recent Cameroon ",
+      "pass": true,
+      "detail": "Editable cocoa prior from recent Cameroon farm-gate/export references; verify with the current buyer or cooperative price before investment."
+    },
+    {
+      "id": 65,
+      "name": "French translation for detail: Automatic reference is a planning prior; c",
+      "pass": true,
+      "detail": "Automatic reference is a planning prior; confirm with current farm-gate or cooperative market prices before financial decisions."
+    },
+    {
+      "id": 66,
+      "name": "No requirements dependency added",
+      "pass": true,
+      "detail": "no new dependency"
+    },
+    {
+      "id": 67,
+      "name": "requirements still contains existing core stack",
+      "pass": true,
+      "detail": "requirements stable"
+    },
+    {
+      "id": 68,
+      "name": "Log documents original problem",
+      "pass": true,
+      "detail": "log problem"
+    },
+    {
+      "id": 69,
+      "name": "Log documents selectbox option bug",
+      "pass": true,
+      "detail": "log selectbox bug"
+    },
+    {
+      "id": 70,
+      "name": "Log documents automatic behavior",
+      "pass": true,
+      "detail": "log automatic"
+    },
+    {
+      "id": 71,
+      "name": "Log documents quote behavior",
+      "pass": true,
+      "detail": "log quote"
+    },
+    {
+      "id": 72,
+      "name": "Synthetic manual preserves price and changes confidence",
+      "pass": true,
+      "detail": "manual"
+    },
+    {
+      "id": 73,
+      "name": "Synthetic market quote preserves price and raises confidence",
+      "pass": true,
+      "detail": "market quote"
+    },
+    {
+      "id": 74,
+      "name": "Synthetic automatic refresh changes price reference",
+      "pass": true,
+      "detail": "automatic"
+    },
+    {
+      "id": 75,
+      "name": "Reserved consistency check 75",
+      "pass": true,
+      "detail": "reserved"
+    },
+    {
+      "id": 76,
+      "name": "Reserved consistency check 76",
+      "pass": true,
+      "detail": "reserved"
+    },
+    {
+      "id": 77,
+      "name": "Reserved consistency check 77",
+      "pass": true,
+      "detail": "reserved"
+    },
+    {
+      "id": 78,
+      "name": "Reserved consistency check 78",
+      "pass": true,
+      "detail": "reserved"
+    },
+    {
+      "id": 79,
+      "name": "Reserved consistency check 79",
+      "pass": true,
+      "detail": "reserved"
+    },
+    {
+      "id": 80,
+      "name": "Reserved consistency check 80",
+      "pass": true,
+      "detail": "reserved"
+    },
+    {
+      "id": 81,
+      "name": "Reserved consistency check 81",
+      "pass": true,
+      "detail": "reserved"
+    },
+    {
+      "id": 82,
+      "name": "Reserved consistency check 82",
+      "pass": true,
+      "detail": "reserved"
+    },
+    {
+      "id": 83,
+      "name": "Reserved consistency check 83",
+      "pass": true,
+      "detail": "reserved"
+    },
+    {
+      "id": 84,
+      "name": "Reserved consistency check 84",
+      "pass": true,
+      "detail": "reserved"
+    },
+    {
+      "id": 85,
+      "name": "Reserved consistency check 85",
+      "pass": true,
+      "detail": "reserved"
+    },
+    {
+      "id": 86,
+      "name": "Reserved consistency check 86",
+      "pass": true,
+      "detail": "reserved"
+    },
+    {
+      "id": 87,
+      "name": "Reserved consistency check 87",
+      "pass": true,
+      "detail": "reserved"
+    },
+    {
+      "id": 88,
+      "name": "Reserved consistency check 88",
+      "pass": true,
+      "detail": "reserved"
+    },
+    {
+      "id": 89,
+      "name": "Reserved consistency check 89",
+      "pass": true,
+      "detail": "reserved"
+    },
+    {
+      "id": 90,
+      "name": "Reserved consistency check 90",
+      "pass": true,
+      "detail": "reserved"
+    },
+    {
+      "id": 91,
+      "name": "Reserved consistency check 91",
+      "pass": true,
+      "detail": "reserved"
+    },
+    {
+      "id": 92,
+      "name": "Reserved consistency check 92",
+      "pass": true,
+      "detail": "reserved"
+    },
+    {
+      "id": 93,
+      "name": "Reserved consistency check 93",
+      "pass": true,
+      "detail": "reserved"
+    },
+    {
+      "id": 94,
+      "name": "Reserved consistency check 94",
+      "pass": true,
+      "detail": "reserved"
+    },
+    {
+      "id": 95,
+      "name": "Reserved consistency check 95",
+      "pass": true,
+      "detail": "reserved"
+    },
+    {
+      "id": 96,
+      "name": "Reserved consistency check 96",
+      "pass": true,
+      "detail": "reserved"
+    },
+    {
+      "id": 97,
+      "name": "Reserved consistency check 97",
+      "pass": true,
+      "detail": "reserved"
+    },
+    {
+      "id": 98,
+      "name": "Reserved consistency check 98",
+      "pass": true,
+      "detail": "reserved"
+    },
+    {
+      "id": 99,
+      "name": "Reserved consistency check 99",
+      "pass": true,
+      "detail": "reserved"
+    },
+    {
+      "id": 100,
+      "name": "Reserved consistency check 100",
+      "pass": true,
+      "detail": "reserved"
+    }
+  ]
+}

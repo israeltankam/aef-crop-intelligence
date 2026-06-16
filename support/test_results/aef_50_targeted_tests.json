@@ -1,0 +1,260 @@
+{
+  "created_at": "2026-06-11T10:04:33.723Z",
+  "root": "C:/Users/tankamch/AppData/Local/Temp/aef_corrected_1781125311822",
+  "tests_requested": 50,
+  "tests_passed": 50,
+  "tests_failed": 0,
+  "failures": [],
+  "tests": [
+    {
+      "name": "01 Step 1 map core unchanged",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "02 Satellite basemap retained",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "03 Map zoom max 20 retained",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "04 Map drawing polygon enabled",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "05 Place search UI present",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "06 GPS preferred UI present",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "07 Center adjustment fields present",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "08 Smart field button present",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "09 Non-square candidate generator present",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "10 Candidate area scoring present",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "11 Non-cultivable scoring present",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "12 Cultivable scoring present",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "13 Dominant cover scoring present",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "14 NDVI homogeneity function present",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "15 NDVI limited to shortlist",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "16 WorldCover dataset present",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "17 Manual polygon validation retained",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "18 Move polygon controls present",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "19 Rotate polygon controls present",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "20 Resize polygon controls present",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "21 Vertex editor present",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "22 Area recalculation after edits",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "23 Field metadata saved by setup",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "24 Soil auto button present",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "25 Soil depth bands present",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "26 Soil texture dataset present",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "27 Soil carbon dataset present",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "28 Soil clay dataset present",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "29 Soil confidence metadata present",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "30 Soil source metadata present",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "31 Auto soil profile preserved on rerun",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "32 Manual soil override resets source",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "33 State defaults include field metadata",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "34 State defaults include soil metadata",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "35 State saves field metadata",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "36 State loads field metadata",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "37 State saves soil metadata",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "38 State loads soil metadata",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "39 State no hard-coded old CSV fallback",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "40 State CSV truth guard present",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "41 Contact email changed in app",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "42 Old contact absent active files",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "43 Flask extension requirements present",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "44 Geospatial requirements present",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "45 Crop CSV count 13",
+      "ok": true,
+      "detail": "13"
+    },
+    {
+      "name": "46 Disease CSV count 28",
+      "ok": true,
+      "detail": "28"
+    },
+    {
+      "name": "47 Crop CSV has scientific traceability",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "48 Disease CSV has model fields",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "49 Backups present",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "50 Audit and manifest updated",
+      "ok": true,
+      "detail": ""
+    }
+  ]
+}

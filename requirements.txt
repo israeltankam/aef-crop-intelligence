@@ -17,3 +17,8 @@ google-auth==2.43.0
 matplotlib==3.10.7
 requests==2.32.5
 geocoder==1.38.1
+Flask-Login==0.6.3
+Flask-Bcrypt==1.0.1
+Flask-DebugToolbar==0.16.0
+Flask-SQLAlchemy==3.1.1
+branca==0.8.1

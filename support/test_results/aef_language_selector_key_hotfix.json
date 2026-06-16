@@ -1,0 +1,24 @@
+{
+  "total": 4,
+  "passed": 4,
+  "failed": [],
+  "tests": [
+    {
+      "name": "signature_accepts_key",
+      "pass": true
+    },
+    {
+      "name": "widget_uses_key",
+      "pass": true
+    },
+    {
+      "name": "login_call_has_key",
+      "pass": true
+    },
+    {
+      "name": "sidebar_call_has_key",
+      "pass": true
+    }
+  ],
+  "backup": "C:/Users/tankamch/AppData/Local/Temp/aef_corrected_1781125311822/backups/pre_language_selector_key_hotfix_2026-06-11T14-17-40-723Z"
+}

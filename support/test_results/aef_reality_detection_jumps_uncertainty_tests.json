@@ -1,0 +1,109 @@
+{
+  "generated_at": "2026-06-11T19:56:00Z",
+  "suite": "reality_detection_jumps_uncertainty_static_checks",
+  "total": 20,
+  "passed": 20,
+  "failed": 0,
+  "tests": [
+    {
+      "name": "dashboard_reality_uses_planting_to_today_window",
+      "passed": true,
+      "details": ""
+    },
+    {
+      "name": "dashboard_reality_fetches_observed_window_only",
+      "passed": true,
+      "details": ""
+    },
+    {
+      "name": "dashboard_reality_filters_model_to_observed_end",
+      "passed": true,
+      "details": ""
+    },
+    {
+      "name": "dashboard_reality_cache_key_includes_dates",
+      "passed": true,
+      "details": ""
+    },
+    {
+      "name": "dashboard_rerun_clears_reality_cache",
+      "passed": true,
+      "details": ""
+    },
+    {
+      "name": "dashboard_uncertainty_ensemble_added",
+      "passed": true,
+      "details": ""
+    },
+    {
+      "name": "dashboard_uncertainty_metric_margin_displayed",
+      "passed": true,
+      "details": ""
+    },
+    {
+      "name": "report_reality_uses_planting_to_today_window",
+      "passed": true,
+      "details": ""
+    },
+    {
+      "name": "report_reality_fetches_observed_window_only",
+      "passed": true,
+      "details": ""
+    },
+    {
+      "name": "report_reality_filters_lai_to_observed_period",
+      "passed": true,
+      "details": ""
+    },
+    {
+      "name": "report_uncertainty_section_added",
+      "passed": true,
+      "details": ""
+    },
+    {
+      "name": "setup_autodetect_sets_management_date_today",
+      "passed": true,
+      "details": ""
+    },
+    {
+      "name": "setup_displays_satellite_and_management_dates",
+      "passed": true,
+      "details": ""
+    },
+    {
+      "name": "disease_service_returns_satellite_anomaly_date",
+      "passed": true,
+      "details": ""
+    },
+    {
+      "name": "disease_service_no_undefined_detection_date_return",
+      "passed": true,
+      "details": ""
+    },
+    {
+      "name": "vector_long_jump_rate_strengthened",
+      "passed": true,
+      "details": ""
+    },
+    {
+      "name": "long_distance_jump_uses_config_driver",
+      "passed": true,
+      "details": ""
+    },
+    {
+      "name": "long_distance_jump_nonlocal_random_candidates",
+      "passed": true,
+      "details": ""
+    },
+    {
+      "name": "i18n_reality_uncertainty_keys_present",
+      "passed": true,
+      "details": ""
+    },
+    {
+      "name": "pdf_latin1_sanitizer_still_present",
+      "passed": true,
+      "details": ""
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "generated_at": "2026-06-13T00:10:00.000Z",
+  "change": "Dashboard View State At slider replaced by bounded calendar date input",
+  "total_checks": 6,
+  "passed": 6,
+  "failed": 0,
+  "failures": [],
+  "dashboard_date_input_lines": [
+    81
+  ],
+  "helper_usage_lines": [
+    73,
+    163,
+    328
+  ],
+  "backup": "backups/pre_dashboard_calendar_date_input_2026-06-13T00-00-00-000Z"
+}

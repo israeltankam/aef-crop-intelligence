@@ -1,0 +1,771 @@
+{
+  "date": "2026-06-12",
+  "working_copy": "C:\\Users\\tankamch\\AppData\\Local\\Temp\\aef_corrected_1781125311822",
+  "total": 152,
+  "passed": 152,
+  "failed": 0,
+  "failures": [],
+  "tests": [
+    {
+      "name": "backup_manifest_exists",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "ux_agro_log_exists",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "ux_agro_log_mentions_backup",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "ux_agro_log_mentions_limits",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "ux_agro_log_mentions_references",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "module_exists_src/utils/coordinate_format.py",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "module_exists_src/models/cooperative_parcel_detector.py",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "module_exists_src/utils/parcel_quality.py",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "module_exists_src/models/fertilizer_optimizer.py",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "module_exists_src/utils/decision_support.py",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "module_exists_src/models/operational_constraints.py",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "module_exists_src/models/model_validity.py",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "setup_imports_coordinate_format",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "setup_imports_parcel_detector",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "setup_imports_parcel_quality",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "cooperative_area_min_is_005",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "cooperative_no_area_min_1_regression",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "cooperative_stored_area_clamped",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "typical_parcel_min_005",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "typical_size_not_fixed_equal",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "coop_dms_caption_present",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "coop_dms_parser_button_present",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "single_field_dms_parser_present",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "auto_detect_button_present",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "auto_detect_uses_spinner",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "auto_detect_variable_success",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "parcel_editor_confidence_column",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "parcel_editor_source_column",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "parcel_quality_summary_used",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "parcel_quality_warnings_displayed",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "detection_notes_translated_at_display",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "detection_notes_stored_raw",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "guided_expert_interface_present",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "operational_constraints_helper_present",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "operational_constraints_single_and_coop",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "perennial_age_input_present",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "coordinate_decimal_to_dms",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "coordinate_format_latlon_dms",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "coordinate_parse_pair",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "coordinate_cardinal_regex",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "coordinate_unicode_symbols",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "coordinate_no_mangled_regex",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "detector_variable_area_factor",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "detector_aspect_ratio",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "detector_rotation",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "detector_point_in_polygon",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "detector_shrinks_edges",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "detector_requires_validation",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "detector_confidence",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "detector_candidate_not_claim_truth",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "parcel_quality_function",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "parcel_quality_small_warning",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "parcel_quality_large_warning",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "parcel_quality_overlap_warning",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "parcel_quality_low_conf_warning",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "state_has_cooperative_perimeter_area_ha",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "state_has_cooperative_target_parcel_area_ha",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "state_has_water_source_type",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "state_has_available_water_m3_day",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "state_has_irrigation_efficiency",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "state_has_irrigation_method",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "state_has_fertilizer_budget_per_ha",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "state_has_fertilizer_availability_note",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "state_has_initial_plant_age_years",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "state_save_cooperative_area",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "state_load_cooperative_area",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "calibration_normalize_method",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "calibration_observation_sigma",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "calibration_accepts_coop_incidence",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "calibration_accepts_coop_yield",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "calibration_nan_confidence_guard",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "calibration_likelihood_uses_sigma_yield",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "calibration_likelihood_uses_sigma_disease",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "calibration_uncertainty_floor",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "calibration_uses_confidence",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "calibration_no_zero_uncertainty_default",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "fert_optimizer_rank_function",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "fert_optimizer_cosine",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "fert_optimizer_limiting_rate",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "fert_service_imports_optimizer",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "fert_service_uses_ranked",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "fert_service_old_heuristic_removed",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "fert_service_no_dummy_balanced_fallback",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "simulation_imports_operational_constraints",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "simulation_caps_irrigation",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "simulation_irrigation_feasibility_note",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "simulation_perennial_initial_age",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "simulation_initial_wood_capacity",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "operational_annotation_function",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "fertilizer_totals_function",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "operational_constraint_formula",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "dashboard_decision_snapshot",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "dashboard_model_validity_cards",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "dashboard_uncertainty_cautious_basis",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "dashboard_satellite_caution",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "report_decision_snapshot",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "report_model_validity",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "report_irrigation_annotation",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "report_fertilizer_totals",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "report_exec_summary",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "report_fertilizer_rationale_translation",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "report_newline_join_not_broken",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "model_validity_surrogate_caveat",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "decision_support_water_card",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "decision_support_disease_card",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "growth_selector_surrogate_status",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "growth_selector_fallback_transparent",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "growth_selector_scientific_caveat",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "i18n_has_Mean detection confidence",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "i18n_has_No active plot is selected.",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "i18n_has_At least one plot is extreme",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "i18n_has_Automatic parcel candidates ",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "i18n_has_Operational feasibility cons",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "i18n_has_Current center (DMS):",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "i18n_has_Use DMS / decimal coordinate",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "i18n_has_Executive decision summary",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "rough_balanced_pages/main/setup_page.py",
+      "pass": true,
+      "detail": "rough bracket/string balance ignoring comments"
+    },
+    {
+      "name": "rough_balanced_pages/main/dashboard.py",
+      "pass": true,
+      "detail": "rough bracket/string balance ignoring comments"
+    },
+    {
+      "name": "rough_balanced_pages/main/report.py",
+      "pass": true,
+      "detail": "rough bracket/string balance ignoring comments"
+    },
+    {
+      "name": "rough_balanced_pages/main/surveillance.py",
+      "pass": true,
+      "detail": "rough bracket/string balance ignoring comments"
+    },
+    {
+      "name": "rough_balanced_src/models/state_manager.py",
+      "pass": true,
+      "detail": "rough bracket/string balance ignoring comments"
+    },
+    {
+      "name": "rough_balanced_src/models/simulation_engine.py",
+      "pass": true,
+      "detail": "rough bracket/string balance ignoring comments"
+    },
+    {
+      "name": "rough_balanced_src/models/calibration_engine.py",
+      "pass": true,
+      "detail": "rough bracket/string balance ignoring comments"
+    },
+    {
+      "name": "rough_balanced_src/models/growth_model_selector.py",
+      "pass": true,
+      "detail": "rough bracket/string balance ignoring comments"
+    },
+    {
+      "name": "rough_balanced_src/models/fertilizer_service.py",
+      "pass": true,
+      "detail": "rough bracket/string balance ignoring comments"
+    },
+    {
+      "name": "rough_balanced_src/models/fertilizer_optimizer.py",
+      "pass": true,
+      "detail": "rough bracket/string balance ignoring comments"
+    },
+    {
+      "name": "rough_balanced_src/models/cooperative_parcel_detector.py",
+      "pass": true,
+      "detail": "rough bracket/string balance ignoring comments"
+    },
+    {
+      "name": "rough_balanced_src/models/operational_constraints.py",
+      "pass": true,
+      "detail": "rough bracket/string balance ignoring comments"
+    },
+    {
+      "name": "rough_balanced_src/models/model_validity.py",
+      "pass": true,
+      "detail": "rough bracket/string balance ignoring comments"
+    },
+    {
+      "name": "rough_balanced_src/utils/coordinate_format.py",
+      "pass": true,
+      "detail": "rough bracket/string balance ignoring comments"
+    },
+    {
+      "name": "rough_balanced_src/utils/parcel_quality.py",
+      "pass": true,
+      "detail": "rough bracket/string balance ignoring comments"
+    },
+    {
+      "name": "rough_balanced_src/utils/decision_support.py",
+      "pass": true,
+      "detail": "rough bracket/string balance ignoring comments"
+    },
+    {
+      "name": "rough_balanced_src/utils/i18n.py",
+      "pass": true,
+      "detail": "rough bracket/string balance ignoring comments"
+    },
+    {
+      "name": "no_tab_indent_pages/main/setup_page.py",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "no_tab_indent_pages/main/dashboard.py",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "no_tab_indent_pages/main/report.py",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "no_tab_indent_pages/main/surveillance.py",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "no_tab_indent_src/models/state_manager.py",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "no_tab_indent_src/models/simulation_engine.py",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "no_tab_indent_src/models/calibration_engine.py",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "no_tab_indent_src/models/growth_model_selector.py",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "no_tab_indent_src/models/fertilizer_service.py",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "no_tab_indent_src/models/fertilizer_optimizer.py",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "no_tab_indent_src/models/cooperative_parcel_detector.py",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "no_tab_indent_src/models/operational_constraints.py",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "no_tab_indent_src/models/model_validity.py",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "no_tab_indent_src/utils/coordinate_format.py",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "no_tab_indent_src/utils/parcel_quality.py",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "no_tab_indent_src/utils/decision_support.py",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "no_tab_indent_src/utils/i18n.py",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "no_streamlit_value_below_min_pattern",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "no_broken_literal_newline_join",
+      "pass": true,
+      "detail": ""
+    }
+  ],
+  "note": "Static verification only; shell/Streamlit execution was unavailable in this session."
+}

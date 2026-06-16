@@ -10,6 +10,98 @@ class CalibrationEngine:
     def __init__(self):
         self.sim_engine = SimulationEngine()
 
+
+    def _normalize_observations(self, surveillance_data):
+        """Convert all surveillance log shapes into calibration-ready rows.
+
+        The single-field page historically stores observations as rows with
+        Date/Type/Value.  The cooperative workflow stores richer entries with
+        scope, plot_id and typed fields such as incidence_pct or soil_n.  Keeping
+        this normalizer inside the calibration engine prevents every UI page from
+        duplicating conversion logic and makes the adaptive loop tolerant of old
+        saved projects, edited tables and cooperative plot observations.
+        """
+        normalized = []
+
+        def add_row(date_value, obs_type, value, source=None):
+            if date_value is None or value is None:
+                return
+            try:
+                numeric_value = float(value)
+            except (TypeError, ValueError):
+                return
+            confidence = 1.0
+            if isinstance(source, dict):
+                try:
+                    confidence = float(source.get('confidence', 1.0))
+                except (TypeError, ValueError):
+                    confidence = 1.0
+                if not np.isfinite(confidence):
+                    confidence = 1.0
+            normalized.append({
+                'Date': str(date_value),
+                'Type': obs_type,
+                'Value': numeric_value,
+                'confidence': confidence,
+                'mode': source.get('mode') if isinstance(source, dict) else None,
+                'scope': source.get('scope') if isinstance(source, dict) else None,
+                'plot_id': source.get('plot_id') if isinstance(source, dict) else None,
+            })
+
+        def visit(item):
+            if item is None:
+                return
+            if isinstance(item, list):
+                for child in item:
+                    visit(child)
+                return
+            if not isinstance(item, dict):
+                return
+
+            # Existing single-field table format.
+            if {'Date', 'Type', 'Value'}.issubset(item.keys()):
+                add_row(item.get('Date'), item.get('Type'), item.get('Value'), item)
+                return
+
+            # Cooperative and future API formats may use lowercase date keys and
+            # explicit value fields.  We flatten each observed signal into its own
+            # likelihood contribution while preserving confidence and plot scope.
+            obs_date = item.get('date') or item.get('Date')
+            if 'incidence_pct' in item:
+                add_row(obs_date, 'Disease Incidence (%)', item.get('incidence_pct'), item)
+            if 'soil_n' in item:
+                add_row(obs_date, 'Soil N (mg/kg)', item.get('soil_n'), item)
+            if 'soil_p' in item:
+                add_row(obs_date, 'Soil P (ppm)', item.get('soil_p'), item)
+            if 'soil_k' in item:
+                add_row(obs_date, 'Soil K (ppm)', item.get('soil_k'), item)
+            if 'yield_t_ha' in item:
+                add_row(obs_date, 'Yield (t/ha)', item.get('yield_t_ha'), item)
+            if 'biomass_t_ha' in item:
+                add_row(obs_date, 'Biomass (t/ha)', item.get('biomass_t_ha'), item)
+            if isinstance(item.get('observations'), list):
+                visit(item.get('observations'))
+
+        visit(surveillance_data)
+        return normalized
+
+    def _observation_sigma(self, base_sigma, row):
+        """Inflate observation noise when a field measurement is less reliable.
+
+        A farmer-estimated cooperative-wide observation should not pull the model
+        as strongly as a measured plot-level value.  Confidence therefore changes
+        likelihood weight through sigma instead of being ignored.
+        """
+        try:
+            confidence = float(row.get('confidence', 1.0))
+        except Exception:
+            confidence = 1.0
+        if not np.isfinite(confidence):
+            confidence = 1.0
+        confidence = float(np.clip(confidence, 0.2, 1.0))
+        scope_penalty = 1.20 if row.get('scope') == 'cooperative' else 1.0
+        return float(base_sigma) * scope_penalty / confidence
+
     def calibrate_model(self, surveillance_data, config, crop_type='Annual'):
         """
         Bayesian-style Calibration Engine.
@@ -17,7 +109,7 @@ class CalibrationEngine:
         Calculates Parameter Uncertainty (Hessian Inverse).
         """
         # 1. Parse & Validate Data
-        df = pd.DataFrame(surveillance_data)
+        df = pd.DataFrame(self._normalize_observations(surveillance_data))
         if df.empty: return None, "No observational data found."
 
         # Segregate Data Streams
@@ -101,7 +193,8 @@ class CalibrationEngine:
                 sim_row = hist[hist['Date'] == d]
                 if not sim_row.empty:
                     sim_val = sim_row.iloc[0]['Yield'] if crop_type == 'Annual' else sim_row.iloc[0]['Fruit_Biomass']
-                    j_lik += ((sim_val - float(row['Value'])) ** 2) / (2 * SIGMA_YIELD**2)
+                    sigma = self._observation_sigma(SIGMA_YIELD, row)
+                    j_lik += ((sim_val - float(row['Value'])) ** 2) / (2 * sigma**2)
 
             # Biomass
             for _, row in obs_biomass.iterrows():
@@ -109,7 +202,8 @@ class CalibrationEngine:
                 sim_row = hist[hist['Date'] == d]
                 if not sim_row.empty:
                     sim_val = sim_row.iloc[0]['Wood_Biomass'] if crop_type == 'Perennial' else sim_row.iloc[0]['Biomass']
-                    j_lik += ((sim_val - float(row['Value'])) ** 2) / (2 * SIGMA_BIO**2)
+                    sigma = self._observation_sigma(SIGMA_BIO, row)
+                    j_lik += ((sim_val - float(row['Value'])) ** 2) / (2 * sigma**2)
 
             # Nitrogen
             for _, row in obs_n.iterrows():
@@ -117,7 +211,8 @@ class CalibrationEngine:
                 sim_row = hist[hist['Date'] == d]
                 if not sim_row.empty:
                     sim_val = sim_row.iloc[0]['N_kg'] / 4.0 
-                    j_lik += ((sim_val - float(row['Value'])) ** 2) / (2 * SIGMA_N**2)
+                    sigma = self._observation_sigma(SIGMA_N, row)
+                    j_lik += ((sim_val - float(row['Value'])) ** 2) / (2 * sigma**2)
 
             # Disease
             for _, row in obs_disease.iterrows():
@@ -125,7 +220,8 @@ class CalibrationEngine:
                 sim_row = hist[hist['Date'] == d]
                 if not sim_row.empty:
                     sim_val = sim_row.iloc[0]['Incidence'] * 100.0
-                    j_lik += ((sim_val - float(row['Value'])) ** 2) / (2 * SIGMA_DIS**2)
+                    sigma = self._observation_sigma(SIGMA_DIS, row)
+                    j_lik += ((sim_val - float(row['Value'])) ** 2) / (2 * sigma**2)
 
             return j_lik + j_prior
 
@@ -155,16 +251,17 @@ class CalibrationEngine:
         
         # Approximate Standard Errors from Hessian (if available)
         # Hessian ~ 1 / Variance
-        uncertainties = [0.0] * 4
+        uncertainty_floor = np.array([0.08, 0.08, 0.10, 0.20])
+        uncertainties = uncertainty_floor.copy()
         try:
             # L-BFGS-B approximates Hessian; dense Hessian usually returned by 'BFGS' but we used bounds.
             # We estimate uncertainty heuristically based on objective curvature if Hessian is unavailable.
             # Ideally we would use numdifftools, but for now we assume 10% if calc fails.
             if hasattr(result_local, 'hess_inv'):
                 cov = result_local.hess_inv.todense() if hasattr(result_local.hess_inv, 'todense') else result_local.hess_inv
-                uncertainties = np.sqrt(np.diag(cov))
+                uncertainties = np.maximum(np.nan_to_num(np.sqrt(np.diag(cov)), nan=0.0, posinf=1.0, neginf=0.0), uncertainty_floor[:len(np.diag(cov))])
         except:
-            uncertainties = [0.1] * 4 # Fallback
+            uncertainties = uncertainty_floor.copy() # Conservative fallback; never report zero uncertainty.
 
         # Map back to physical values
         final_dict = {

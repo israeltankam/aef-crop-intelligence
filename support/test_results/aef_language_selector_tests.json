@@ -1,0 +1,57 @@
+{
+  "created_at": "2026-06-11T11:20:34.194Z",
+  "tests_requested": 12,
+  "tests_passed": 12,
+  "tests_failed": 0,
+  "failures": [],
+  "tests": [
+    {
+      "name": "login_selector_present",
+      "ok": true
+    },
+    {
+      "name": "sidebar_selector_present_after_auth",
+      "ok": true
+    },
+    {
+      "name": "old_global_sidebar_call_removed",
+      "ok": true
+    },
+    {
+      "name": "selector_accepts_key",
+      "ok": true
+    },
+    {
+      "name": "selector_is_radio_toggle",
+      "ok": true
+    },
+    {
+      "name": "french_label_present",
+      "ok": true
+    },
+    {
+      "name": "english_no_code_translation",
+      "ok": true
+    },
+    {
+      "name": "french_no_code_translation",
+      "ok": true
+    },
+    {
+      "name": "app_uses_translated_no_code",
+      "ok": true
+    },
+    {
+      "name": "contact_still_correct",
+      "ok": true
+    },
+    {
+      "name": "distinct_widget_keys",
+      "ok": true
+    },
+    {
+      "name": "changelog_updated",
+      "ok": true
+    }
+  ]
+}

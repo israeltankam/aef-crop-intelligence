@@ -13,12 +13,68 @@ from matplotlib.path import Path
 from src.models.weather_service import WeatherService
 from src.models.physics_engine import PhysicsEngine
 from src.models.fertilizer_service import FertilizerService
+from src.models.disease_models import TauLeapingDiseaseEngine
+from src.models.growth_model_selector import GrowthModelSelector
+from src.models.operational_constraints import max_irrigation_mm_per_event
 
 class SimulationEngine:
     def __init__(self):
         self.weather_service = WeatherService()
         self.physics = PhysicsEngine()
         self.fert_service = FertilizerService()
+        self.disease_engine = TauLeapingDiseaseEngine()
+        self.growth_selector = GrowthModelSelector()
+
+
+    def _operational_uncertainty_profile(self, config, crop_p):
+        """Return a cautious uncertainty floor for operational decision support.
+
+        The stochastic ensemble captures random disease spread, but it does not yet
+        sample every uncertain input: soil estimates, cultivar parameters, weather
+        downscaling, automatic disease identity and missing field calibration.  A
+        diagnostic tool should therefore avoid zero-width confidence bands.  The
+        floor below is intentionally conservative and is reduced only when the
+        adaptive surveillance loop has real observations or calibrated parameters.
+        """
+        is_perennial = str(crop_p.get('Type', 'Annual')) == 'Perennial'
+        soil_source = str(config.get('soil_data_source', 'manual') or 'manual')
+        try:
+            soil_confidence = float(config.get('soil_confidence', 1.0))
+        except Exception:
+            soil_confidence = 0.75
+        soil_confidence = float(np.clip(soil_confidence, 0.35, 1.0))
+
+        observations = config.get('surveillance_logs', []) or []
+        observation_count = len(observations) if isinstance(observations, list) else 0
+        has_calibration = bool(config.get('calibrated_params'))
+        has_disease = bool(config.get('selected_disease_id')) or bool(config.get('disease_spots'))
+
+        base_yield_ci = 0.22 if is_perennial else 0.16
+        soil_penalty = (1.0 - soil_confidence) * 0.30
+        if soil_source != 'manual':
+            soil_penalty += 0.04
+        calibration_credit = min(0.10, observation_count * 0.015)
+        if has_calibration:
+            calibration_credit += 0.05
+
+        min_yield_ci = 0.12 if is_perennial else 0.08
+        yield_ci_fraction_95 = float(np.clip(base_yield_ci + soil_penalty - calibration_credit, min_yield_ci, 0.50))
+        yield_abs_ci95_t_ha = 0.06 if is_perennial else 0.04
+
+        base_incidence_ci = 0.16 if has_disease else 0.03
+        disease_penalty = 0.04 if has_disease and observation_count == 0 else 0.0
+        incidence_ci95_abs = float(np.clip(base_incidence_ci + disease_penalty - calibration_credit * 0.5, 0.02 if not has_disease else 0.06, 0.35))
+
+        return {
+            'yield_ci_fraction_95': yield_ci_fraction_95,
+            'yield_abs_ci95_t_ha': yield_abs_ci95_t_ha,
+            'incidence_ci95_abs': incidence_ci95_abs,
+            'soil_source': soil_source,
+            'soil_confidence': soil_confidence,
+            'adaptive_observation_count': observation_count,
+            'has_calibration': has_calibration,
+            'basis': 'stochastic ensemble plus conservative operational uncertainty floor'
+        }
 
     def _expand_schedule_for_perennials(self, schedule_list, years=20):
         if not schedule_list: return []
@@ -71,6 +127,7 @@ class SimulationEngine:
 
         # --- 1. HORIZON LOGIC ---
         is_perennial = crop_p['Type'] == 'Perennial'
+        initial_age_years = max(0.0, float(config.get('initial_plant_age_years', 0.0) or 0.0)) if is_perennial else 0.0
         
         if is_perennial:
             duration_days = 7300 # 20 Years
@@ -170,12 +227,23 @@ class SimulationEngine:
         wood_cum = 0.0
         standing_fruit = 0.0
         
+        # Perennial fields are often already productive when the app is launched.
+        # Starting every perennial simulation from age zero would understate wood
+        # biomass and distort early yield.  We initialise age and structural wood
+        # from the user-supplied current plantation age while keeping annual crops
+        # unchanged.
+        initial_wood = 0.0
+        if is_perennial and initial_age_years > 0:
+            capacity = float(crop_p.get('Max_Wood_Capacity', 35.0) or 35.0)
+            initial_wood = capacity * (1.0 - np.exp(-initial_age_years / 4.0))
+            initial_wood = float(np.clip(initial_wood, 0.0, capacity))
+        wood_cum = initial_wood
         plant_state = {
-            'lai': 0.0, 
-            'stunting_factor': 1.0, 
+            'lai': 0.0,
+            'stunting_factor': 1.0,
             'cum_dd': 0.0,
-            'age_days': 0,
-            'wood_biomass': 0.0 
+            'age_days': int(initial_age_years * 365.0),
+            'wood_biomass': initial_wood
         }
 
         lat = config.get('center_lat', 0.0)
@@ -252,116 +320,34 @@ class SimulationEngine:
         return field_poly, N, mask, valid_points, triang, I_grid_init
 
     def _run_disease_realization(self, config, crop_p, bio_history, N, mask, valid_points, I_grid_init, stochastic_mode=False):
+        """Run the selected disease model and keep the historical output schema.
+
+        The dashboard and report expect daily dictionaries containing Yield,
+        Incidence, Grid_Incidence and stress metrics.  The actual epidemiology
+        now lives in TauLeapingDiseaseEngine so disease families can evolve
+        independently from the Streamlit pages.
+        """
         df_d = st.session_state['df_diseases']
         dis_id = config['selected_disease_id']
         dis_p = None
         if dis_id:
             dis_rows = df_d[df_d['Disease_ID'] == dis_id]
-            if not dis_rows.empty: dis_p = dis_rows.iloc[0]
+            if not dis_rows.empty:
+                dis_p = dis_rows.iloc[0]
 
-        is_fungal = False
-        if dis_p is not None:
-            if 'fungal' in str(dis_p['Type']).lower() or 'bacterial' in str(dis_p['Type']).lower(): is_fungal = True
-
-        I_grid = np.zeros((N, N))
-        try:
-            detect_date = pd.to_datetime(config['detection_date']).date()
-        except:
-            detect_date = bio_history[0]['weather_row']['DATE'].date()
-
-        kernel = np.array([[0.05, 0.2, 0.05], [0.2, 0.5, 0.2], [0.05, 0.2, 0.05]])
-        beta = dis_p['Beta_Infection'] if dis_p is not None else 0
-        if dis_p is not None: beta *= crop_p['Resistance_Score']
-
-        base_recovery_rate = float(dis_p.get('Daily_Recovery_Rate', 0.0)) if dis_p is not None else 0.0
-
-        history_realization = []
-        n_valid = len(valid_points)
-        yield_noise_val = 0.0
-        env_noise_val = 0.0
-        
-        for bio in bio_history:
-            if stochastic_mode:
-                yield_noise_val = 0.95 * yield_noise_val + np.random.normal(0, 0.05)
-                env_noise_val = 0.95 * env_noise_val + np.random.normal(0, 0.05)
-                yield_factor = max(0.5, 1.0 + yield_noise_val) 
-                env_factor = max(0.5, 1.0 + env_noise_val)
-            else:
-                yield_factor = 1.0
-                env_factor = 1.0
-
-            biomass_val = bio['cumulative_biomass'] 
-            if crop_p['Type'] == 'Perennial':
-                yield_base = bio['Fruit_Biomass'] * yield_factor
-            else:
-                yield_base = (biomass_val * crop_p['Harvest_Index']) * yield_factor
-
-            weather_row = bio['weather_row']
-            curr_date = weather_row['DATE'].date()
-            
-            env_risk = 0
-            if dis_p is not None:
-                t_score = np.exp(-((weather_row['TMIN'] + weather_row['TMAX'])/2 - dis_p['Opt_Temp'])**2 / 50)
-                h_score = 1.0 if weather_row['HUMIDITY'] > dis_p['Opt_Humidity'] else weather_row['HUMIDITY']/100
-                raw_risk = t_score * h_score
-                env_risk = np.clip(raw_risk * env_factor, 0.0, 1.0)
-
-            if curr_date < detect_date:
-                pass 
-            elif curr_date == detect_date:
-                I_grid = np.maximum(I_grid, I_grid_init)
-            else:
-                if dis_p is not None:
-                    if is_fungal:
-                        wind_speed = weather_row.get('WIND_SPEED', 2.0)
-                        spread_driver = (wind_speed / 5.0) 
-                    else:
-                        spread_driver = config['insect_pressure']
-                    
-                    pressure = convolve2d(I_grid, kernel, mode='same')
-                    growth = beta * spread_driver * env_risk * pressure * (1 - I_grid)
-                    
-                    jump_prob = 0.0005 * (1.5 if is_fungal else 1.0)
-                    jumps = (np.random.rand(N, N) < jump_prob) * (I_grid.sum() > 0) * 0.1
-                    
-                    seasonality_multiplier = 1.0 + (3.0 * (1.0 - env_risk)) 
-                    effective_decay = base_recovery_rate * seasonality_multiplier
-                    
-                    I_grid = I_grid + growth + jumps - (I_grid * effective_decay)
-                    I_grid = np.clip(I_grid, 0, 1)
-                    I_grid = I_grid * mask
-
-            inf_values = I_grid[mask]
-            damage_factor = np.ones(n_valid)
-            if dis_p is not None and np.mean(inf_values) > 0:
-                retained = dis_p.get('Yield_Retained_Infected', 0.5)
-                damage_factor = (1 - inf_values) + (inf_values * retained)
-            
-            yield_grid = yield_base * damage_factor
-            
-            history_realization.append({
-                'Date': weather_row['DATE'],
-                'LAI': bio['lai'],
-                'SWC': bio['swc'],
-                'N_kg': bio.get('n_kg', 0),
-                'P_kg': bio.get('p_kg', 0),
-                'K_kg': bio.get('k_kg', 0),
-                'ETa': bio['eta'],
-                'Biomass': biomass_val,
-                'Wood_Biomass': bio.get('Wood_Biomass', 0),
-                'Fruit_Biomass': bio.get('Fruit_Biomass', 0),
-                'Yield': np.mean(yield_grid),
-                'Incidence': np.mean(inf_values) if dis_p is not None else 0,
-                'Avg_Stress': 1 - bio['sw_fac'], 
-                'Avg_N_Stress': 1 - bio.get('n_fac', 1),
-                'Avg_P_Stress': 1 - bio.get('p_fac', 1),
-                'Avg_K_Stress': 1 - bio.get('k_fac', 1),
-                'Grid_Incidence': inf_values.copy(), 
-                'Grid_Yield': yield_grid.copy(),
-                'Env_Favorability': env_risk
-            })
-            
-        return history_realization
+        history, model_choice = self.disease_engine.run(
+            config=config,
+            crop_p=crop_p,
+            disease_row=dis_p,
+            bio_history=bio_history,
+            n_grid=N,
+            mask=mask,
+            valid_points=valid_points,
+            initial_grid=I_grid_init,
+            stochastic_mode=stochastic_mode,
+        )
+        config['_last_disease_model_choice'] = model_choice
+        return history
 
     def run_simulation(self, config):
         res_physics = self._prepare_physics(config)
@@ -372,13 +358,16 @@ class SimulationEngine:
         if spatial_res is None: return None
         field_poly, N, mask, valid_points, triang, I_grid_init = spatial_res
         
+        growth_choice = self.growth_selector.select(config, crop_p)
         history = self._run_disease_realization(config, crop_p, bio_history, N, mask, valid_points, I_grid_init)
         return {
             'history': history,
             'triangulation': triang,
             'grid_points': valid_points,
             'crop_params': crop_p,
-            'field_poly': field_poly 
+            'field_poly': field_poly,
+            'growth_model': growth_choice.to_dict(),
+            'disease_model': config.get('_last_disease_model_choice', {})
         }
 
     def run_ensemble_inference(self, config, n_runs=50):
@@ -392,35 +381,144 @@ class SimulationEngine:
         
         ensemble_yields = []
         ensemble_incidence = []
+        ensemble_roguing_applied = []
+        ensemble_roguing_penalty = []
+        ensemble_roguing_benefit = []
+        ensemble_roguing_cost = []
         ensemble_final_grid = np.zeros_like(I_grid_init[mask])
         dates = [b['weather_row']['DATE'] for b in bio_history]
         
-        for _ in range(n_runs):
-            run_hist = self._run_disease_realization(config, crop_p, bio_history, N, mask, valid_points, I_grid_init, stochastic_mode=True)
+        last_disease_model_choice = {}
+        for run_idx in range(n_runs):
+            run_config = config.copy()
+            run_config['_ensemble_run_index'] = run_idx
+            run_hist = self._run_disease_realization(run_config, crop_p, bio_history, N, mask, valid_points, I_grid_init, stochastic_mode=True)
+            last_disease_model_choice = run_config.get('_last_disease_model_choice', last_disease_model_choice)
             y_series = [day['Yield'] for day in run_hist]
             i_series = [day['Incidence'] for day in run_hist]
             ensemble_yields.append(y_series)
             ensemble_incidence.append(i_series)
+            ensemble_roguing_applied.append(float(any(day.get('Roguing_Applied', False) for day in run_hist)))
+            ensemble_roguing_penalty.append(max(float(day.get('Roguing_Yield_Penalty', 0.0) or 0.0) for day in run_hist))
+            ensemble_roguing_benefit.append(max(float(day.get('Roguing_Inoculum_Benefit', 0.0) or 0.0) for day in run_hist))
+            ensemble_roguing_cost.append(max(float(day.get('Roguing_Yield_Cost', 0.0) or 0.0) for day in run_hist))
             ensemble_final_grid += run_hist[-1]['Grid_Incidence']
             
         y_arr = np.array(ensemble_yields)
         i_arr = np.array(ensemble_incidence)
+        y_mean = np.mean(y_arr, axis=0)
+        i_mean = np.mean(i_arr, axis=0)
+        raw_y_std = np.std(y_arr, axis=0)
+        raw_i_std = np.std(i_arr, axis=0)
+        uncertainty_profile = self._operational_uncertainty_profile(config, crop_p)
+        yield_ci_floor = np.maximum(
+            y_mean * uncertainty_profile['yield_ci_fraction_95'],
+            uncertainty_profile['yield_abs_ci95_t_ha']
+        )
+        incidence_ci_floor = np.full_like(i_mean, uncertainty_profile['incidence_ci95_abs'], dtype=float)
+        y_std = np.maximum(raw_y_std, yield_ci_floor / 1.96)
+        i_std = np.maximum(raw_i_std, incidence_ci_floor / 1.96)
         
         stats = {
             'Date': dates,
-            'Yield_Mean': np.mean(y_arr, axis=0),
-            'Yield_Std': np.std(y_arr, axis=0),
-            'Incidence_Mean': np.mean(i_arr, axis=0),
-            'Incidence_Std': np.std(i_arr, axis=0),
+            'Yield_Mean': y_mean,
+            'Yield_Std': y_std,
+            'Yield_Std_Raw': raw_y_std,
+            'Incidence_Mean': i_mean,
+            'Incidence_Std': i_std,
+            'Incidence_Std_Raw': raw_i_std,
+            'Uncertainty_Profile': uncertainty_profile,
+            'Roguing_Applied_Probability': float(np.mean(ensemble_roguing_applied)) if ensemble_roguing_applied else 0.0,
+            'Roguing_Yield_Penalty_Mean': float(np.mean(ensemble_roguing_penalty)) if ensemble_roguing_penalty else 0.0,
+            'Roguing_Inoculum_Benefit_Mean': float(np.mean(ensemble_roguing_benefit)) if ensemble_roguing_benefit else 0.0,
+            'Roguing_Yield_Cost_Mean': float(np.mean(ensemble_roguing_cost)) if ensemble_roguing_cost else 0.0,
             'Final_Grid_Mean': ensemble_final_grid / n_runs,
             'Biomass_Potential': [b['cumulative_perfect'] for b in bio_history] 
         }
+        growth_choice = self.growth_selector.select(config, crop_p)
         return {
             'ensemble_stats': stats,
             'triangulation': triang,
             'field_poly': field_poly,
-            'crop_params': crop_p
+            'crop_params': crop_p,
+            'growth_model': growth_choice.to_dict(),
+            'disease_model': last_disease_model_choice
         }
+
+    def _scenario_harvest_summary(self, stats, crop_p):
+        """Summarise scenario yield over the economically relevant harvest horizon.
+
+        Annual crops use the final simulated yield.  Perennial crops can have many
+        harvest opportunities inside the 20-year simulation, so downstream
+        economics needs the annual peak yield list rather than only the last day.
+        """
+        dates = pd.to_datetime(stats.get('Date', []))
+        yields = np.asarray(stats.get('Yield_Mean', []), dtype=float)
+        if len(yields) == 0:
+            return {'annual_yields_t_ha': [], 'horizon_yield_t_ha': 0.0}
+        if str(crop_p.get('Type', 'Annual')) != 'Perennial':
+            final_yield = float(yields[-1])
+            return {'annual_yields_t_ha': [final_yield], 'horizon_yield_t_ha': final_yield}
+        if len(dates) != len(yields):
+            annual = [float(np.max(yields))]
+            return {'annual_yields_t_ha': annual, 'horizon_yield_t_ha': float(sum(annual))}
+        start = dates.min()
+        buckets = {}
+        for d, y in zip(dates, yields):
+            year_index = int(max(0, (d - start).days) // 365) + 1
+            if 1 <= year_index <= 20:
+                buckets[year_index] = max(float(y), buckets.get(year_index, 0.0))
+        annual = [float(buckets.get(year, 0.0)) for year in range(1, 21)]
+        return {'annual_yields_t_ha': annual, 'horizon_yield_t_ha': float(sum(annual))}
+
+    def run_counterfactual_scenarios(self, config, n_runs=20):
+        """Compare no action with optimized management for the PDF workflow.
+
+        Scenario ensembles are one of the most expensive report-generation steps.
+        Keeping only the baseline and optimized management paths preserves the
+        decision contrast while avoiding the extra minimum/intermediate ensemble
+        runs that made small fields wait too long.
+        """
+        scenarios = {}
+        scenario_defs = [
+            ('none', 'No action'),
+            ('optimized', 'Optimized Management'),
+        ]
+
+        opt_irr, _ = self.optimize_irrigation_schedule(config)
+        opt_fert = self.optimize_fertilization_schedule(config)
+
+        for strategy, label in scenario_defs:
+            scenario_config = config.copy()
+            scenario_config['disease_control_strategy'] = strategy
+            if strategy == 'optimized':
+                scenario_config['irr_schedule'] = opt_irr
+                scenario_config['fert_schedule'] = opt_fert
+
+            ens = self.run_ensemble_inference(scenario_config, n_runs=n_runs)
+            if ens is None:
+                scenarios[strategy] = {'label': label, 'available': False}
+                continue
+            stats = ens['ensemble_stats']
+            final_yield = float(stats['Yield_Mean'][-1]) if len(stats['Yield_Mean']) else 0.0
+            final_incidence = float(stats['Incidence_Mean'][-1]) if len(stats['Incidence_Mean']) else 0.0
+            harvest_summary = self._scenario_harvest_summary(stats, ens.get('crop_params', {}))
+            scenarios[strategy] = {
+                'label': label,
+                'available': True,
+                'final_yield': final_yield,
+                'annual_yields_t_ha': harvest_summary['annual_yields_t_ha'],
+                'horizon_yield_t_ha': harvest_summary['horizon_yield_t_ha'],
+                'final_incidence': final_incidence,
+                'yield_std': float(stats['Yield_Std'][-1]) if len(stats['Yield_Std']) else 0.0,
+                'roguing_applied_probability': float(stats.get('Roguing_Applied_Probability', 0.0)),
+                'roguing_yield_penalty': float(stats.get('Roguing_Yield_Penalty_Mean', 0.0)),
+                'roguing_inoculum_benefit': float(stats.get('Roguing_Inoculum_Benefit_Mean', 0.0)),
+                'roguing_yield_cost': float(stats.get('Roguing_Yield_Cost_Mean', 0.0)),
+                'growth_model': ens.get('growth_model', {}),
+                'disease_model': ens.get('disease_model', {}),
+            }
+        return scenarios
 
     # ... (Optimization methods remain the same, just ensured they use the new _prepare_physics) ...
     def optimize_irrigation_schedule(self, config):
@@ -429,6 +527,9 @@ class SimulationEngine:
         crop_p, weather, base_hist = res_physics
         
         max_irr_limit = float(crop_p.get('Max_Irr_Event_mm', 40.0))
+        feasible_mm, feasibility_note = max_irrigation_mm_per_event(config, config.get('area_ha', 1.0))
+        if feasible_mm != float('inf'):
+            max_irr_limit = min(max_irr_limit, feasible_mm)
         if crop_p['Type'] == 'Perennial':
             min_interval_days = 60 
         else:
@@ -490,8 +591,10 @@ class SimulationEngine:
         
         new_irrigation_log = []
         last_auto_irr_day = -999 
-        plant_state = {'lai': 0.0, 'stunting_factor': 1.0, 'cum_dd': 0.0, 'age_days': 0, 'wood_biomass': 0.0}
-        wood_cum = 0.0 
+        opt_initial_age = max(0.0, float(config.get('initial_plant_age_years', 0.0) or 0.0)) if crop_p['Type'] == 'Perennial' else 0.0
+        opt_capacity = float(crop_p.get('Max_Wood_Capacity', 35.0) or 35.0)
+        wood_cum = float(np.clip(opt_capacity * (1.0 - np.exp(-opt_initial_age / 4.0)), 0.0, opt_capacity)) if opt_initial_age > 0 else 0.0
+        plant_state = {'lai': 0.0, 'stunting_factor': 1.0, 'cum_dd': 0.0, 'age_days': int(opt_initial_age * 365.0), 'wood_biomass': wood_cum} 
         lat = config.get('center_lat', 0.0)
 
         for t, row in weather.iterrows():
@@ -516,7 +619,8 @@ class SimulationEngine:
                         new_irrigation_log.append({
                             'date': curr_date,
                             'amount': round(added_water, 1),
-                            'reason': 'Stress Mitigation'
+                            'reason': 'Stress Mitigation',
+                            'feasibility_note': feasibility_note
                         })
                         last_auto_irr_day = t
             

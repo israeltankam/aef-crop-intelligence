@@ -1,0 +1,610 @@
+{
+  "generated_at": "2026-06-13",
+  "root": "C:\\Users\\tankamch\\AppData\\Local\\Temp\\aef_corrected_1781125311822",
+  "count": 100,
+  "passed": 100,
+  "failed": 0,
+  "failures": [],
+  "tests": [
+    {
+      "id": 1,
+      "name": "balanced Python delimiters: econ",
+      "ok": true,
+      "details": "{\"ok\":true,\"remaining\":0}"
+    },
+    {
+      "id": 2,
+      "name": "balanced Python delimiters: state",
+      "ok": true,
+      "details": "{\"ok\":true,\"remaining\":0}"
+    },
+    {
+      "id": 3,
+      "name": "balanced Python delimiters: setup",
+      "ok": true,
+      "details": "{\"ok\":true,\"remaining\":0}"
+    },
+    {
+      "id": 4,
+      "name": "balanced Python delimiters: rec",
+      "ok": true,
+      "details": "{\"ok\":true,\"remaining\":0}"
+    },
+    {
+      "id": 5,
+      "name": "balanced Python delimiters: report",
+      "ok": true,
+      "details": "{\"ok\":true,\"remaining\":0}"
+    },
+    {
+      "id": 6,
+      "name": "balanced Python delimiters: app",
+      "ok": true,
+      "details": "{\"ok\":true,\"remaining\":0}"
+    },
+    {
+      "id": 7,
+      "name": "balanced Python delimiters: i18n",
+      "ok": true,
+      "details": "{\"ok\":true,\"remaining\":0}"
+    },
+    {
+      "id": 8,
+      "name": "requirements file readable",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "id": 9,
+      "name": "economic engine has single-field builder",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "id": 10,
+      "name": "economic engine has cooperative builder",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "id": 11,
+      "name": "single-field function has no cooperative water_cost rows",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "id": 12,
+      "name": "cooperative function defines actions before return",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "id": 13,
+      "name": "cooperative function defines selected_actions before return",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "id": 14,
+      "name": "economic engine normalizes market context",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "id": 15,
+      "name": "economic engine has Cameroon price references",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "id": 16,
+      "name": "economic engine uses editable economics_config",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "id": 17,
+      "name": "economic engine uses stress weights for attribution",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "id": 18,
+      "name": "economic engine keeps agronomic and economic notes",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "id": 19,
+      "name": "economic engine uses effective price conversion",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "id": 20,
+      "name": "economic engine includes disease action cost",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "id": 21,
+      "name": "economic engine selects only nonnegative net actions",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "id": 22,
+      "name": "economic engine handles fertilizer costs",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "id": 23,
+      "name": "economic engine handles irrigation costs",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "id": 24,
+      "name": "economic engine has no accidental undefined selected_fraction in single",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "id": 25,
+      "name": "state imports economic defaults",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "id": 26,
+      "name": "state default includes economics_config",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "id": 27,
+      "name": "state saves economics_config in field JSON",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "id": 28,
+      "name": "state loads economics_config from field JSON",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "id": 29,
+      "name": "state exports economics JSON",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "id": 30,
+      "name": "state imports economics JSON",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "id": 31,
+      "name": "setup imports economic helpers",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "id": 32,
+      "name": "setup renders economics setup helper",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "id": 33,
+      "name": "setup has market refresh spinner",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "id": 34,
+      "name": "setup has economics tabs",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "id": 35,
+      "name": "single setup has economy step",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "id": 36,
+      "name": "cooperative setup has economy step",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "id": 37,
+      "name": "recommendations page exists with app function",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "id": 38,
+      "name": "recommendations computes single-field economics",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "id": 39,
+      "name": "recommendations computes cooperative economics",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "id": 40,
+      "name": "recommendations has visible spinner",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "id": 41,
+      "name": "recommendations has three comparison tabs",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "id": 42,
+      "name": "recommendations exports JSON",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "id": 43,
+      "name": "recommendations uses tr on action titles",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "id": 44,
+      "name": "recommendations handles no economic action warning",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "id": 45,
+      "name": "app imports recommendations page",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "id": 46,
+      "name": "app defines recommendations nav label",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "id": 47,
+      "name": "app menu includes recommendations",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "id": 48,
+      "name": "app routes recommendations",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "id": 49,
+      "name": "app guard protects recommendations",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "id": 50,
+      "name": "app legacy target includes recommendations",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "id": 51,
+      "name": "report imports economic builders",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "id": 52,
+      "name": "report has money helper",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "id": 53,
+      "name": "report has economic summary table helper",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "id": 54,
+      "name": "report has economic action table helper",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "id": 55,
+      "name": "cooperative report computes economic plan",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "id": 56,
+      "name": "single report computes economic plan",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "id": 57,
+      "name": "report uses economy spinner",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "id": 58,
+      "name": "cooperative report includes agronomic/economic chapter",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "id": 59,
+      "name": "single report includes economic table in scenario chapter",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "id": 60,
+      "name": "report executive summary includes economics",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "id": 61,
+      "name": "report table includes no action baseline",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "id": 62,
+      "name": "report action table includes keep/defer",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "id": 63,
+      "name": "report PDF remains latin-1 safe",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "id": 64,
+      "name": "report scenario still only none/optimized",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "id": 65,
+      "name": "report does not reintroduce minimum scenario text in generator",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "id": 66,
+      "name": "report uses st.download_button for PDFs",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "id": 67,
+      "name": "key translation present: nav.recommendations",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "id": 68,
+      "name": "key translation present: report.spinner.economics",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "id": 69,
+      "name": "literal translation present: Economic assumptions",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "id": 70,
+      "name": "literal translation present: Recommendations",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "id": 71,
+      "name": "literal translation present: Agronomic optimum",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "id": 72,
+      "name": "literal translation present: Economic optimum",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "id": 73,
+      "name": "literal translation present: No action baseline",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "id": 74,
+      "name": "literal translation present: Gross gain/revenue",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "id": 75,
+      "name": "literal translation present: Market price used",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "id": 76,
+      "name": "literal translation present: Economic decision",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "id": 77,
+      "name": "literal translation present: Optimized irrigation calendar",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "id": 78,
+      "name": "literal translation present: Cooperative optimized irrigation",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "id": 79,
+      "name": "literal translation present: Download recommendations JSON",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "id": 80,
+      "name": "literal translation present: Calculating agronomic and economic recommendations...",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "id": 81,
+      "name": "literal translation present: Step 6: Review & Launch",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "id": 82,
+      "name": "literal translation present: Next: Economy",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "id": 83,
+      "name": "all long operations added by this feature have spinners: report economics",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "id": 84,
+      "name": "all long operations added by this feature have spinners: recommendations",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "id": 85,
+      "name": "all long operations added by this feature have spinners: market refresh",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "id": 86,
+      "name": "no new external dependencies introduced",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "id": 87,
+      "name": "pandas dependency already available",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "id": 88,
+      "name": "streamlit dependency already available",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "id": 89,
+      "name": "economics JSON standalone export is separate from field JSON",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "id": 90,
+      "name": "economics config is also in full field JSON",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "id": 91,
+      "name": "recommendations page avoids hidden report-only recommendations",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "id": 92,
+      "name": "cooperative report still has plot limit for speed",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "id": 93,
+      "name": "economic selection scenario 1",
+      "ok": true,
+      "details": "{\"s\":{\"gross\":1000,\"cost\":200,\"risk\":0.1,\"expect\":true},\"r\":{\"selected\":true,\"net\":720}}"
+    },
+    {
+      "id": 94,
+      "name": "economic selection scenario 2",
+      "ok": true,
+      "details": "{\"s\":{\"gross\":1000,\"cost\":1000,\"risk\":0,\"expect\":true},\"r\":{\"selected\":true,\"net\":0}}"
+    },
+    {
+      "id": 95,
+      "name": "economic selection scenario 3",
+      "ok": true,
+      "details": "{\"s\":{\"gross\":500,\"cost\":800,\"risk\":0.1,\"expect\":false},\"r\":{\"selected\":false,\"net\":-270}}"
+    },
+    {
+      "id": 96,
+      "name": "economic selection scenario 4",
+      "ok": true,
+      "details": "{\"s\":{\"gross\":0,\"cost\":0,\"risk\":0.1,\"expect\":true},\"r\":{\"selected\":true,\"net\":0}}"
+    },
+    {
+      "id": 97,
+      "name": "economic selection scenario 5",
+      "ok": true,
+      "details": "{\"s\":{\"gross\":200,\"cost\":0,\"risk\":0.2,\"expect\":true},\"r\":{\"selected\":true,\"net\":160}}"
+    },
+    {
+      "id": 98,
+      "name": "economic selection scenario 6",
+      "ok": true,
+      "details": "{\"s\":{\"gross\":100,\"cost\":300,\"risk\":0,\"expect\":false},\"r\":{\"selected\":false,\"net\":-200}}"
+    },
+    {
+      "id": 99,
+      "name": "economic selection scenario 7",
+      "ok": true,
+      "details": "{\"s\":{\"gross\":10000,\"cost\":2500,\"risk\":0.25,\"expect\":true},\"r\":{\"selected\":true,\"net\":5625}}"
+    },
+    {
+      "id": 100,
+      "name": "economic selection scenario 8",
+      "ok": true,
+      "details": "{\"s\":{\"gross\":2500,\"cost\":10000,\"risk\":0.25,\"expect\":false},\"r\":{\"selected\":false,\"net\":-5625}}"
+    }
+  ]
+}

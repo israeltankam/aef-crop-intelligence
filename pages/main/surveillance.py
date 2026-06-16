@@ -8,7 +8,9 @@ from folium.plugins import Draw
 from datetime import date
 import altair as alt
 from src.models.state_manager import StateManager
+from src.utils.i18n import tr
 from src.models.calibration_engine import CalibrationEngine
+from src.models.adaptive_calibration import ActiveLearningAdvisor
 
 # --- HELPER FUNCTIONS ---
 def is_point_in_polygon(point, polygon_coords):
@@ -37,13 +39,79 @@ def get_bounds(coords):
     return [[min(lats), min(lons)], [max(lats), max(lons)]]
 
 # --- MAIN APP ---
+
+def render_cooperative_surveillance():
+    """Adaptive surveillance workflow adapted to cooperative plot networks."""
+    st.title('🤝 ' + tr('Cooperative adaptive surveillance'))
+    if 'surveillance_logs' not in st.session_state:
+        st.session_state['surveillance_logs'] = []
+    parcels = [p for p in st.session_state.get('cooperative_parcels', []) if p.get('active', True)]
+    if not parcels:
+        st.warning(tr('Please complete the configuration in Site Setup first.'))
+        return
+    scope = st.radio(tr('Observation scope'), ['cooperative', 'plot'], format_func=lambda x: tr('Whole cooperative perimeter') if x == 'cooperative' else tr('One plot'), horizontal=True)
+    plot_id = None
+    if scope == 'plot':
+        plot_options = [p['id'] for p in parcels]
+        plot_id = st.selectbox(tr('Plot'), plot_options, format_func=lambda pid: next((p.get('name', pid) for p in parcels if p['id'] == pid), pid))
+    c1, c2, c3 = st.columns(3)
+    with c1:
+        obs_date = st.date_input(tr('Date of Observation'), date.today(), key='coop_obs_date')
+    with c2:
+        category = st.selectbox(tr('Measurement Category'), [tr('Disease Status'), tr('Soil Nutrients'), tr('Yield / Biomass')], key='coop_obs_category')
+    with c3:
+        confidence = st.slider(tr('confidence'), 0.1, 1.0, 0.8, 0.05, key='coop_obs_confidence')
+    values = {}
+    if category == tr('Disease Status'):
+        values['incidence_pct'] = st.number_input(tr('Disease Incidence (%)'), min_value=0.0, max_value=100.0, value=0.0, step=1.0, key='coop_obs_inc')
+    elif category == tr('Soil Nutrients'):
+        values['soil_n'] = st.number_input(tr('Soil N (mg/kg)'), min_value=0.0, value=10.0, step=1.0, key='coop_obs_n')
+        values['soil_p'] = st.number_input(tr('Soil P (ppm)'), min_value=0.0, value=20.0, step=1.0, key='coop_obs_p')
+        values['soil_k'] = st.number_input(tr('Soil K (ppm)'), min_value=0.0, value=100.0, step=5.0, key='coop_obs_k')
+    else:
+        values['yield_t_ha'] = st.number_input(tr('Yield (t/ha)'), min_value=0.0, value=0.0, step=0.1, key='coop_obs_yield')
+    if st.button(tr('Save Observation'), type='primary'):
+        st.session_state['surveillance_logs'].append({
+            'mode': 'cooperative',
+            'scope': scope,
+            'plot_id': plot_id,
+            'date': str(obs_date),
+            'category': category,
+            'confidence': confidence,
+            **values,
+        })
+        st.success(tr('Observation Logged.'))
+    st.divider()
+    logs = [l for l in st.session_state.get('surveillance_logs', []) if l.get('mode') == 'cooperative' or 'mode' not in l]
+    if logs:
+        st.dataframe(pd.DataFrame(logs), use_container_width=True, hide_index=True)
+    else:
+        st.info(tr('No observations recorded yet.'))
+    if st.session_state.get('sim_results') and st.session_state['sim_results'].get('mode') == 'cooperative':
+        res = st.session_state['sim_results']
+        risk_rows = []
+        for parcel in res.get('parcel_results', []):
+            last = parcel['history'][-1]
+            risk_rows.append({
+                tr('Plot ID'): parcel['id'],
+                tr('Plot name'): parcel['name'],
+                tr('Disease incidence'): float(last.get('Incidence', 0.0)) * 100,
+                tr('Metapopulation pressure'): float(last.get('Metapopulation_Pressure', 0.0)) * 100,
+                tr('Water stress'): float(last.get('Avg_Stress', 0.0)) * 100,
+            })
+        if risk_rows:
+            df_risk = pd.DataFrame(risk_rows).sort_values(tr('Disease incidence'), ascending=False)
+            top = df_risk.iloc[0]
+            st.info(f"{tr('Suggested next field check:')} {top[tr('Plot name')]} - {tr('Disease incidence')} {top[tr('Disease incidence')]:.1f}%")
+            st.dataframe(df_risk, use_container_width=True, hide_index=True)
+
 def app():
-    st.title("📈 Adaptive Surveillance & Calibration")
+    if st.session_state.get('app_mode') == 'cooperative':
+        render_cooperative_surveillance()
+        return
+    st.title("📈 " + tr("Adaptive Surveillance & Calibration"))
     
-    st.markdown("""
-    **Fine-Tune your Digital Twin.**
-    Enter real-world field measurements below.
-    """)
+    st.markdown(f"**{tr('Fine-Tune your Digital Twin.')}**\n\n{tr('Enter real-world field measurements below.')}")
     
     # Initialize Log State
     if 'surveillance_logs' not in st.session_state:
@@ -52,70 +120,70 @@ def app():
     # ==========================================================================
     # 0. DATA I/O (LOAD / SAVE)
     # ==========================================================================
-    with st.expander("📂 Manage Log Data (Load/Save)", expanded=False):
+    with st.expander("📂 " + tr("Manage Log Data (Load/Save)"), expanded=False):
         c_down, c_up = st.columns(2)
         
         # SAVE
         with c_down:
-            st.markdown("#### 💾 Save Logs")
+            st.markdown("#### 💾 " + tr("Save Logs"))
             logs_json = json.dumps(st.session_state['surveillance_logs'], indent=4)
             st.download_button(
-                label="Download Logs as JSON",
+                label=tr("Download Logs as JSON"),
                 data=logs_json,
                 file_name=f"surveillance_logs_{date.today()}.json",
                 mime="application/json",
-                help="Save your current observations to a file so you can reload them later."
+                help=tr("Save your current observations to a file so you can reload them later.")
             )
 
         # LOAD
         with c_up:
-            st.markdown("#### 📂 Load Logs")
-            uploaded_file = st.file_uploader("Upload JSON Log File", type=["json"])
+            st.markdown("#### 📂 " + tr("Load Logs"))
+            uploaded_file = st.file_uploader(tr("Upload JSON Log File"), type=["json"])
             if uploaded_file is not None:
                 try:
                     data = json.load(uploaded_file)
                     if isinstance(data, list):
-                        if st.button("⚠️ Overwrite Current Logs"):
+                        if st.button("⚠️ " + tr("Overwrite Current Logs")):
                             st.session_state['surveillance_logs'] = data
-                            st.success(f"Loaded {len(data)} observations.")
+                            st.success(tr("Loaded {n} observations.", n=len(data)))
                             st.rerun()
                     else:
-                        st.error("Invalid JSON format. Expected a list of records.")
+                        st.error(tr("Invalid JSON format. Expected a list of records."))
                 except Exception as e:
-                    st.error(f"Error reading file: {e}")
+                    st.error(f"{tr('Error reading file:')} {e}")
 
     st.divider()
 
     # ==========================================================================
     # 1. INPUT SECTION
     # ==========================================================================
-    st.subheader("📝 Field Observations Log")
+    st.subheader("📝 " + tr("Field Observations Log"))
     
     current_logs = st.session_state['surveillance_logs']
     
-    with st.expander("Add New Measurement", expanded=True):
+    with st.expander(tr("Add New Measurement"), expanded=True):
         c_date, c_type = st.columns([1, 2])
         with c_date:
-            m_date = st.date_input("Date of Observation", value=date.today())
+            m_date = st.date_input(tr("Date of Observation"), value=date.today())
         with c_type:
-            m_category = st.selectbox("Measurement Category", [
+            m_category = st.selectbox(tr("Measurement Category"), [
                 "Yield / Biomass", 
                 "Soil Nutrients", 
                 "Disease Status"
-            ])
+            ], format_func=tr)
 
         # --- DYNAMIC INPUT UI BASED ON CATEGORY ---
         if m_category == "Disease Status":
             # Toggle for Direct vs Spot-Based
-            input_mode = st.radio("Input Method", ["From Field Spots (Map)", "Direct Incidence (%)"], horizontal=True)
+            input_mode = st.radio(tr("Input Method"), ["From Field Spots (Map)", "Direct Incidence (%)"], horizontal=True, format_func=tr)
             
             if input_mode == "Direct Incidence (%)":
-                m_val = st.number_input("Field Incidence (%)", min_value=0.0, max_value=100.0, step=0.1)
+                m_val = st.number_input(tr("Field Incidence (%)"), min_value=0.0, max_value=100.0, step=0.1)
                 log_type = "Disease Incidence (%)"
                 
             else: # Spot-Based (MAP)
-                st.markdown("##### 📍 Interactive Spot Locator")
-                st.caption("Click on the map to place infected spots. The system will calculate incidence based on area.")
+                st.markdown("##### 📍 " + tr("Interactive Spot Locator"))
+                st.caption(tr("Click on the map to place infected spots. The system will calculate incidence based on area."))
                 
                 # Context
                 area = st.session_state.get('area_ha', 1.0)
@@ -177,11 +245,11 @@ def app():
                             else:
                                 st.toast("⚠️ Point outside field boundary.", icon="🚫")
                 else:
-                    st.warning("No field boundary defined. Please go to Site Setup.")
+                    st.warning(tr("No field boundary defined. Please go to Site Setup."))
 
                 # --- SPOT TABLE & CALC ---
                 if st.session_state['temp_spots']:
-                    st.info("Edit plant counts for detected spots below:")
+                    st.info(tr("Edit plant counts for detected spots below:"))
                     
                     # Editable Table for Counts
                     df_spots = pd.DataFrame(st.session_state['temp_spots'])
@@ -215,21 +283,21 @@ def app():
                         st.session_state['temp_spots'] = []
                         st.rerun()
                 else:
-                    st.caption("No spots marked yet.")
+                    st.caption(tr("No spots marked yet."))
                     m_val = 0.0
                     log_type = "Disease Incidence (%)"
 
         elif m_category == "Soil Nutrients":
-            log_type = st.selectbox("Nutrient", ["Soil N (mg/kg)", "Soil P (ppm)", "Soil K (ppm)"])
-            m_val = st.number_input("Concentration", min_value=0.0, step=0.1)
+            log_type = st.selectbox(tr("Nutrient"), ["Soil N (mg/kg)", "Soil P (ppm)", "Soil K (ppm)"], format_func=tr)
+            m_val = st.number_input(tr("Concentration"), min_value=0.0, step=0.1)
             
         else: # Yield / Biomass
-            log_type = st.selectbox("Metric", ["Yield (t/ha)", "Biomass (t/ha)"])
-            m_val = st.number_input("Value (t/ha)", min_value=0.0, step=0.1)
+            log_type = st.selectbox(tr("Metric"), ["Yield (t/ha)", "Biomass (t/ha)"], format_func=tr)
+            m_val = st.number_input(tr("Value (t/ha)"), min_value=0.0, step=0.1)
 
         # SAVE BUTTON
         st.write("")
-        if st.button("💾 Save Observation", type="primary"):
+        if st.button("💾 " + tr("Save Observation"), type="primary"):
             if m_val is not None:
                 st.session_state['surveillance_logs'].append({
                     'Date': str(m_date),
@@ -238,7 +306,7 @@ def app():
                 })
                 # Clear temp spots if used
                 if 'temp_spots' in st.session_state: st.session_state['temp_spots'] = []
-                st.success("Observation Logged.")
+                st.success(tr("Observation Logged."))
                 st.rerun()
 
     # Editable Log Table
@@ -247,22 +315,22 @@ def app():
         edited_df = st.data_editor(df_logs, num_rows="dynamic", use_container_width=True, key="main_log_editor")
         st.session_state['surveillance_logs'] = edited_df.to_dict('records')
     else:
-        st.info("No observations recorded yet.")
+        st.info(tr("No observations recorded yet."))
 
     st.divider()
 
     # ==========================================================================
     # 2. CALIBRATION CONTROL
     # ==========================================================================
-    st.subheader("⚙️ Engine Calibration")
+    st.subheader("⚙️ " + tr("Engine Calibration"))
     
     c_cal, c_info = st.columns([1, 2])
     
     with c_cal:
-        st.markdown("Run the calibration loop to minimize errors.")
+        st.markdown(tr("Run the calibration loop to minimize errors."))
         # Only enable if logs exist
-        if st.button("🚀 Run Calibration Loop", type="primary", disabled=len(current_logs) < 1):
-            with st.spinner("Running optimization (Differential Evolution + Hessian)..."):
+        if st.button("🚀 " + tr("Run Calibration Loop"), type="primary", disabled=len(current_logs) < 1):
+            with st.spinner(tr("Running optimization (Differential Evolution + Hessian)...")):
                 cal_engine = CalibrationEngine()
                 
                 # Reconstruct Config
@@ -294,7 +362,7 @@ def app():
     with c_info:
         params = st.session_state.get('calibrated_params', {})
         if params:
-            st.markdown("##### 🧬 Calibrated Genotype")
+            st.markdown("##### 🧬 " + tr("Calibrated Genotype"))
             
             # Extract Uncertainties if present
             unc = params.get('uncertainty', {})
@@ -305,13 +373,13 @@ def app():
                 base_rue = float(st.session_state['df_crops'][st.session_state['df_crops']['Crop_ID'] == st.session_state['selected_crop_id']].iloc[0]['RUE_g_MJ'])
                 mult_rue = params['RUE_g_MJ'] / base_rue
                 std_rue = unc.get('RUE_mult_std', 0.0)
-                st.metric("RUE (Photosynthesis)", f"{params['RUE_g_MJ']:.2f} g/MJ", f"x{mult_rue:.2f} ±{std_rue:.2f}")
+                st.metric(tr("RUE (Photosynthesis)"), f"{params['RUE_g_MJ']:.2f} g/MJ", f"x{mult_rue:.2f} ±{std_rue:.2f}")
 
             with c_p2:
                 base_hi = float(st.session_state['df_crops'][st.session_state['df_crops']['Crop_ID'] == st.session_state['selected_crop_id']].iloc[0]['Harvest_Index'])
                 mult_hi = params['Harvest_Index'] / base_hi
                 std_hi = unc.get('HI_mult_std', 0.0)
-                st.metric("Harvest Index", f"{params['Harvest_Index']:.2f}", f"x{mult_hi:.2f} ±{std_hi:.2f}")
+                st.metric(tr("Harvest Index"), f"{params['Harvest_Index']:.2f}", f"x{mult_hi:.2f} ±{std_hi:.2f}")
 
             with c_p3:
                 # Disease Beta
@@ -323,13 +391,13 @@ def app():
                     if base_beta > 0:
                         mult_beta = params['Beta_Infection'] / base_beta
                         std_beta = unc.get('Beta_std', 0.0)
-                        st.metric("Spread Rate (Beta)", f"{params['Beta_Infection']:.3f}", f"x{mult_beta:.2f} ±{std_beta:.2f}")
+                        st.metric(tr("Spread Rate (Beta)"), f"{params['Beta_Infection']:.3f}", f"x{mult_beta:.2f} ±{std_beta:.2f}")
 
-            if st.button("❌ Reset Calibration"):
+            if st.button("❌ " + tr("Reset Calibration")):
                 st.session_state['calibrated_params'] = {}
                 st.rerun()
         else:
-            st.warning("⚠️ Model is running on Generic Defaults (Uncalibrated)")
+            st.warning("⚠️ " + tr("Model is running on Generic Defaults (Uncalibrated)"))
 
     st.divider()
 
@@ -337,7 +405,11 @@ def app():
     # 3. VALIDATION CHART
     # ==========================================================================
     if st.session_state.get('sim_results') and current_logs:
-        st.subheader("📊 Validation: Observed vs Modeled")
+        advisor = ActiveLearningAdvisor()
+        advice = advisor.suggest_next_measurement(st.session_state['sim_results']['history'], current_logs)
+        if advice:
+            st.info(f"{tr('Suggested next field check:')} {advice.measurement_type} {tr('around')} {advice.date}. {advice.reason}")
+        st.subheader("📊 " + tr("Validation: Observed vs Modeled"))
         
         hist = pd.DataFrame(st.session_state['sim_results']['history'])
         hist['Date'] = pd.to_datetime(hist['Date']).dt.date
@@ -366,7 +438,7 @@ def app():
         # Chart Logic - Disease
         df_obs_dis = df_obs[df_obs['Type'] == 'Disease Incidence (%)'].copy()
         if not df_obs_dis.empty:
-            st.markdown("#### 🦠 Disease Progression Fit")
+            st.markdown("#### 🦠 " + tr("Disease Progression Fit"))
             base_d = alt.Chart(hist).encode(x='Date:T')
             # Model incidence is 0-1, User input is 0-100. Normalize model to 100 for display
             hist['Incidence_Pct'] = hist['Incidence'] * 100.0

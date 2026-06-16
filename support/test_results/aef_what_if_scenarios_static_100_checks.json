@@ -1,0 +1,610 @@
+{
+  "update": "what_if_scenarios_tab",
+  "generated_at": "2026-06-14T00:00:00.000Z",
+  "backup": "backups/pre_what_if_scenarios_2026-06-14T00-00-00-000Z",
+  "total_checks": 100,
+  "passed": 100,
+  "failed": 0,
+  "checks": [
+    {
+      "id": 1,
+      "name": "Structure check: app.py",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": 2,
+      "name": "Structure check: pages/main/what_if.py",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": 3,
+      "name": "Structure check: src/utils/i18n.py",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": 4,
+      "name": "Structure check: docs/WHAT_IF_SCENARIOS_LOG.md",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": 5,
+      "name": "What-if page imported in app.py",
+      "pass": true,
+      "detail": "from pages.main import what_if"
+    },
+    {
+      "id": 6,
+      "name": "What-if navigation label declared",
+      "pass": true,
+      "detail": "what_if_label = t(\"nav.what_if\")"
+    },
+    {
+      "id": 7,
+      "name": "What-if nav item inserted after Recommendations",
+      "pass": true,
+      "detail": "'label': what_if_label"
+    },
+    {
+      "id": 8,
+      "name": "What-if route calls page app",
+      "pass": true,
+      "detail": "what_if.app()"
+    },
+    {
+      "id": 9,
+      "name": "What-if route guarded by simulation results",
+      "pass": true,
+      "detail": "if 'sim_results' not in st.session_state"
+    },
+    {
+      "id": 10,
+      "name": "Legacy navigation target supports What-if",
+      "pass": true,
+      "detail": "\"What-if scenarios\": what_if_label"
+    },
+    {
+      "id": 11,
+      "name": "English nav translation exists",
+      "pass": true,
+      "detail": "\"nav.what_if\": \"What-if scenarios\""
+    },
+    {
+      "id": 12,
+      "name": "French nav translation exists",
+      "pass": true,
+      "detail": "\"nav.what_if\": \"Scénarios\""
+    },
+    {
+      "id": 13,
+      "name": "What-if function present: _config_from_state",
+      "pass": true,
+      "detail": "_config_from_state"
+    },
+    {
+      "id": 14,
+      "name": "What-if function present: _safe_float",
+      "pass": true,
+      "detail": "_safe_float"
+    },
+    {
+      "id": 15,
+      "name": "What-if function present: _money",
+      "pass": true,
+      "detail": "_money"
+    },
+    {
+      "id": 16,
+      "name": "What-if function present: _parse_date",
+      "pass": true,
+      "detail": "_parse_date"
+    },
+    {
+      "id": 17,
+      "name": "What-if function present: _horizon_years",
+      "pass": true,
+      "detail": "_horizon_years"
+    },
+    {
+      "id": 18,
+      "name": "What-if function present: _within_horizon",
+      "pass": true,
+      "detail": "_within_horizon"
+    },
+    {
+      "id": 19,
+      "name": "What-if function present: _empty_irrigation_df",
+      "pass": true,
+      "detail": "_empty_irrigation_df"
+    },
+    {
+      "id": 20,
+      "name": "What-if function present: _empty_fertilization_df",
+      "pass": true,
+      "detail": "_empty_fertilization_df"
+    },
+    {
+      "id": 21,
+      "name": "What-if function present: _schedule_signature",
+      "pass": true,
+      "detail": "_schedule_signature"
+    },
+    {
+      "id": 22,
+      "name": "What-if function present: _optimal_inputs",
+      "pass": true,
+      "detail": "_optimal_inputs"
+    },
+    {
+      "id": 23,
+      "name": "What-if function present: _editor_column_config",
+      "pass": true,
+      "detail": "_editor_column_config"
+    },
+    {
+      "id": 24,
+      "name": "What-if function present: _clean_irrigation_events",
+      "pass": true,
+      "detail": "_clean_irrigation_events"
+    },
+    {
+      "id": 25,
+      "name": "What-if function present: _clean_fertilization_events",
+      "pass": true,
+      "detail": "_clean_fertilization_events"
+    },
+    {
+      "id": 26,
+      "name": "What-if function present: _group_events_by_plot",
+      "pass": true,
+      "detail": "_group_events_by_plot"
+    },
+    {
+      "id": 27,
+      "name": "What-if function present: _scenario_config",
+      "pass": true,
+      "detail": "_scenario_config"
+    },
+    {
+      "id": 28,
+      "name": "What-if function present: _scenario_cost",
+      "pass": true,
+      "detail": "_scenario_cost"
+    },
+    {
+      "id": 29,
+      "name": "What-if function present: _summary_row",
+      "pass": true,
+      "detail": "_summary_row"
+    },
+    {
+      "id": 30,
+      "name": "What-if function present: _display_summary",
+      "pass": true,
+      "detail": "_display_summary"
+    },
+    {
+      "id": 31,
+      "name": "What-if function present: _run_single_scenario",
+      "pass": true,
+      "detail": "_run_single_scenario"
+    },
+    {
+      "id": 32,
+      "name": "What-if function present: _baseline_cooperative_production",
+      "pass": true,
+      "detail": "_baseline_cooperative_production"
+    },
+    {
+      "id": 33,
+      "name": "What-if function present: _cooperative_summary_row",
+      "pass": true,
+      "detail": "_cooperative_summary_row"
+    },
+    {
+      "id": 34,
+      "name": "What-if function present: _run_cooperative_scenario",
+      "pass": true,
+      "detail": "_run_cooperative_scenario"
+    },
+    {
+      "id": 35,
+      "name": "What-if function present: _safe_pdf_text",
+      "pass": true,
+      "detail": "_safe_pdf_text"
+    },
+    {
+      "id": 36,
+      "name": "What-if function present: _scenario_pdf",
+      "pass": true,
+      "detail": "_scenario_pdf"
+    },
+    {
+      "id": 37,
+      "name": "What-if function present: _render_editors",
+      "pass": true,
+      "detail": "_render_editors"
+    },
+    {
+      "id": 38,
+      "name": "What-if function present: app",
+      "pass": true,
+      "detail": "app"
+    },
+    {
+      "id": 39,
+      "name": "Uses SimulationEngine for deterministic scenarios",
+      "pass": true,
+      "detail": "SimulationEngine"
+    },
+    {
+      "id": 40,
+      "name": "Uses CooperativeSimulationEngine for cooperative mode",
+      "pass": true,
+      "detail": "CooperativeSimulationEngine"
+    },
+    {
+      "id": 41,
+      "name": "Uses economic revenue function",
+      "pass": true,
+      "detail": "revenue("
+    },
+    {
+      "id": 42,
+      "name": "Uses production_tonnes function",
+      "pass": true,
+      "detail": "production_tonnes("
+    },
+    {
+      "id": 43,
+      "name": "Uses irrigation_cost function",
+      "pass": true,
+      "detail": "irrigation_cost("
+    },
+    {
+      "id": 44,
+      "name": "Uses fertilizer_cost function",
+      "pass": true,
+      "detail": "fertilizer_cost("
+    },
+    {
+      "id": 45,
+      "name": "Uses disease_action_cost function",
+      "pass": true,
+      "detail": "disease_action_cost("
+    },
+    {
+      "id": 46,
+      "name": "Normalizes economics config",
+      "pass": true,
+      "detail": "normalize_economics_config"
+    },
+    {
+      "id": 47,
+      "name": "Generates optimized irrigation schedule",
+      "pass": true,
+      "detail": "optimize_irrigation_schedule"
+    },
+    {
+      "id": 48,
+      "name": "Generates optimized fertilization schedule",
+      "pass": true,
+      "detail": "optimize_fertilization_schedule"
+    },
+    {
+      "id": 49,
+      "name": "Builds cooperative optimized management plan",
+      "pass": true,
+      "detail": "build_optimized_management_plan"
+    },
+    {
+      "id": 50,
+      "name": "Has irrigation data editor",
+      "pass": true,
+      "detail": "what_if_irrigation_editor"
+    },
+    {
+      "id": 51,
+      "name": "Has fertilization data editor",
+      "pass": true,
+      "detail": "what_if_fertilization_editor"
+    },
+    {
+      "id": 52,
+      "name": "Allows dynamic rows in editors",
+      "pass": true,
+      "detail": "num_rows=\"dynamic\""
+    },
+    {
+      "id": 53,
+      "name": "Uses checkbox to remove events",
+      "pass": true,
+      "detail": "CheckboxColumn"
+    },
+    {
+      "id": 54,
+      "name": "Uses DateColumn for dates",
+      "pass": true,
+      "detail": "DateColumn"
+    },
+    {
+      "id": 55,
+      "name": "Uses NumberColumn for quantities",
+      "pass": true,
+      "detail": "NumberColumn"
+    },
+    {
+      "id": 56,
+      "name": "Hides technical plot id",
+      "pass": true,
+      "detail": "\"plot_id\": None"
+    },
+    {
+      "id": 57,
+      "name": "Keeps plot name visible",
+      "pass": true,
+      "detail": "plot_name"
+    },
+    {
+      "id": 58,
+      "name": "Disease control toggle exists",
+      "pass": true,
+      "detail": "Apply optimized disease control in this scenario"
+    },
+    {
+      "id": 59,
+      "name": "Run scenario button exists",
+      "pass": true,
+      "detail": "Run what-if scenario"
+    },
+    {
+      "id": 60,
+      "name": "Regenerate optimal plan button exists",
+      "pass": true,
+      "detail": "Regenerate optimized starting plan"
+    },
+    {
+      "id": 61,
+      "name": "Shows irrigation event metric",
+      "pass": true,
+      "detail": "Irrigation events"
+    },
+    {
+      "id": 62,
+      "name": "Shows fertilization event metric",
+      "pass": true,
+      "detail": "Fertilization events"
+    },
+    {
+      "id": 63,
+      "name": "Shows disease control metric",
+      "pass": true,
+      "detail": "Disease control"
+    },
+    {
+      "id": 64,
+      "name": "Displays scenario outcomes section",
+      "pass": true,
+      "detail": "Scenario outcomes"
+    },
+    {
+      "id": 65,
+      "name": "Compares no action scenario",
+      "pass": true,
+      "detail": "No action"
+    },
+    {
+      "id": 66,
+      "name": "Compares optimized management scenario",
+      "pass": true,
+      "detail": "Optimized management"
+    },
+    {
+      "id": 67,
+      "name": "Compares edited what-if scenario",
+      "pass": true,
+      "detail": "Edited what-if scenario"
+    },
+    {
+      "id": 68,
+      "name": "Exports scenario JSON",
+      "pass": true,
+      "detail": "Download scenario JSON"
+    },
+    {
+      "id": 69,
+      "name": "Exports scenario PDF",
+      "pass": true,
+      "detail": "Download scenario PDF"
+    },
+    {
+      "id": 70,
+      "name": "Uses FPDF dependency",
+      "pass": true,
+      "detail": "from fpdf import FPDF"
+    },
+    {
+      "id": 71,
+      "name": "PDF text is latin-1 safe",
+      "pass": true,
+      "detail": "_safe_pdf_text"
+    },
+    {
+      "id": 72,
+      "name": "PDF report warning about uncertainty",
+      "pass": true,
+      "detail": "Adaptive field observations should be used to reduce uncertainty"
+    },
+    {
+      "id": 73,
+      "name": "Uses spinner for optimal preparation",
+      "pass": true,
+      "detail": "Preparing optimized calendars for scenario editing..."
+    },
+    {
+      "id": 74,
+      "name": "Uses spinner for scenario simulation",
+      "pass": true,
+      "detail": "Simulating the edited scenario and economic return..."
+    },
+    {
+      "id": 75,
+      "name": "Handles simulation failure gracefully",
+      "pass": true,
+      "detail": "Scenario simulation failed"
+    },
+    {
+      "id": 76,
+      "name": "Supports perennial horizon selector",
+      "pass": true,
+      "detail": "what_if_economic_horizon_years"
+    },
+    {
+      "id": 77,
+      "name": "Limits events to selected horizon",
+      "pass": true,
+      "detail": "_within_horizon"
+    },
+    {
+      "id": 78,
+      "name": "Caches optimal calendar signature",
+      "pass": true,
+      "detail": "what_if_signature"
+    },
+    {
+      "id": 79,
+      "name": "Stores last scenario result",
+      "pass": true,
+      "detail": "what_if_last_result"
+    },
+    {
+      "id": 80,
+      "name": "Uses current sim_results as guard",
+      "pass": true,
+      "detail": "sim_results"
+    },
+    {
+      "id": 81,
+      "name": "Provides JSON default=str export",
+      "pass": true,
+      "detail": "default=str"
+    },
+    {
+      "id": 82,
+      "name": "Keeps comments explaining deterministic scope",
+      "pass": true,
+      "detail": "fast deterministic scenario"
+    },
+    {
+      "id": 83,
+      "name": "No minimum/intermediate scenario wording introduced",
+      "pass": true,
+      "detail": "minimum"
+    },
+    {
+      "id": 84,
+      "name": "French literal translation present: Amount (mm)",
+      "pass": true,
+      "detail": "Amount (mm)"
+    },
+    {
+      "id": 85,
+      "name": "French literal translation present: Applied",
+      "pass": true,
+      "detail": "Applied"
+    },
+    {
+      "id": 86,
+      "name": "French literal translation present: Apply",
+      "pass": true,
+      "detail": "Apply"
+    },
+    {
+      "id": 87,
+      "name": "French literal translation present: Apply optimized disease control in this scenario",
+      "pass": true,
+      "detail": "Apply optimized disease control in this scenario"
+    },
+    {
+      "id": 88,
+      "name": "French literal translation present: Cost",
+      "pass": true,
+      "detail": "Cost"
+    },
+    {
+      "id": 89,
+      "name": "French literal translation present: Date",
+      "pass": true,
+      "detail": "Date"
+    },
+    {
+      "id": 90,
+      "name": "French literal translation present: Disease control",
+      "pass": true,
+      "detail": "Disease control"
+    },
+    {
+      "id": 91,
+      "name": "French literal translation present: Download scenario JSON",
+      "pass": true,
+      "detail": "Download scenario JSON"
+    },
+    {
+      "id": 92,
+      "name": "French literal translation present: Download scenario PDF",
+      "pass": true,
+      "detail": "Download scenario PDF"
+    },
+    {
+      "id": 93,
+      "name": "French literal translation present: Economic analysis horizon (years)",
+      "pass": true,
+      "detail": "Economic analysis horizon (years)"
+    },
+    {
+      "id": 94,
+      "name": "French literal translation present: Edit optimized calendars and immediately compare yield and economic return against no action.",
+      "pass": true,
+      "detail": "Edit optimized calendars and immediately compare yield and economic return against no action."
+    },
+    {
+      "id": 95,
+      "name": "French literal translation present: Edit the scenario",
+      "pass": true,
+      "detail": "Edit the scenario"
+    },
+    {
+      "id": 96,
+      "name": "French literal translation present: Edited scenario inputs",
+      "pass": true,
+      "detail": "Edited scenario inputs"
+    },
+    {
+      "id": 97,
+      "name": "French literal translation present: Fertilization events",
+      "pass": true,
+      "detail": "Fertilization events"
+    },
+    {
+      "id": 98,
+      "name": "All What-if tr() strings have French literal translations",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": 99,
+      "name": "requirements.txt already contains fpdf",
+      "pass": true,
+      "detail": "fpdf existing"
+    },
+    {
+      "id": 100,
+      "name": "No new dependency name added for What-if",
+      "pass": true,
+      "detail": "no extra heavy PDF/chart dependency"
+    }
+  ]
+}

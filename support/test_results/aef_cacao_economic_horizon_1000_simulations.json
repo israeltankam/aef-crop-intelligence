@@ -1,0 +1,153 @@
+{
+  "generated_at": "2026-06-13",
+  "source_json": "C:\\Users\\tankamch\\Downloads\\field_config (1).json",
+  "area_ha": 3.69,
+  "crop_id": "C_COC_01",
+  "horizon_years": 20,
+  "tested_assumptions": {
+    "cocoa_price_default_xaf_t": 3500000,
+    "labour_costs_are_per_day_per_ha": true,
+    "scouting_xaf_day_ha": 10000,
+    "fertilizer_application_xaf_day_ha": 4000,
+    "spraying_xaf_day_ha": 5000,
+    "roguing_xaf_day_ha": 0,
+    "pruning_xaf_day_ha": 0,
+    "replacement_charged_only_when_removal_costed": true
+  },
+  "summary": {
+    "simulations": 1000,
+    "positive_new_model": 966,
+    "positive_new_model_pct": 96.6,
+    "positive_old_terminal_style": 1,
+    "positive_old_terminal_style_pct": 0.1,
+    "mean_new_net_xaf": 13059686,
+    "mean_old_net_xaf": -3494153,
+    "p05_new_net_xaf": 684970,
+    "p50_new_net_xaf": 11410299,
+    "p95_new_net_xaf": 31378970,
+    "p50_old_net_xaf": -3435531
+  },
+  "blocker_identified": "The old economic view compared long-horizon intervention costs with a terminal standing-fruit/final-year value. It also charged plant replacement for mapped disease spots even when roguing/pruning costs were zero.",
+  "first_20": [
+    {
+      "i": 1,
+      "net_xaf": 3093791,
+      "old_net_xaf": -2520272,
+      "positive": true
+    },
+    {
+      "i": 2,
+      "net_xaf": -534089,
+      "old_net_xaf": -4931698,
+      "positive": false
+    },
+    {
+      "i": 3,
+      "net_xaf": 34214095,
+      "old_net_xaf": -2013486,
+      "positive": true
+    },
+    {
+      "i": 4,
+      "net_xaf": 7891353,
+      "old_net_xaf": -4911845,
+      "positive": true
+    },
+    {
+      "i": 5,
+      "net_xaf": 19024829,
+      "old_net_xaf": -3950869,
+      "positive": true
+    },
+    {
+      "i": 6,
+      "net_xaf": 10971833,
+      "old_net_xaf": -2887742,
+      "positive": true
+    },
+    {
+      "i": 7,
+      "net_xaf": 13752791,
+      "old_net_xaf": -1553841,
+      "positive": true
+    },
+    {
+      "i": 8,
+      "net_xaf": 19814954,
+      "old_net_xaf": -2671344,
+      "positive": true
+    },
+    {
+      "i": 9,
+      "net_xaf": 4097898,
+      "old_net_xaf": -2149630,
+      "positive": true
+    },
+    {
+      "i": 10,
+      "net_xaf": 10760329,
+      "old_net_xaf": -3982550,
+      "positive": true
+    },
+    {
+      "i": 11,
+      "net_xaf": 7691449,
+      "old_net_xaf": -1862903,
+      "positive": true
+    },
+    {
+      "i": 12,
+      "net_xaf": 14575028,
+      "old_net_xaf": -3930223,
+      "positive": true
+    },
+    {
+      "i": 13,
+      "net_xaf": 7528644,
+      "old_net_xaf": -4816946,
+      "positive": true
+    },
+    {
+      "i": 14,
+      "net_xaf": 13233752,
+      "old_net_xaf": -1178849,
+      "positive": true
+    },
+    {
+      "i": 15,
+      "net_xaf": 6090497,
+      "old_net_xaf": -5175448,
+      "positive": true
+    },
+    {
+      "i": 16,
+      "net_xaf": 31654300,
+      "old_net_xaf": -355311,
+      "positive": true
+    },
+    {
+      "i": 17,
+      "net_xaf": -1619838,
+      "old_net_xaf": -4785780,
+      "positive": false
+    },
+    {
+      "i": 18,
+      "net_xaf": 25937595,
+      "old_net_xaf": -1658080,
+      "positive": true
+    },
+    {
+      "i": 19,
+      "net_xaf": 19458438,
+      "old_net_xaf": -6036783,
+      "positive": true
+    },
+    {
+      "i": 20,
+      "net_xaf": 6188913,
+      "old_net_xaf": -4852853,
+      "positive": true
+    }
+  ]
+}

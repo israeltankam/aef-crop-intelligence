@@ -1,0 +1,52 @@
+{
+  "total": 9,
+  "passed": 9,
+  "failed": [],
+  "tests": [
+    {
+      "name": "pdf_report_has_safe_text_filter",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "pdf_cell_write_multicell_sanitized",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "oe_ligature_mapping_present",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "typographic_punctuation_mapping_present",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "download_button_translated",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "download_pdf_translation_present",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "sample_french_string_latin1_encodable",
+      "pass": true,
+      "detail": "oeuvre d'irrigation - coût >= 10 % OK"
+    },
+    {
+      "name": "sample_ligature_replaced",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "sample_en_dash_replaced",
+      "pass": true,
+      "detail": ""
+    }
+  ]
+}

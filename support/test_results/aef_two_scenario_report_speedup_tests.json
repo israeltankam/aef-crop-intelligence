@@ -1,0 +1,64 @@
+{
+  "generated_at": "2026-06-12T00:45:00Z",
+  "suite": "two_scenario_report_speedup_static_checks",
+  "total": 11,
+  "passed": 11,
+  "failed": 0,
+  "tests": [
+    {
+      "name": "engine_scenario_defs_only_none_optimized",
+      "passed": true,
+      "details": ""
+    },
+    {
+      "name": "engine_no_minimum_intermediate_branches",
+      "passed": true,
+      "details": ""
+    },
+    {
+      "name": "engine_still_applies_optimized_schedules",
+      "passed": true,
+      "details": ""
+    },
+    {
+      "name": "report_table_only_two_scenarios",
+      "passed": true,
+      "details": ""
+    },
+    {
+      "name": "report_roguing_only_optimized",
+      "passed": true,
+      "details": ""
+    },
+    {
+      "name": "report_removed_four_level_text",
+      "passed": true,
+      "details": ""
+    },
+    {
+      "name": "report_has_two_path_text",
+      "passed": true,
+      "details": ""
+    },
+    {
+      "name": "spinner_text_updated_en_fr",
+      "passed": true,
+      "details": ""
+    },
+    {
+      "name": "scenario_labels_translated",
+      "passed": true,
+      "details": ""
+    },
+    {
+      "name": "main_report_scenario_n_runs_unchanged",
+      "passed": true,
+      "details": ""
+    },
+    {
+      "name": "vectorization_audit_no_forced_change",
+      "passed": true,
+      "details": "Scanned Python loops; no safe vectorization applied because candidates are stateful or small display loops."
+    }
+  ]
+}

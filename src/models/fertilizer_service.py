@@ -1,5 +1,6 @@
 # src/models/fertilizer_service.py
 import numpy as np
+from src.models.fertilizer_optimizer import rank_fertilizer_products
 
 class FertilizerService:
     def __init__(self):
@@ -82,56 +83,27 @@ class FertilizerService:
 
     def recommend_product(self, def_n, def_p, def_k):
         """
-        Selects the most efficient fertilizer product based on the N-P-K deficit ratios.
-        Returns: (Product Name, Amount in kg/ha, Rationale)
+        Select the product whose N-P-K profile best matches the simulated deficit.
+
+        The previous rule mostly selected the most concentrated product within a
+        broad type.  The new rule ranks all non-operational products with a small
+        vector score, then derives the dose from the limiting nutrient.  It stays
+        lightweight while avoiding obviously unbalanced recommendations.
         """
-        total_def = def_n + def_p + def_k
-        if total_def < 1.0: return None, 0, ""
+        total_def = max(0.0, float(def_n or 0.0)) + max(0.0, float(def_p or 0.0)) + max(0.0, float(def_k or 0.0))
+        if total_def < 1.0:
+            return None, 0, ""
 
-        # Normalize needs
-        n_ratio = def_n / total_def
-        p_ratio = def_p / total_def
-        k_ratio = def_k / total_def
+        ranked = rank_fertilizer_products(self.products, def_n, def_p, def_k)
+        if not ranked:
+            return None, 0, "No suitable fertilizer product matched the current deficit vector."
 
-        target_type = 'Balanced'
-        
-        # Heuristic matching for dominant nutrient
-        if n_ratio > 0.6:
-            target_type = 'Nitrogen'
-            if p_ratio > 0.15 or k_ratio > 0.15:
-                target_type = 'High_N'
-        elif p_ratio > 0.5:
-            target_type = 'High_P'
-        elif k_ratio > 0.5:
-            target_type = 'High_K'
-
-        # Filter candidates, excluding Operations
-        candidates = [p for p in self.products if p['type'] == target_type]
-        
-        # Fallback
-        if not candidates: 
-            candidates = [p for p in self.products if p['type'] == 'Balanced']
-
-        # Selection: Highest nutrient content
-        best_product = max(candidates, key=lambda x: x['N'] + x['P'] + x['K'])
-
-        amount = 0
-        if target_type in ['Nitrogen', 'High_N']:
-            denom = best_product['N']
-            amount = def_n / (denom / 100.0) if denom > 0 else 0
-            rationale = f"High Nitrogen demand ({int(def_n)}kg/ha deficit) for vegetative growth."
-        elif target_type == 'High_P':
-            denom = best_product['P']
-            amount = def_p / (denom / 100.0) if denom > 0 else 0
-            rationale = f"Phosphorus boost ({int(def_p)}kg/ha deficit) for root/fruit support."
-        elif target_type == 'High_K':
-            denom = best_product['K']
-            amount = def_k / (denom / 100.0) if denom > 0 else 0
-            rationale = f"Potassium correction ({int(def_k)}kg/ha deficit) for stress tolerance."
-        else:
-            avg_def = (def_n + def_p + def_k) / 3
-            avg_content = (best_product['N'] + best_product['P'] + best_product['K']) / 3
-            amount = avg_def / (avg_content / 100.0) if avg_content > 0 else 0
-            rationale = "Balanced nutrition required to maintain soil fertility."
-
+        choice = ranked[0]
+        best_product = choice['product']
+        amount = float(choice['amount_kg_ha'])
+        match_pct = int(round(float(choice['match']) * 100.0))
+        rationale = (
+            f"Product profile matches the N-P-K deficit pattern at about {match_pct}%; "
+            "dose is set by the limiting nutrient and should be checked against local availability."
+        )
         return best_product['name'], round(amount, 1), rationale

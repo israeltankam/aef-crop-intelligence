@@ -1,0 +1,508 @@
+{
+  "timestamp": "2026-06-12T10:21:36.386Z",
+  "testType": "static structural cooperative-mode validation",
+  "passCount": 100,
+  "failCount": 0,
+  "tests": [
+    {
+      "id": "01_syntax_strings_app",
+      "pass": true,
+      "detail": "{\"ok\":true}"
+    },
+    {
+      "id": "02_syntax_strings_state",
+      "pass": true,
+      "detail": "{\"ok\":true}"
+    },
+    {
+      "id": "03_syntax_strings_engine",
+      "pass": true,
+      "detail": "{\"ok\":true}"
+    },
+    {
+      "id": "04_syntax_strings_setup",
+      "pass": true,
+      "detail": "{\"ok\":true}"
+    },
+    {
+      "id": "05_syntax_strings_dashboard",
+      "pass": true,
+      "detail": "{\"ok\":true}"
+    },
+    {
+      "id": "06_syntax_strings_surveillance",
+      "pass": true,
+      "detail": "{\"ok\":true}"
+    },
+    {
+      "id": "07_syntax_strings_report",
+      "pass": true,
+      "detail": "{\"ok\":true}"
+    },
+    {
+      "id": "08_syntax_strings_i18n",
+      "pass": true,
+      "detail": "{\"ok\":true}"
+    },
+    {
+      "id": "09_syntax_parens_app",
+      "pass": true,
+      "detail": "{\"ok\":true}"
+    },
+    {
+      "id": "10_syntax_parens_state",
+      "pass": true,
+      "detail": "{\"ok\":true}"
+    },
+    {
+      "id": "11_syntax_parens_engine",
+      "pass": true,
+      "detail": "{\"ok\":true}"
+    },
+    {
+      "id": "12_syntax_parens_setup",
+      "pass": true,
+      "detail": "{\"ok\":true}"
+    },
+    {
+      "id": "13_syntax_parens_dashboard",
+      "pass": true,
+      "detail": "{\"ok\":true}"
+    },
+    {
+      "id": "14_syntax_parens_surveillance",
+      "pass": true,
+      "detail": "{\"ok\":true}"
+    },
+    {
+      "id": "15_syntax_parens_report",
+      "pass": true,
+      "detail": "{\"ok\":true}"
+    },
+    {
+      "id": "16_syntax_parens_i18n",
+      "pass": true,
+      "detail": "{\"ok\":true}"
+    },
+    {
+      "id": "17_app_mode_selector_defined",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "18_app_selector_runs_before_navigation",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "19_app_blocks_until_mode_selected",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "20_app_mode_sidebar_change",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "21_app_single_navigation_preserved",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "22_app_language_selector_login",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "23_state_mode_defaults",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "24_state_coop_defaults",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "25_state_save_coop_config",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "26_state_load_coop_config",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "27_state_single_field_preserved",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "28_engine_class_and_adapter",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "29_engine_geometry_helpers",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "30_engine_per_plot_config",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "31_engine_manual_schedules_disabled_in_config",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "32_engine_spot_filtering_by_polygon",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "33_engine_metapop_kernel",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "34_engine_no_self_pressure",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "35_engine_conservative_kernel_normalization",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "36_engine_external_pressure",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "37_engine_combined_incidence_formula",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "38_engine_records_local_incidence",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "39_engine_records_meta_pressure",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "40_engine_yield_penalty_from_imported_pressure",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "41_engine_weighted_aggregate_yield",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "42_engine_total_production",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "43_engine_returns_plot_results",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "44_engine_returns_manual_schedule_flag",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "45_engine_disease_model_tag",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "46_setup_coop_branch",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "47_setup_five_steps",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "48_setup_perimeter_center_area",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "49_setup_generate_perimeter",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "50_setup_satellite_map_layer_translated",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "51_setup_draw_tool_polygon",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "52_setup_auto_detect_plots",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "53_setup_edit_delete_plots",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "54_setup_add_replace_plots",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "55_setup_zero_nutrient_preserved",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "56_setup_selected_crop_preserved",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "57_setup_shared_crop_mode",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "58_setup_per_plot_crop_mode",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "59_setup_disease_selection",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "60_setup_auto_disease_detection",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "61_setup_detection_date_today",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "62_setup_map_disease_markers",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "63_setup_auto_soil_perimeter",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "64_setup_expert_soil_available",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "65_setup_per_plot_nutrient_editor",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "66_setup_removes_manual_calendars",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "67_setup_review_initializes_dashboard",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "68_dashboard_imports_coop_engine",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "69_dashboard_renderer",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "70_dashboard_uses_coop_engine",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "71_dashboard_runs_coop_simulation",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "72_dashboard_skips_heavy_uncertainty_for_coop",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "73_dashboard_branches_to_coop_view",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "74_dashboard_coop_metrics",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "75_dashboard_satellite_map_layer_translated",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "76_dashboard_risk_coloring",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "77_dashboard_meta_pressure_chart",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "78_dashboard_high_risk_table",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "79_surveillance_renderer",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "80_surveillance_branch",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "81_surveillance_scope_plot_or_perimeter",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "82_surveillance_records_plot_id",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "83_surveillance_records_confidence",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "84_surveillance_records_coop_mode",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "85_surveillance_shows_logs",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "86_surveillance_prioritizes_high_risk",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "87_surveillance_suggests_next_check",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "88_report_renderer",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "89_report_branch",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "90_report_pdf_title",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "91_report_summary_section",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "92_report_metapop_section",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "93_report_high_risk_section",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "94_report_lightweight",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "95_report_newline_escape_safe",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "96_i18n_mode_keys",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "97_i18n_coop_literals_complete",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "98_docs_mode_log",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "99_docs_surveillance_log",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "100_docs_metapop_equations_and_refs",
+      "pass": true,
+      "detail": ""
+    }
+  ]
+}

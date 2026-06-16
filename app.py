@@ -3,10 +3,42 @@ import streamlit as st
 import hydralit_components as hc
 from src.models.state_manager import StateManager
 from src.utils.access_control import check_access
+from src.utils.i18n import t, language_selector
 from pages.main import setup_page
 from pages.main import dashboard
 from pages.main import report
+from pages.main import recommendations
+from pages.main import what_if
 from pages.main import surveillance # NEW IMPORT
+
+
+def render_mode_selector():
+    """First-run selector between single-field and cooperative workflows."""
+    language_selector(location="main", key="aef_language_selector_mode")
+    st.title(t("mode.title"))
+    st.caption(t("mode.caption"))
+    col_single, col_coop = st.columns(2)
+    with col_single:
+        st.subheader(t("mode.single.title"))
+        st.write(t("mode.single.body"))
+    with col_coop:
+        st.subheader(t("mode.cooperative.title"))
+        st.write(t("mode.cooperative.body"))
+    choice = st.radio(
+        t("mode.choose"),
+        ["single", "cooperative"],
+        format_func=lambda x: t("mode.single.option") if x == "single" else t("mode.cooperative.option"),
+        horizontal=True,
+        key="aef_initial_mode_choice",
+    )
+    if st.button(t("mode.continue"), type="primary"):
+        st.session_state["app_mode"] = choice
+        st.session_state["app_mode_locked"] = True
+        st.session_state["setup_complete"] = False
+        st.session_state.pop("sim_results", None)
+        st.session_state.pop("sim_uncertainty", None)
+        st.rerun()
+
 
 # 1. App Config
 st.set_page_config(
@@ -26,24 +58,25 @@ if not st.session_state['access_granted']:
     # Centered Login Screen
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
+        language_selector(location="main", key="aef_language_selector_login")
         # st.image("src/images/logo/logo.png", width=200) 
-        st.title("🔐 Access Restricted")
-        st.markdown("Welcome to **AEF Crop Intelligence** (Alpha Version).")
-        st.info("This application is currently in closed testing. Please enter your access code to continue.")
+        st.title("🔐 " + t("login.title"))
+        st.markdown(t("login.welcome"))
+        st.info(t("login.info"))
         
         # Login Form
         with st.form("login_form"):
-            code_input = st.text_input("Enter Access Code:", type="password")
-            submitted = st.form_submit_button("Login")
+            code_input = st.text_input(t("login.input"), type="password")
+            submitted = st.form_submit_button(t("login.button"))
             
             if submitted:
                 if check_access(code_input, key=ACCESS_KEY_SECRET):
                     st.session_state['access_granted'] = True
-                    st.success("Access Granted! Loading...")
+                    st.success(t("login.success"))
                     st.rerun()
                 else:
-                    st.error("Invalid Access Code.")
-                    st.markdown("Don't have a code? Request one at [israeltankam@gmail.com](mailto:israeltankam@gmail.com)")
+                    st.error(t("login.error"))
+                    st.markdown(t("login.no_code"))
     
     # Stop execution here if not authenticated
     st.stop()
@@ -54,12 +87,32 @@ if not st.session_state['access_granted']:
 if 'step' not in st.session_state:
     StateManager.initialize()
 
-# 3. Navigation Definition
+if not st.session_state.get("app_mode"):
+    render_mode_selector()
+    st.stop()
+
+# 3. Language and Navigation Definition
+language_selector(location="sidebar", key="aef_language_selector_sidebar")
+st.sidebar.caption(t("mode.active") + ": " + (t("mode.cooperative.option") if st.session_state.get("app_mode") == "cooperative" else t("mode.single.option")))
+if st.sidebar.button(t("mode.change")):
+    st.session_state["app_mode"] = None
+    st.session_state["setup_complete"] = False
+    st.session_state.pop("sim_results", None)
+    st.session_state.pop("sim_uncertainty", None)
+    st.rerun()
+site_setup_label = t("nav.site_setup")
+dashboard_label = t("nav.dashboard")
+surveillance_label = t("nav.surveillance")
+recommendations_label = t("nav.recommendations")
+what_if_label = t("nav.what_if")
+report_label = t("nav.report")
 menu_data = [
-    {'icon': "fa fa-map-marker", 'label': "Site Setup"},
-    {'icon': "fas fa-satellite", 'label': "Intelligence Dashboard"},
-    {'icon': "fa fa-chart-line", 'label': "Adaptive Surveillance"}, # NEW TAB
-    {'icon': "fa fa-file-pdf", 'label': "Report"},
+    {'icon': "fa fa-map-marker", 'label': site_setup_label},
+    {'icon': "fas fa-satellite", 'label': dashboard_label},
+    {'icon': "fa fa-chart-line", 'label': surveillance_label},
+    {'icon': "fa fa-compass", 'label': recommendations_label},
+    {'icon': "fa fa-flask", 'label': what_if_label},
+    {'icon': "fa fa-file-pdf", 'label': report_label},
 ]
 
 over_theme = {'txc_inactive': '#FFFFFF', 'menu_background': '#2C3E50'}
@@ -70,6 +123,15 @@ nav_index = 0
 if st.session_state.get('nav_target'):
     try:
         target_label = st.session_state['nav_target']
+        legacy_targets = {
+            "Site Setup": site_setup_label,
+            "Intelligence Dashboard": dashboard_label,
+            "Adaptive Surveillance": surveillance_label,
+            "Recommendations": recommendations_label,
+            "What-if scenarios": what_if_label,
+            "Report": report_label,
+        }
+        target_label = legacy_targets.get(target_label, target_label)
         nav_index = [m['label'] for m in menu_data].index(target_label)
         st.session_state['nav_target'] = None 
     except ValueError:
@@ -86,24 +148,36 @@ menu_id = hc.nav_bar(
 )
 
 # 4. Routing Logic
-if menu_id == "Site Setup":
+if menu_id == site_setup_label:
     setup_page.app()
 
-elif menu_id == "Intelligence Dashboard":
+elif menu_id == dashboard_label:
     if not st.session_state.get('setup_complete'):
-        st.warning("⚠️ Please complete the configuration in 'Site Setup' first.")
+        st.warning("⚠️ " + t("guard.setup_first"))
     else:
         dashboard.app()
 
-elif menu_id == "Adaptive Surveillance":
+elif menu_id == surveillance_label:
     if not st.session_state.get('setup_complete'):
-        st.warning("⚠️ Please complete the configuration in 'Site Setup' first.")
+        st.warning("⚠️ " + t("guard.setup_first"))
     else:
         surveillance.app()
 
-elif menu_id == "Report":
+elif menu_id == recommendations_label:
     if 'sim_results' not in st.session_state:
-        st.warning("⚠️ No intelligence generated yet. Please run the simulation in the Dashboard tab.")
+        st.warning("⚠️ " + t("guard.no_results"))
+    else:
+        recommendations.app()
+
+elif menu_id == what_if_label:
+    if 'sim_results' not in st.session_state:
+        st.warning("⚠️ " + t("guard.no_results"))
+    else:
+        what_if.app()
+
+elif menu_id == report_label:
+    if 'sim_results' not in st.session_state:
+        st.warning("⚠️ " + t("guard.no_results"))
     else:
         report.app()
 

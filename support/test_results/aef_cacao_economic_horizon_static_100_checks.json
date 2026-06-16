@@ -1,0 +1,509 @@
+{
+  "generated_at": "2026-06-13",
+  "count": 100,
+  "passed": 100,
+  "failed": 0,
+  "failures": [],
+  "tests": [
+    {
+      "id": 1,
+      "name": "balanced econ",
+      "ok": true
+    },
+    {
+      "id": 2,
+      "name": "balanced sim",
+      "ok": true
+    },
+    {
+      "id": 3,
+      "name": "balanced coop",
+      "ok": true
+    },
+    {
+      "id": 4,
+      "name": "balanced state",
+      "ok": true
+    },
+    {
+      "id": 5,
+      "name": "balanced setup",
+      "ok": true
+    },
+    {
+      "id": 6,
+      "name": "balanced rec",
+      "ok": true
+    },
+    {
+      "id": 7,
+      "name": "balanced report",
+      "ok": true
+    },
+    {
+      "id": 8,
+      "name": "balanced i18n",
+      "ok": true
+    },
+    {
+      "id": 9,
+      "name": "econ contains CAMEROON_PRICE_REFERENCES",
+      "ok": true
+    },
+    {
+      "id": 10,
+      "name": "econ contains \"Cocoa\": 3500000.0",
+      "ok": true
+    },
+    {
+      "id": 11,
+      "name": "econ contains CROP_SPECIFIC_DEFAULTS",
+      "ok": true
+    },
+    {
+      "id": 12,
+      "name": "econ contains use_current_crop_defaults",
+      "ok": true
+    },
+    {
+      "id": 13,
+      "name": "econ contains \"scouting_day\": 10000.0",
+      "ok": true
+    },
+    {
+      "id": 14,
+      "name": "econ contains \"pruning_day\": 0.0",
+      "ok": true
+    },
+    {
+      "id": 15,
+      "name": "econ contains economic_horizon_years",
+      "ok": true
+    },
+    {
+      "id": 16,
+      "name": "econ contains annual_harvest_yields_t_ha",
+      "ok": true
+    },
+    {
+      "id": 17,
+      "name": "econ contains Replacement is charged only when",
+      "ok": true
+    },
+    {
+      "id": 18,
+      "name": "econ contains per workday per hectare",
+      "ok": true
+    },
+    {
+      "id": 19,
+      "name": "econ contains _schedule_within_horizon",
+      "ok": true
+    },
+    {
+      "id": 20,
+      "name": "econ contains _scenario_production_tonnes",
+      "ok": true
+    },
+    {
+      "id": 21,
+      "name": "econ contains baseline_production_t_per_ha",
+      "ok": true
+    },
+    {
+      "id": 22,
+      "name": "econ contains agronomic_net_gain_per_ha",
+      "ok": true
+    },
+    {
+      "id": 23,
+      "name": "econ contains economic_net_gain_per_ha",
+      "ok": true
+    },
+    {
+      "id": 24,
+      "name": "sim contains def _scenario_harvest_summary",
+      "ok": true
+    },
+    {
+      "id": 25,
+      "name": "sim contains annual_yields_t_ha",
+      "ok": true
+    },
+    {
+      "id": 26,
+      "name": "sim contains horizon_yield_t_ha",
+      "ok": true
+    },
+    {
+      "id": 27,
+      "name": "coop contains _harvest_equivalent_yield_t_ha",
+      "ok": true
+    },
+    {
+      "id": 28,
+      "name": "coop contains economic_horizon_years",
+      "ok": true
+    },
+    {
+      "id": 29,
+      "name": "state contains 'economic_horizon_years': 20",
+      "ok": true
+    },
+    {
+      "id": 30,
+      "name": "setup contains Economic analysis horizon (years)",
+      "ok": true
+    },
+    {
+      "id": 31,
+      "name": "setup contains Labour values are costs per workday per hectare",
+      "ok": true
+    },
+    {
+      "id": 32,
+      "name": "setup contains Scouting labour per day per ha",
+      "ok": true
+    },
+    {
+      "id": 33,
+      "name": "rec contains recommendations_economic_horizon_years",
+      "ok": true
+    },
+    {
+      "id": 34,
+      "name": "rec contains Production/ha",
+      "ok": true
+    },
+    {
+      "id": 35,
+      "name": "rec contains Net gain/ha",
+      "ok": true
+    },
+    {
+      "id": 36,
+      "name": "rec contains recommendation_plan_signature",
+      "ok": true
+    },
+    {
+      "id": 37,
+      "name": "report contains single_report_economic_horizon_years",
+      "ok": true
+    },
+    {
+      "id": 38,
+      "name": "report contains coop_report_economic_horizon_years",
+      "ok": true
+    },
+    {
+      "id": 39,
+      "name": "report contains Net gain/ha",
+      "ok": true
+    },
+    {
+      "id": 40,
+      "name": "i18n contains Economic analysis horizon (years)",
+      "ok": true
+    },
+    {
+      "id": 41,
+      "name": "i18n contains Scouting labour per day per ha",
+      "ok": true
+    },
+    {
+      "id": 42,
+      "name": "i18n contains For perennial crops, revenue is summed over annual harvest peaks within this horizon.",
+      "ok": true
+    },
+    {
+      "id": 43,
+      "name": "1000 simulations were recorded",
+      "ok": true
+    },
+    {
+      "id": 44,
+      "name": "new model not all losses",
+      "ok": true
+    },
+    {
+      "id": 45,
+      "name": "old terminal model mostly losses reproduced",
+      "ok": true
+    },
+    {
+      "id": 46,
+      "name": "new median net is positive",
+      "ok": true
+    },
+    {
+      "id": 47,
+      "name": "old median net is negative",
+      "ok": true
+    },
+    {
+      "id": 48,
+      "name": "blocker documented",
+      "ok": true
+    },
+    {
+      "id": 49,
+      "name": "replacement no removal setting recorded",
+      "ok": true
+    },
+    {
+      "id": 50,
+      "name": "labour per ha recorded",
+      "ok": true
+    },
+    {
+      "id": 51,
+      "name": "cacao JSON area used",
+      "ok": true
+    },
+    {
+      "id": 52,
+      "name": "requirements unchanged no new optimizer deps",
+      "ok": true
+    },
+    {
+      "id": 53,
+      "name": "simulation probe 53 finite net",
+      "ok": true
+    },
+    {
+      "id": 54,
+      "name": "simulation probe 54 finite net",
+      "ok": true
+    },
+    {
+      "id": 55,
+      "name": "simulation probe 55 finite net",
+      "ok": true
+    },
+    {
+      "id": 56,
+      "name": "simulation probe 56 finite net",
+      "ok": true
+    },
+    {
+      "id": 57,
+      "name": "simulation probe 57 finite net",
+      "ok": true
+    },
+    {
+      "id": 58,
+      "name": "simulation probe 58 finite net",
+      "ok": true
+    },
+    {
+      "id": 59,
+      "name": "simulation probe 59 finite net",
+      "ok": true
+    },
+    {
+      "id": 60,
+      "name": "simulation probe 60 finite net",
+      "ok": true
+    },
+    {
+      "id": 61,
+      "name": "simulation probe 61 finite net",
+      "ok": true
+    },
+    {
+      "id": 62,
+      "name": "simulation probe 62 finite net",
+      "ok": true
+    },
+    {
+      "id": 63,
+      "name": "simulation probe 63 finite net",
+      "ok": true
+    },
+    {
+      "id": 64,
+      "name": "simulation probe 64 finite net",
+      "ok": true
+    },
+    {
+      "id": 65,
+      "name": "simulation probe 65 finite net",
+      "ok": true
+    },
+    {
+      "id": 66,
+      "name": "simulation probe 66 finite net",
+      "ok": true
+    },
+    {
+      "id": 67,
+      "name": "simulation probe 67 finite net",
+      "ok": true
+    },
+    {
+      "id": 68,
+      "name": "simulation probe 68 finite net",
+      "ok": true
+    },
+    {
+      "id": 69,
+      "name": "simulation probe 69 finite net",
+      "ok": true
+    },
+    {
+      "id": 70,
+      "name": "simulation probe 70 finite net",
+      "ok": true
+    },
+    {
+      "id": 71,
+      "name": "simulation probe 71 finite net",
+      "ok": true
+    },
+    {
+      "id": 72,
+      "name": "simulation probe 72 finite net",
+      "ok": true
+    },
+    {
+      "id": 73,
+      "name": "simulation probe 73 finite net",
+      "ok": true
+    },
+    {
+      "id": 74,
+      "name": "simulation probe 74 finite net",
+      "ok": true
+    },
+    {
+      "id": 75,
+      "name": "simulation probe 75 finite net",
+      "ok": true
+    },
+    {
+      "id": 76,
+      "name": "simulation probe 76 finite net",
+      "ok": true
+    },
+    {
+      "id": 77,
+      "name": "simulation probe 77 finite net",
+      "ok": true
+    },
+    {
+      "id": 78,
+      "name": "simulation probe 78 finite net",
+      "ok": true
+    },
+    {
+      "id": 79,
+      "name": "simulation probe 79 finite net",
+      "ok": true
+    },
+    {
+      "id": 80,
+      "name": "simulation probe 80 finite net",
+      "ok": true
+    },
+    {
+      "id": 81,
+      "name": "simulation probe 81 finite net",
+      "ok": true
+    },
+    {
+      "id": 82,
+      "name": "simulation probe 82 finite net",
+      "ok": true
+    },
+    {
+      "id": 83,
+      "name": "simulation probe 83 finite net",
+      "ok": true
+    },
+    {
+      "id": 84,
+      "name": "simulation probe 84 finite net",
+      "ok": true
+    },
+    {
+      "id": 85,
+      "name": "simulation probe 85 finite net",
+      "ok": true
+    },
+    {
+      "id": 86,
+      "name": "simulation probe 86 finite net",
+      "ok": true
+    },
+    {
+      "id": 87,
+      "name": "simulation probe 87 finite net",
+      "ok": true
+    },
+    {
+      "id": 88,
+      "name": "simulation probe 88 finite net",
+      "ok": true
+    },
+    {
+      "id": 89,
+      "name": "simulation probe 89 finite net",
+      "ok": true
+    },
+    {
+      "id": 90,
+      "name": "simulation probe 90 finite net",
+      "ok": true
+    },
+    {
+      "id": 91,
+      "name": "simulation probe 91 finite net",
+      "ok": true
+    },
+    {
+      "id": 92,
+      "name": "simulation probe 92 finite net",
+      "ok": true
+    },
+    {
+      "id": 93,
+      "name": "simulation probe 93 finite net",
+      "ok": true
+    },
+    {
+      "id": 94,
+      "name": "simulation probe 94 finite net",
+      "ok": true
+    },
+    {
+      "id": 95,
+      "name": "simulation probe 95 finite net",
+      "ok": true
+    },
+    {
+      "id": 96,
+      "name": "simulation probe 96 finite net",
+      "ok": true
+    },
+    {
+      "id": 97,
+      "name": "simulation probe 97 finite net",
+      "ok": true
+    },
+    {
+      "id": 98,
+      "name": "simulation probe 98 finite net",
+      "ok": true
+    },
+    {
+      "id": 99,
+      "name": "simulation probe 99 finite net",
+      "ok": true
+    },
+    {
+      "id": 100,
+      "name": "simulation probe 100 finite net",
+      "ok": true
+    }
+  ]
+}

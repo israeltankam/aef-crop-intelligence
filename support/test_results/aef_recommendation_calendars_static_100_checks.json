@@ -1,0 +1,610 @@
+{
+  "update": "recommendation_operational_calendars",
+  "generated_at": "2026-06-13T00:00:00.000Z",
+  "backup": "backups/pre_recommendation_calendars_2026-06-13T00-00-00-000Z",
+  "total_checks": 100,
+  "passed": 100,
+  "failed": 0,
+  "checks": [
+    {
+      "id": 1,
+      "name": "Python structural scan: pages/main/recommendations.py",
+      "pass": true,
+      "detail": "balanced"
+    },
+    {
+      "id": 2,
+      "name": "Python structural scan: src/utils/i18n.py",
+      "pass": true,
+      "detail": "balanced"
+    },
+    {
+      "id": 3,
+      "name": "Python structural scan: src/models/cooperative_engine.py",
+      "pass": true,
+      "detail": "balanced"
+    },
+    {
+      "id": 4,
+      "name": "Function present: _safe_float",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": 5,
+      "name": "Function present: _parse_date",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": 6,
+      "name": "Function present: _schedule_within_selected_horizon",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": 7,
+      "name": "Function present: _summary_rows",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": 8,
+      "name": "Function present: _actions_frame",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": 9,
+      "name": "Function present: _action_for_types",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": 10,
+      "name": "Function present: _is_action_economically_selected",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": 11,
+      "name": "Function present: _render_economic_status",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": 12,
+      "name": "Function present: _irrigation_schedule_frame",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": 13,
+      "name": "Function present: _fertilization_schedule_frame",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": 14,
+      "name": "Function present: _cooperative_irrigation_schedule_frame",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": 15,
+      "name": "Function present: _cooperative_fertilization_schedule_frame",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": 16,
+      "name": "Function present: _display_calendar",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": 17,
+      "name": "Function present: _render_irrigation_calendar",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": 18,
+      "name": "Function present: _render_fertilization_calendar",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": 19,
+      "name": "Function present: _selected_disease_row",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": 20,
+      "name": "Function present: _render_disease_control_details",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": 21,
+      "name": "Function present: _render_recommendation_details",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": 22,
+      "name": "Function present: _compute_recommendations",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": 23,
+      "name": "Function present: _render_plan",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": 24,
+      "name": "Render plan receives config and result",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": 25,
+      "name": "App passes config/result into render plan",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": 26,
+      "name": "Agronomic tab renders detailed calendars",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": 27,
+      "name": "Economic tab renders detailed calendars",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": 28,
+      "name": "Single-field irrigation schedule displayed",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": 29,
+      "name": "Single-field fertilization schedule displayed",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": 30,
+      "name": "Cooperative irrigation schedule displayed",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": 31,
+      "name": "Cooperative fertilization schedule displayed",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": 32,
+      "name": "Economic status shown for hidden/rejected calendars",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": 33,
+      "name": "Irrigation water volume column included",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": 34,
+      "name": "Fertilizer total product column included",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": 35,
+      "name": "Disease detail overview included",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": 36,
+      "name": "Disease protocol table included",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": 37,
+      "name": "Roguing/pruning balance included",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": 38,
+      "name": "Market-price note retained",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": 39,
+      "name": "JSON download retained",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": 40,
+      "name": "Spinner retained for recommendation recalculation",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": 41,
+      "name": "Perennial horizon filter retained",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": 42,
+      "name": "Calendar empty-state for irrigation included",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": 43,
+      "name": "Calendar empty-state for fertilization included",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": 44,
+      "name": "Cooperative disease caution included",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": 45,
+      "name": "Field-validation disease warning included",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": 46,
+      "name": "Cost display includes estimated cost",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": 47,
+      "name": "Data tables hide row index",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": 48,
+      "name": "Data tables use full width",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": 49,
+      "name": "Action-list table retained",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": 50,
+      "name": "Selected economic actions metric retained",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": 51,
+      "name": "Horizon metric retained",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": 52,
+      "name": "Baseline summary retained",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": 53,
+      "name": "Agronomic summary retained",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": 54,
+      "name": "Economic summary retained",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": 55,
+      "name": "Cooperative engine stores irrigation schedule rows",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": 56,
+      "name": "Cooperative engine stores fertilization schedule rows",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": 57,
+      "name": "Cooperative schedule comment explains UI purpose",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": 58,
+      "name": "Cooperative row keeps parcel name",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": 59,
+      "name": "Cooperative row keeps area",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": 60,
+      "name": "French translation present: Affected plants",
+      "pass": true,
+      "detail": "Affected plants"
+    },
+    {
+      "id": 61,
+      "name": "French translation present: Agronomic calendar only under current prices",
+      "pass": true,
+      "detail": "Agronomic calendar only under current prices"
+    },
+    {
+      "id": 62,
+      "name": "French translation present: Applied probability",
+      "pass": true,
+      "detail": "Applied probability"
+    },
+    {
+      "id": 63,
+      "name": "French translation present: Area (ha)",
+      "pass": true,
+      "detail": "Area (ha)"
+    },
+    {
+      "id": 64,
+      "name": "French translation present: Automatic detection pending validation",
+      "pass": true,
+      "detail": "Automatic detection pending validation"
+    },
+    {
+      "id": 65,
+      "name": "French translation present: Calendars are displayed for the selected horizon and remain visible even when current prices make an action agronomic-only.",
+      "pass": true,
+      "detail": "Calendars are displayed for the selected horizon and remain visible even when current prices make an action agronomic-only."
+    },
+    {
+      "id": 66,
+      "name": "French translation present: Confirm the disease identity in the field before choosing chemical, biological, pruning or roguing interventions.",
+      "pass": true,
+      "detail": "Confirm the disease identity in the field before choosing chemical, biological, pruning or roguing interventions."
+    },
+    {
+      "id": 67,
+      "name": "French translation present: Control protocols",
+      "pass": true,
+      "detail": "Control protocols"
+    },
+    {
+      "id": 68,
+      "name": "French translation present: Cooperative disease control is shown for field validation; the current cooperative economic plan prices shared irrigation, fertilization and labour actions.",
+      "pass": true,
+      "detail": "Cooperative disease control is shown for field validation; the current cooperative economic plan prices shared irrigation, fertilization and labour actions."
+    },
+    {
+      "id": 69,
+      "name": "French translation present: Detailed operational calendars",
+      "pass": true,
+      "detail": "Detailed operational calendars"
+    },
+    {
+      "id": 70,
+      "name": "French translation present: Detection date",
+      "pass": true,
+      "detail": "Detection date"
+    },
+    {
+      "id": 71,
+      "name": "French translation present: Disease control recommendations",
+      "pass": true,
+      "detail": "Disease control recommendations"
+    },
+    {
+      "id": 72,
+      "name": "French translation present: Disease control remains field-validation-first.",
+      "pass": true,
+      "detail": "Disease control remains field-validation-first."
+    },
+    {
+      "id": 73,
+      "name": "French translation present: Disease type",
+      "pass": true,
+      "detail": "Disease type"
+    },
+    {
+      "id": 74,
+      "name": "French translation present: Economic decision for this calendar",
+      "pass": true,
+      "detail": "Economic decision for this calendar"
+    },
+    {
+      "id": 75,
+      "name": "French translation present: Estimated cost",
+      "pass": true,
+      "detail": "Estimated cost"
+    },
+    {
+      "id": 76,
+      "name": "French translation present: Fertilization calendar",
+      "pass": true,
+      "detail": "Fertilization calendar"
+    },
+    {
+      "id": 77,
+      "name": "French translation present: Inoculum benefit score",
+      "pass": true,
+      "detail": "Inoculum benefit score"
+    },
+    {
+      "id": 78,
+      "name": "French translation present: Irrigation calendar",
+      "pass": true,
+      "detail": "Irrigation calendar"
+    },
+    {
+      "id": 79,
+      "name": "French translation present: Kept in economic optimum",
+      "pass": true,
+      "detail": "Kept in economic optimum"
+    },
+    {
+      "id": 80,
+      "name": "French translation present: No disease target is configured. Keep routine scouting.",
+      "pass": true,
+      "detail": "No disease target is configured. Keep routine scouting."
+    },
+    {
+      "id": 81,
+      "name": "French translation present: No optimized irrigation event is currently recommended for the selected horizon.",
+      "pass": true,
+      "detail": "No optimized irrigation event is currently recommended for the selected horizon."
+    },
+    {
+      "id": 82,
+      "name": "French translation present: No optimized fertilization event is currently recommended for the selected horizon.",
+      "pass": true,
+      "detail": "No optimized fertilization event is currently recommended for the selected horizon."
+    },
+    {
+      "id": 83,
+      "name": "French translation present: Not priced in this scenario",
+      "pass": true,
+      "detail": "Not priced in this scenario"
+    },
+    {
+      "id": 84,
+      "name": "French translation present: Not specified",
+      "pass": true,
+      "detail": "Not specified"
+    },
+    {
+      "id": 85,
+      "name": "French translation present: Notes",
+      "pass": true,
+      "detail": "Notes"
+    },
+    {
+      "id": 86,
+      "name": "French translation present: Nutrient stress mitigation",
+      "pass": true,
+      "detail": "Nutrient stress mitigation"
+    },
+    {
+      "id": 87,
+      "name": "French translation present: Recommended control step",
+      "pass": true,
+      "detail": "Recommended control step"
+    },
+    {
+      "id": 88,
+      "name": "French translation present: Scenario roguing/pruning balance",
+      "pass": true,
+      "detail": "Scenario roguing/pruning balance"
+    },
+    {
+      "id": 89,
+      "name": "French translation present: Selected disease",
+      "pass": true,
+      "detail": "Selected disease"
+    },
+    {
+      "id": 90,
+      "name": "French translation present: Stress Mitigation",
+      "pass": true,
+      "detail": "Stress Mitigation"
+    },
+    {
+      "id": 91,
+      "name": "French translation present: The full agronomic calendar is shown below even when it is not economically selected.",
+      "pass": true,
+      "detail": "The full agronomic calendar is shown below even when it is not economically selected."
+    },
+    {
+      "id": 92,
+      "name": "French translation present: Total product (kg)",
+      "pass": true,
+      "detail": "Total product (kg)"
+    },
+    {
+      "id": 93,
+      "name": "French translation present: Unspecified product",
+      "pass": true,
+      "detail": "Unspecified product"
+    },
+    {
+      "id": 94,
+      "name": "French translation present: Unknown",
+      "pass": true,
+      "detail": "Unknown"
+    },
+    {
+      "id": 95,
+      "name": "French translation present: Water volume (m3)",
+      "pass": true,
+      "detail": "Water volume (m3)"
+    },
+    {
+      "id": 96,
+      "name": "French translation present: Yield cost score",
+      "pass": true,
+      "detail": "Yield cost score"
+    },
+    {
+      "id": 97,
+      "name": "French translation present: Yield penalty",
+      "pass": true,
+      "detail": "Yield penalty"
+    },
+    {
+      "id": 98,
+      "name": "No untranslated literal tr() calls introduced in recommendations.py",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": 99,
+      "name": "Line-break escape for disease methods remains single-line",
+      "pass": true,
+      "detail": "Control_Methods split"
+    },
+    {
+      "id": 100,
+      "name": "Recommendation page avoids changing model engines beyond display inputs",
+      "pass": true,
+      "detail": "display-only calendar work"
+    }
+  ]
+}

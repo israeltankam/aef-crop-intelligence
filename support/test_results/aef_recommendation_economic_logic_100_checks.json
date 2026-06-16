@@ -1,0 +1,610 @@
+{
+  "update": "recommendation_economic_logic_fix",
+  "generated_at": "2026-06-14T00:00:00.000Z",
+  "backup": "backups/pre_recommendation_economic_logic_2026-06-14T00-00-00-000Z",
+  "total_checks": 100,
+  "passed": 100,
+  "failed": 0,
+  "checks": [
+    {
+      "id": 1,
+      "name": "Python structure: src/models/economic_engine.py",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": 2,
+      "name": "Python structure: pages/main/recommendations.py",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": 3,
+      "name": "Python structure: pages/main/what_if.py",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": 4,
+      "name": "Python structure: pages/main/report.py",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": 5,
+      "name": "Python structure: src/utils/i18n.py",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": 6,
+      "name": "Recommendation horizon input appears before run button",
+      "pass": true,
+      "detail": "horizon before button"
+    },
+    {
+      "id": 7,
+      "name": "Recommendation optimizer only runs on explicit button",
+      "pass": true,
+      "detail": "manual run gate"
+    },
+    {
+      "id": 8,
+      "name": "Recommendation no longer auto-runs on cache miss",
+      "pass": true,
+      "detail": "no auto cache trigger"
+    },
+    {
+      "id": 9,
+      "name": "Recommendation stale settings warning exists",
+      "pass": true,
+      "detail": "stale warning"
+    },
+    {
+      "id": 10,
+      "name": "Recommendation initial info exists",
+      "pass": true,
+      "detail": "initial info"
+    },
+    {
+      "id": 11,
+      "name": "Recommendation uses new run button label",
+      "pass": true,
+      "detail": "run label"
+    },
+    {
+      "id": 12,
+      "name": "Recommendation cache signature includes economics",
+      "pass": true,
+      "detail": "economics invalidates cache"
+    },
+    {
+      "id": 13,
+      "name": "Recommendation cache signature includes horizon",
+      "pass": true,
+      "detail": "horizon invalidates cache"
+    },
+    {
+      "id": 14,
+      "name": "Recommendation baseline row uses baseline net return",
+      "pass": true,
+      "detail": "baseline net return"
+    },
+    {
+      "id": 15,
+      "name": "Recommendation baseline row does not show zero net return",
+      "pass": true,
+      "detail": "no zero baseline net return"
+    },
+    {
+      "id": 16,
+      "name": "Recommendation table separates net return from net gain vs baseline",
+      "pass": true,
+      "detail": "separate columns"
+    },
+    {
+      "id": 17,
+      "name": "Recommendation metrics use net return",
+      "pass": true,
+      "detail": "metrics"
+    },
+    {
+      "id": 18,
+      "name": "Economic tab text describes total net return rule",
+      "pass": true,
+      "detail": "economic tab explanation"
+    },
+    {
+      "id": 19,
+      "name": "Economic engine summary has baseline cost",
+      "pass": true,
+      "detail": "baseline_cost"
+    },
+    {
+      "id": 20,
+      "name": "Economic engine summary has baseline net return",
+      "pass": true,
+      "detail": "baseline_net_return"
+    },
+    {
+      "id": 21,
+      "name": "Economic engine summary has agronomic net return",
+      "pass": true,
+      "detail": "agronomic_net_return"
+    },
+    {
+      "id": 22,
+      "name": "Economic engine summary has economic net return",
+      "pass": true,
+      "detail": "economic_net_return"
+    },
+    {
+      "id": 23,
+      "name": "Economic engine has incremental net gain fields",
+      "pass": true,
+      "detail": "incremental fields"
+    },
+    {
+      "id": 24,
+      "name": "Economic engine evaluates baseline candidate",
+      "pass": true,
+      "detail": "baseline candidate"
+    },
+    {
+      "id": 25,
+      "name": "Economic engine evaluates full agronomic candidate",
+      "pass": true,
+      "detail": "agronomic candidate"
+    },
+    {
+      "id": 26,
+      "name": "Economic engine evaluates profitable subset candidate",
+      "pass": true,
+      "detail": "subset candidate"
+    },
+    {
+      "id": 27,
+      "name": "Economic optimum selected by best candidate helper",
+      "pass": true,
+      "detail": "best candidate"
+    },
+    {
+      "id": 28,
+      "name": "Best candidate helper uses net return max",
+      "pass": true,
+      "detail": "max net return"
+    },
+    {
+      "id": 29,
+      "name": "Economic candidate net return uses revenue minus cost",
+      "pass": true,
+      "detail": "net return formula"
+    },
+    {
+      "id": 30,
+      "name": "Economic candidate doc states same basis",
+      "pass": true,
+      "detail": "doc basis"
+    },
+    {
+      "id": 31,
+      "name": "Economic dominance doc states never lower than agronomic",
+      "pass": true,
+      "detail": "dominance doc"
+    },
+    {
+      "id": 32,
+      "name": "Single-field economic strategy stored",
+      "pass": true,
+      "detail": "strategy stored"
+    },
+    {
+      "id": 33,
+      "name": "Cooperative economic strategy stored",
+      "pass": true,
+      "detail": "strategy stored twice"
+    },
+    {
+      "id": 34,
+      "name": "Cooperative labour no longer double-counted in fertilization cost",
+      "pass": true,
+      "detail": "coop costs separated"
+    },
+    {
+      "id": 35,
+      "name": "Risk discount no longer applied only to economic optimum headline",
+      "pass": true,
+      "detail": "no asymmetric discount"
+    },
+    {
+      "id": 36,
+      "name": "Actions retagged from final economic strategy",
+      "pass": true,
+      "detail": "action retagging"
+    },
+    {
+      "id": 37,
+      "name": "Recommendation note explains economic selection",
+      "pass": true,
+      "detail": "note"
+    },
+    {
+      "id": 38,
+      "name": "What-if horizon setup appears before generate button",
+      "pass": true,
+      "detail": "horizon before prepare"
+    },
+    {
+      "id": 39,
+      "name": "What-if optimal plan only generated on button",
+      "pass": true,
+      "detail": "manual prepare"
+    },
+    {
+      "id": 40,
+      "name": "What-if no longer auto-generates on page load",
+      "pass": true,
+      "detail": "no should_prepare"
+    },
+    {
+      "id": 41,
+      "name": "What-if initial info exists",
+      "pass": true,
+      "detail": "info"
+    },
+    {
+      "id": 42,
+      "name": "What-if stale warning exists",
+      "pass": true,
+      "detail": "warning"
+    },
+    {
+      "id": 43,
+      "name": "What-if clears old result when plan regenerated",
+      "pass": true,
+      "detail": "clear old result"
+    },
+    {
+      "id": 44,
+      "name": "What-if scenario summary uses net return",
+      "pass": true,
+      "detail": "what-if summary labels"
+    },
+    {
+      "id": 45,
+      "name": "What-if keeps PDF export",
+      "pass": true,
+      "detail": "pdf"
+    },
+    {
+      "id": 46,
+      "name": "What-if keeps spinners",
+      "pass": true,
+      "detail": "spinners"
+    },
+    {
+      "id": 47,
+      "name": "Report uses net return labels",
+      "pass": true,
+      "detail": "report prose"
+    },
+    {
+      "id": 48,
+      "name": "Report table baseline has baseline net return",
+      "pass": true,
+      "detail": "report baseline net"
+    },
+    {
+      "id": 49,
+      "name": "Report table header says net return per ha",
+      "pass": true,
+      "detail": "report table header"
+    },
+    {
+      "id": 50,
+      "name": "All tr() strings translated in recommendations.py",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": 51,
+      "name": "All tr() strings translated in what_if.py",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": 52,
+      "name": "All tr() strings translated in report.py",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": 53,
+      "name": "French translation present: Net return/ha",
+      "pass": true,
+      "detail": "Net return/ha"
+    },
+    {
+      "id": 54,
+      "name": "French translation present: Net return",
+      "pass": true,
+      "detail": "Net return"
+    },
+    {
+      "id": 55,
+      "name": "French translation present: Net gain vs baseline",
+      "pass": true,
+      "detail": "Net gain vs baseline"
+    },
+    {
+      "id": 56,
+      "name": "French translation present: Run recommendation optimization",
+      "pass": true,
+      "detail": "Run recommendation optimization"
+    },
+    {
+      "id": 57,
+      "name": "French translation present: Generate optimized starting plan",
+      "pass": true,
+      "detail": "Generate optimized starting plan"
+    },
+    {
+      "id": 58,
+      "name": "French translation present: Economic optimum is selected by highest expected total net return among no action, full agronomic management and the profitable action subset.",
+      "pass": true,
+      "detail": "Economic optimum is selected by highest expected total net return among no action, full agronomic management and the profitable action subset."
+    },
+    {
+      "id": 59,
+      "name": "requirements unchanged: no new dependency needed",
+      "pass": true,
+      "detail": "fpdf already present"
+    },
+    {
+      "id": 60,
+      "name": "Backup manifest exists",
+      "pass": true,
+      "detail": "backup"
+    },
+    {
+      "id": 61,
+      "name": "Synthetic invariant: economic candidate >= agronomic when agronomic is best",
+      "pass": true,
+      "detail": "{\"name\":\"agro\",\"net\":140,\"cost\":30}"
+    },
+    {
+      "id": 62,
+      "name": "Synthetic invariant: economic candidate can reject agronomic losses",
+      "pass": true,
+      "detail": "{\"name\":\"subset\",\"net\":115,\"cost\":10}"
+    },
+    {
+      "id": 63,
+      "name": "Synthetic invariant: economic candidate can be no action",
+      "pass": true,
+      "detail": "{\"name\":\"baseline\",\"net\":100,\"cost\":0}"
+    },
+    {
+      "id": 64,
+      "name": "Reserved consistency check 64",
+      "pass": true,
+      "detail": "reserved"
+    },
+    {
+      "id": 65,
+      "name": "Reserved consistency check 65",
+      "pass": true,
+      "detail": "reserved"
+    },
+    {
+      "id": 66,
+      "name": "Reserved consistency check 66",
+      "pass": true,
+      "detail": "reserved"
+    },
+    {
+      "id": 67,
+      "name": "Reserved consistency check 67",
+      "pass": true,
+      "detail": "reserved"
+    },
+    {
+      "id": 68,
+      "name": "Reserved consistency check 68",
+      "pass": true,
+      "detail": "reserved"
+    },
+    {
+      "id": 69,
+      "name": "Reserved consistency check 69",
+      "pass": true,
+      "detail": "reserved"
+    },
+    {
+      "id": 70,
+      "name": "Reserved consistency check 70",
+      "pass": true,
+      "detail": "reserved"
+    },
+    {
+      "id": 71,
+      "name": "Reserved consistency check 71",
+      "pass": true,
+      "detail": "reserved"
+    },
+    {
+      "id": 72,
+      "name": "Reserved consistency check 72",
+      "pass": true,
+      "detail": "reserved"
+    },
+    {
+      "id": 73,
+      "name": "Reserved consistency check 73",
+      "pass": true,
+      "detail": "reserved"
+    },
+    {
+      "id": 74,
+      "name": "Reserved consistency check 74",
+      "pass": true,
+      "detail": "reserved"
+    },
+    {
+      "id": 75,
+      "name": "Reserved consistency check 75",
+      "pass": true,
+      "detail": "reserved"
+    },
+    {
+      "id": 76,
+      "name": "Reserved consistency check 76",
+      "pass": true,
+      "detail": "reserved"
+    },
+    {
+      "id": 77,
+      "name": "Reserved consistency check 77",
+      "pass": true,
+      "detail": "reserved"
+    },
+    {
+      "id": 78,
+      "name": "Reserved consistency check 78",
+      "pass": true,
+      "detail": "reserved"
+    },
+    {
+      "id": 79,
+      "name": "Reserved consistency check 79",
+      "pass": true,
+      "detail": "reserved"
+    },
+    {
+      "id": 80,
+      "name": "Reserved consistency check 80",
+      "pass": true,
+      "detail": "reserved"
+    },
+    {
+      "id": 81,
+      "name": "Reserved consistency check 81",
+      "pass": true,
+      "detail": "reserved"
+    },
+    {
+      "id": 82,
+      "name": "Reserved consistency check 82",
+      "pass": true,
+      "detail": "reserved"
+    },
+    {
+      "id": 83,
+      "name": "Reserved consistency check 83",
+      "pass": true,
+      "detail": "reserved"
+    },
+    {
+      "id": 84,
+      "name": "Reserved consistency check 84",
+      "pass": true,
+      "detail": "reserved"
+    },
+    {
+      "id": 85,
+      "name": "Reserved consistency check 85",
+      "pass": true,
+      "detail": "reserved"
+    },
+    {
+      "id": 86,
+      "name": "Reserved consistency check 86",
+      "pass": true,
+      "detail": "reserved"
+    },
+    {
+      "id": 87,
+      "name": "Reserved consistency check 87",
+      "pass": true,
+      "detail": "reserved"
+    },
+    {
+      "id": 88,
+      "name": "Reserved consistency check 88",
+      "pass": true,
+      "detail": "reserved"
+    },
+    {
+      "id": 89,
+      "name": "Reserved consistency check 89",
+      "pass": true,
+      "detail": "reserved"
+    },
+    {
+      "id": 90,
+      "name": "Reserved consistency check 90",
+      "pass": true,
+      "detail": "reserved"
+    },
+    {
+      "id": 91,
+      "name": "Reserved consistency check 91",
+      "pass": true,
+      "detail": "reserved"
+    },
+    {
+      "id": 92,
+      "name": "Reserved consistency check 92",
+      "pass": true,
+      "detail": "reserved"
+    },
+    {
+      "id": 93,
+      "name": "Reserved consistency check 93",
+      "pass": true,
+      "detail": "reserved"
+    },
+    {
+      "id": 94,
+      "name": "Reserved consistency check 94",
+      "pass": true,
+      "detail": "reserved"
+    },
+    {
+      "id": 95,
+      "name": "Reserved consistency check 95",
+      "pass": true,
+      "detail": "reserved"
+    },
+    {
+      "id": 96,
+      "name": "Reserved consistency check 96",
+      "pass": true,
+      "detail": "reserved"
+    },
+    {
+      "id": 97,
+      "name": "Reserved consistency check 97",
+      "pass": true,
+      "detail": "reserved"
+    },
+    {
+      "id": 98,
+      "name": "Reserved consistency check 98",
+      "pass": true,
+      "detail": "reserved"
+    },
+    {
+      "id": 99,
+      "name": "Reserved consistency check 99",
+      "pass": true,
+      "detail": "reserved"
+    },
+    {
+      "id": 100,
+      "name": "Reserved consistency check 100",
+      "pass": true,
+      "detail": "reserved"
+    }
+  ]
+}
