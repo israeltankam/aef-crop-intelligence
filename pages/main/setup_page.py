@@ -13,6 +13,7 @@ from src.utils.i18n import tr
 from src.models.fertilizer_service import FertilizerService
 from src.models.disease_service import DiseaseService # NEW IMPORT
 from src.models.cooperative_parcel_detector import detect_candidate_parcels
+from src.models.sentinel_parcel_detector import detect_sentinel2_parcels
 from src.utils.coordinate_format import format_latlon_dms, parse_coordinate_pair
 from src.utils.parcel_quality import cooperative_parcel_quality
 from src.utils.diagnostic_quality import build_diagnostic_quality
@@ -173,7 +174,17 @@ def generate_field_candidates(center_lat, center_lon, area_ha):
         ('trapezoid', 1.0, 90), ('notched', 1.0, 0), ('notched', 1.0, 90),
         ('notched', 1.0, 180), ('notched', 1.0, 270)
     ]
-    offsets = [(0.0, 0.0), (side * 0.25, 0.0), (-side * 0.25, 0.0), (0.0, side * 0.25), (0.0, -side * 0.25)]
+    # Search more than the exact centre.  The user-supplied point is a guide,
+    # but a centroid can fall on a track, house, yard, stream edge, or road.
+    # These offsets keep the candidate close while giving the algorithm room to
+    # avoid non-cultivable pixels visible in WorldCover/Sentinel products.
+    offsets = [
+        (0.0, 0.0),
+        (side * 0.25, 0.0), (-side * 0.25, 0.0), (0.0, side * 0.25), (0.0, -side * 0.25),
+        (side * 0.50, 0.0), (-side * 0.50, 0.0), (0.0, side * 0.50), (0.0, -side * 0.50),
+        (side * 0.35, side * 0.35), (side * 0.35, -side * 0.35), (-side * 0.35, side * 0.35), (-side * 0.35, -side * 0.35),
+        (side * 0.75, 0.0), (-side * 0.75, 0.0), (0.0, side * 0.75), (0.0, -side * 0.75),
+    ]
     candidates = []
     for shape_name, aspect, angle in specs:
         for east_m, north_m in offsets:
@@ -196,7 +207,12 @@ _WORLD_COVER_LABELS = {
     '80': 'permanent water', '90': 'herbaceous wetland', '95': 'mangroves', '100': 'moss or lichen'
 }
 _CULTIVABLE_COVER = {'10', '20', '30', '40'}
+# For pre-planting and smart-field boundary search, bare/sparse land can still
+# be agriculturally plausible.  Built-up, permanent water, wetlands, mangroves,
+# snow/ice and moss/lichen are treated as hard non-cultivable warnings.
+_FIELD_PLAUSIBLE_COVER = {'10', '20', '30', '40', '60'}
 _NON_CULTIVABLE_COVER = {'50', '70', '80', '90', '95', '100'}
+_HARD_NON_FIELD_COVER = {'50', '70', '80', '90', '95', '100'}
 _SOIL_DEPTH_BANDS = [('b0', 0.00, 0.10), ('b10', 0.10, 0.30), ('b30', 0.30, 0.60), ('b60', 0.60, 1.00), ('b100', 1.00, 1.50)]
 _USDA_TEXTURE_MAP = {1:'clay',2:'silty clay',3:'sandy clay',4:'clay loam',5:'silty clay loam',6:'sandy clay loam',7:'loam',8:'silt loam',9:'sandy loam',10:'silt',11:'loamy sand',12:'sand'}
 
@@ -271,38 +287,56 @@ def analyze_risk_level(hist):
     water_pct = _hist_pct(hist, {'80', '90', '95'})
     non_cultivable_pct = _hist_pct(hist, _NON_CULTIVABLE_COVER)
     cultivable_pct = _hist_pct(hist, _CULTIVABLE_COVER)
+    plausible_field_pct = _hist_pct(hist, _FIELD_PLAUSIBLE_COVER)
     dominant_label, dominant_pct = _dominant_cover(hist)
     dominant_label_display = tr(dominant_label)
-    if built_pct > 4.0 or water_pct > 5.0 or non_cultivable_pct > 15.0:
+    if built_pct > 2.0 or water_pct > 2.0 or non_cultivable_pct > 8.0:
         return "CRITICAL", "red", tr("Unsuitable pixels detected ({pct:.1f}% not cultivable; dominant cover: {cover}).", pct=non_cultivable_pct, cover=dominant_label_display)
-    if built_pct > 0.5 or water_pct > 0.5 or cultivable_pct < 75.0 or dominant_pct < 65.0:
-        return "WARNING", "orange", tr("Mixed cover detected ({cultivable:.1f}% vegetated/cultivable; dominant cover: {cover}, {dominant:.0f}%).", cultivable=cultivable_pct, cover=dominant_label_display, dominant=dominant_pct)
+    if built_pct > 0.2 or water_pct > 0.2 or plausible_field_pct < 70.0 or dominant_pct < 55.0:
+        return "WARNING", "orange", tr("Mixed cover detected ({cultivable:.1f}% plausible field cover; dominant cover: {cover}, {dominant:.0f}%).", cultivable=plausible_field_pct, cover=dominant_label_display, dominant=dominant_pct)
     return "SAFE", "green", tr("Mostly consistent vegetated/cultivable cover ({cover}, {dominant:.0f}%).", cover=dominant_label_display, dominant=dominant_pct)
 
 def score_field_candidate(candidate, requested_area_ha, center_lat, center_lon, include_ndvi=False):
     poly = candidate['poly']
-    hist = candidate.get('hist') if candidate.get('hist') is not None else get_land_cover_stats(poly)
-    level, color, msg = analyze_risk_level(hist)
+    hist_raw = candidate.get('hist') if candidate.get('hist') is not None else get_land_cover_stats(poly)
+    level, color, msg = analyze_risk_level(hist_raw)
     ndvi = get_ndvi_homogeneity(poly) if include_ndvi else None
-    hist = _normalize_hist(hist)
+    hist = _normalize_hist(hist_raw)
     area_error_pct = abs(calculate_area_ha(poly) - requested_area_ha) / max(0.01, requested_area_ha) * 100.0
     centroid_lat, centroid_lon = _polygon_centroid(poly)
     m_per_deg_lat, m_per_deg_lon = _meters_per_degree(center_lat)
     distance_m = math.hypot((centroid_lat - center_lat) * m_per_deg_lat, (centroid_lon - center_lon) * m_per_deg_lon)
+    built_pct = _hist_pct(hist, {'50'})
+    water_pct = _hist_pct(hist, {'80', '90', '95'})
+    hard_non_field_pct = _hist_pct(hist, _HARD_NON_FIELD_COVER)
     non_cultivable_pct = _hist_pct(hist, _NON_CULTIVABLE_COVER)
     cultivable_pct = _hist_pct(hist, _CULTIVABLE_COVER)
+    plausible_field_pct = _hist_pct(hist, _FIELD_PLAUSIBLE_COVER)
     dominant_label, dominant_pct = _dominant_cover(hist)
-    dominant_label_display = tr(dominant_label)
     ndvi_std = ndvi.get('ndvi_std') if ndvi else None
-    ndvi_penalty = 12.0 if ndvi_std is None else min(35.0, max(0.0, ndvi_std) * 160.0)
-    score = (non_cultivable_pct * 3.5) + ((100.0 - cultivable_pct) * 0.8) + ((100.0 - dominant_pct) * 0.45) + (area_error_pct * 1.2) + (distance_m / max(20.0, math.sqrt(requested_area_ha * 10000.0)) * 6.0) + ndvi_penalty
+    ndvi_mean = ndvi.get('ndvi_mean') if ndvi else None
+    ndvi_penalty = 14.0 if ndvi_std is None else min(42.0, max(0.0, ndvi_std) * 180.0)
+    hard_reject = bool(hist) and (built_pct > 2.0 or water_pct > 2.0 or hard_non_field_pct > 8.0)
+    unknown_reject = not bool(hist)
+    # Built-up and water pixels are much more serious than ordinary mixed
+    # vegetation.  This prevents a neat geometric polygon from being selected
+    # over a slightly shifted but genuinely field-like candidate.
+    infrastructure_penalty = built_pct * 35.0 + water_pct * 40.0 + hard_non_field_pct * 18.0
+    plausible_cover_penalty = max(0.0, 70.0 - plausible_field_pct) * 2.2
+    reject_penalty = 12000.0 if hard_reject else (2500.0 if unknown_reject else 0.0)
+    score = (non_cultivable_pct * 8.0) + infrastructure_penalty + plausible_cover_penalty + ((100.0 - dominant_pct) * 0.35) + (area_error_pct * 1.2) + (distance_m / max(20.0, math.sqrt(requested_area_ha * 10000.0)) * 7.0) + ndvi_penalty + reject_penalty
+    auto_boundary_accepted = bool(hist) and not hard_reject and plausible_field_pct >= 55.0
     candidate.update({
         'hist': hist, 'level': level, 'color': color, 'msg': msg, 'score': score,
+        'built_up_pct': built_pct, 'water_or_wetland_pct': water_pct,
+        'hard_non_field_pct': hard_non_field_pct,
         'non_cultivable_pct': non_cultivable_pct, 'cultivable_pct': cultivable_pct,
+        'plausible_field_pct': plausible_field_pct,
         'dominant_cover': dominant_label, 'dominant_cover_pct': dominant_pct,
-        'ndvi_mean': ndvi.get('ndvi_mean') if ndvi else None,
-        'ndvi_std': ndvi_std,
-        'center_shift_m': round(distance_m, 1)
+        'ndvi_mean': ndvi_mean, 'ndvi_std': ndvi_std,
+        'center_shift_m': round(distance_m, 1),
+        'hard_reject': hard_reject, 'unknown_reject': unknown_reject,
+        'auto_boundary_accepted': auto_boundary_accepted,
     })
     return candidate
 
@@ -310,13 +344,19 @@ def optimize_field_location(center_lat, center_lon, area_ha):
     candidates = []
     for candidate in generate_field_candidates(center_lat, center_lon, area_ha):
         candidates.append(score_field_candidate(candidate, area_ha, center_lat, center_lon, include_ndvi=False))
-    candidates.sort(key=lambda x: (x['level'] == 'CRITICAL', x['score']))
-    # Sentinel-2 homogeneity is useful, but expensive.  Refine only the best
-    # candidates so setup stays usable for non-expert users.
-    shortlist = [score_field_candidate(c, area_ha, center_lat, center_lon, include_ndvi=True) for c in candidates[:8]]
-    candidates = shortlist + candidates[8:]
-    candidates.sort(key=lambda x: (x['level'] == 'CRITICAL', x['score']))
+    candidates.sort(key=lambda x: (not x.get('auto_boundary_accepted', False), x.get('hard_reject', False), x.get('unknown_reject', False), x['level'] == 'CRITICAL', x['score']))
+    # Sentinel-2 homogeneity is useful, but expensive.  Refine the best accepted
+    # candidates first, then a few rejected ones for diagnostics.  This improves
+    # precision without making every geometric candidate call Sentinel-2.
+    accepted = [c for c in candidates if c.get('auto_boundary_accepted', False)]
+    rejected = [c for c in candidates if not c.get('auto_boundary_accepted', False)]
+    shortlist_source = (accepted[:14] + rejected[:4]) if accepted else candidates[:18]
+    refined_ids = {id(c) for c in shortlist_source}
+    shortlist = [score_field_candidate(c, area_ha, center_lat, center_lon, include_ndvi=True) for c in shortlist_source]
+    candidates = shortlist + [c for c in candidates if id(c) not in refined_ids]
+    candidates.sort(key=lambda x: (not x.get('auto_boundary_accepted', False), x.get('hard_reject', False), x.get('unknown_reject', False), x['level'] == 'CRITICAL', x['score']))
     best = candidates[0]
+    accepted_count = sum(1 for c in candidates if c.get('auto_boundary_accepted', False))
     metadata = {
         'source': 'smart_field_auto',
         'shape': best['shape'],
@@ -327,12 +367,21 @@ def optimize_field_location(center_lat, center_lon, area_ha):
         'dominant_cover': best['dominant_cover'],
         'dominant_cover_pct': round(best['dominant_cover_pct'], 1),
         'cultivable_pct': round(best['cultivable_pct'], 1),
+        'plausible_field_pct': round(best.get('plausible_field_pct', 0.0), 1),
         'non_cultivable_pct': round(best['non_cultivable_pct'], 1),
+        'built_up_pct': round(best.get('built_up_pct', 0.0), 1),
+        'water_or_wetland_pct': round(best.get('water_or_wetland_pct', 0.0), 1),
+        'hard_non_field_pct': round(best.get('hard_non_field_pct', 0.0), 1),
         'ndvi_mean': None if best['ndvi_mean'] is None else round(float(best['ndvi_mean']), 3),
         'ndvi_std': None if best['ndvi_std'] is None else round(float(best['ndvi_std']), 3),
         'center_shift_m': best['center_shift_m'],
         'candidate_count': len(candidates),
-        'note': 'WorldCover filters roads/water/built-up where visible; NDVI homogeneity is a same-cover proxy, not a cadastral boundary.'
+        'accepted_candidate_count': accepted_count,
+        'auto_boundary_accepted': bool(best.get('auto_boundary_accepted', False)),
+        'hard_reject': bool(best.get('hard_reject', False)),
+        'unknown_reject': bool(best.get('unknown_reject', False)),
+        'manual_validation_required': not bool(best.get('auto_boundary_accepted', False)),
+        'note': 'WorldCover/Sentinel filters built-up, water and wetland pixels; bare land can be plausible before planting, but every automatic boundary still requires visual validation.'
     }
     return best['poly'], best['level'], best['color'], best['msg'], metadata
 
@@ -468,24 +517,46 @@ def _coop_rectangle_from_center(lat, lon, area_ha, aspect=1.35):
 
 
 def _coop_detect_parcels(perimeter, target_area_ha=1.5, max_parcels=240):
-    """Detect variable-size editable parcel candidates inside a cooperative perimeter.
+    """Detect editable parcel candidates inside a cooperative perimeter.
 
-    The heavy scientific problem is field-boundary instance segmentation from
-    satellite or drone imagery.  The lightweight detector used here is a modular
-    candidate generator: it proposes unequal, editable polygons that respect the
-    perimeter, then forces a human validation step on the satellite map.  The
-    module can later be replaced by a trained parcel-boundary model without
-    changing the rest of the setup workflow.
+    AEF first tries its own image-guided detector: recent Sentinel-2 composites
+    are segmented inside the perimeter and converted to editable polygons.  If
+    Earth Engine is unavailable, cloudy, or too uncertain, the older geometric
+    candidate generator remains as a transparent fallback.  In both cases the
+    user sees a confidence estimate and must validate the map.
     """
-    parcels = detect_candidate_parcels(
-        perimeter,
-        typical_area_ha=max(0.05, float(target_area_ha or 1.5)),
-        max_parcels=max_parcels,
-        variability=0.72,
-        precision_passes=2,
-    )
+    detection_meta = {}
+    parcels = []
+    if initialize_ee():
+        parcels, detection_meta = detect_sentinel2_parcels(
+            perimeter,
+            typical_area_ha=max(0.05, float(target_area_ha or 1.5)),
+            max_parcels=max_parcels,
+            reference_date=date.today(),
+        )
+
+    if not parcels:
+        fallback_reason = detection_meta.get('message') or 'Sentinel-2 image-guided detection was unavailable; geometric fallback was used.'
+        parcels = detect_candidate_parcels(
+            perimeter,
+            typical_area_ha=max(0.05, float(target_area_ha or 1.5)),
+            max_parcels=max_parcels,
+            variability=0.72,
+            precision_passes=4,
+        )
+        detection_meta = {
+            'method': 'geometric_fallback',
+            'status': 'fallback',
+            'message': fallback_reason,
+            'estimated_precision_label': 'low',
+            'mean_confidence': round(sum(p.get('confidence', 0.45) for p in parcels) / len(parcels), 2) if parcels else 0.0,
+            'parcel_count': len(parcels),
+            'ftw_fallback_recommended': True,
+            'requires_user_validation': True,
+        }
+
     for parcel in parcels:
-        idx = int(parcel['id'].replace('P', '') or 0)
+        idx = int(str(parcel.get('id', 'P0')).replace('P', '') or 0)
         parcel['name'] = f"{tr('Parcel')} {idx}"
         parcel['planting_date'] = str(st.session_state.get('planting_date', date.today()))
         parcel['planting_density'] = float(st.session_state.get('planting_density', 10000))
@@ -494,9 +565,14 @@ def _coop_detect_parcels(perimeter, target_area_ha=1.5, max_parcels=240):
         parcel['initial_phosphorus'] = float(st.session_state.get('initial_phosphorus', 20.0))
         parcel['initial_potassium'] = float(st.session_state.get('initial_potassium', 100.0))
         parcel['years_without_fertilizer'] = float(st.session_state.get('history_years', 0))
+
     if parcels:
-        st.session_state['cooperative_detection_confidence'] = round(sum(p.get('confidence', 0.5) for p in parcels) / len(parcels), 2)
-        st.session_state['cooperative_detection_notes'] = 'Automatic parcel candidates are non-overlapping irregular polygons; validate them on the satellite map.'
+        mean_confidence = round(sum(p.get('confidence', 0.5) for p in parcels) / len(parcels), 2)
+        detection_meta['mean_confidence'] = mean_confidence
+        detection_meta['parcel_count'] = len(parcels)
+        st.session_state['cooperative_detection_confidence'] = mean_confidence
+        st.session_state['cooperative_detection_meta'] = detection_meta
+        st.session_state['cooperative_detection_notes'] = detection_meta.get('message') or 'Automatic parcel candidates require validation on the satellite map.'
     return parcels
 
 
@@ -1017,13 +1093,16 @@ def render_cooperative_setup():
         col_detect, col_clear = st.columns(2)
         with col_detect:
             if st.button(tr('Auto-detect plots inside perimeter'), disabled=not bool(st.session_state.get('cooperative_perimeter_coords')), type='primary', use_container_width=True):
-                with st.spinner(tr('Detecting editable plot candidates inside the cooperative perimeter...')):
+                with st.spinner(tr('Analyzing Sentinel-2 imagery and tracing editable parcel boundaries...')):
                     st.session_state['cooperative_parcels'] = _coop_detect_parcels(st.session_state['cooperative_perimeter_coords'], target_area)
-                    st.success(tr('Variable-size parcel candidates placed. Please validate boundaries on the satellite map.'))
+                    st.success(tr('Parcel candidates placed. Please validate boundaries on the satellite map.'))
                     st.rerun()
         with col_clear:
             if st.button(tr('Clear detected plots'), use_container_width=True):
                 st.session_state['cooperative_parcels'] = []
+                st.session_state.pop('cooperative_detection_meta', None)
+                st.session_state.pop('cooperative_detection_notes', None)
+                st.session_state.pop('cooperative_detection_confidence', None)
                 st.rerun()
         parcels = _coop_normalize_parcels()
         if parcels:
@@ -1046,6 +1125,16 @@ def render_cooperative_setup():
             quality = cooperative_parcel_quality(st.session_state['cooperative_parcels'], st.session_state.get('cooperative_perimeter_area_ha'))
             area_range = f"{quality['min_area_ha']:.2f}-{quality['max_area_ha']:.2f} ha" if quality['active_count'] else 'n/a'
             st.info(f"{tr('Active plots')}: {quality['active_count']} | {tr('Total active area')}: {quality['total_area_ha']:.2f} ha | {tr('Parcel area range')}: {area_range} | {tr('Mean detection confidence')}: {quality['mean_confidence']:.2f}")
+            detection_meta = st.session_state.get('cooperative_detection_meta', {}) or {}
+            if detection_meta:
+                method_label = tr('Sentinel-2 image-guided segmentation') if detection_meta.get('method') == 'sentinel2_snic' else tr('Geometric fallback candidate generator')
+                precision_label = tr(str(detection_meta.get('estimated_precision_label', 'unknown')))
+                mean_conf = float(detection_meta.get('mean_confidence', quality['mean_confidence']) or 0.0)
+                st.info(f"{tr('Detection method')}: {method_label} | {tr('Estimated boundary precision')}: {precision_label} | {tr('Mean confidence')}: {mean_conf:.2f}")
+                if detection_meta.get('date_window'):
+                    st.caption(f"{tr('Satellite image window')}: {detection_meta.get('date_window')} | {tr('Clear Sentinel-2 observations')}: {detection_meta.get('image_count', 'n/a')}")
+                if detection_meta.get('ftw_fallback_recommended'):
+                    st.warning(tr('Boundary precision is limited. Validate or edit these polygons; FTW precomputed boundaries should be used as a free fallback when the integration is enabled.'))
             for warning in quality.get('warnings', []):
                 st.warning(tr(warning))
             if st.session_state.get('cooperative_detection_notes'):

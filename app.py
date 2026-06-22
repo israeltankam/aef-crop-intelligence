@@ -1,4 +1,5 @@
 # app.py
+import os
 import streamlit as st
 import hydralit_components as hc
 from src.models.state_manager import StateManager
@@ -9,25 +10,43 @@ from pages.main import dashboard
 from pages.main import report
 from pages.main import recommendations
 from pages.main import what_if
+from pages.main import preassessment
 from pages.main import surveillance # NEW IMPORT
 
 
+COMPANY_LOGO_PATH = os.path.join('src', 'images', 'logo', 'logo_company', 'logo_scale.png')
+
+
+def render_company_logo(width=110):
+    """Show the Scale AG logo discreetly when the local asset is available."""
+    if os.path.exists(COMPANY_LOGO_PATH):
+        st.image(COMPANY_LOGO_PATH, width=width)
+
+
 def render_mode_selector():
-    """First-run selector between single-field and cooperative workflows."""
+    """First-run selector between operational and pre-planting workflows."""
     language_selector(location="main", key="aef_language_selector_mode")
     st.title(t("mode.title"))
     st.caption(t("mode.caption"))
-    col_single, col_coop = st.columns(2)
+    col_single, col_coop, col_pre = st.columns(3)
     with col_single:
         st.subheader(t("mode.single.title"))
         st.write(t("mode.single.body"))
     with col_coop:
         st.subheader(t("mode.cooperative.title"))
         st.write(t("mode.cooperative.body"))
+    with col_pre:
+        st.subheader(t("mode.preassessment.title"))
+        st.write(t("mode.preassessment.body"))
+    mode_labels = {
+        "single": t("mode.single.option"),
+        "cooperative": t("mode.cooperative.option"),
+        "preassessment": t("mode.preassessment.option"),
+    }
     choice = st.radio(
         t("mode.choose"),
-        ["single", "cooperative"],
-        format_func=lambda x: t("mode.single.option") if x == "single" else t("mode.cooperative.option"),
+        ["single", "cooperative", "preassessment"],
+        format_func=lambda x: mode_labels.get(x, x),
         horizontal=True,
         key="aef_initial_mode_choice",
     )
@@ -37,6 +56,7 @@ def render_mode_selector():
         st.session_state["setup_complete"] = False
         st.session_state.pop("sim_results", None)
         st.session_state.pop("sim_uncertainty", None)
+        st.session_state.pop("preassessment_result", None)
         st.rerun()
 
 
@@ -59,7 +79,7 @@ if not st.session_state['access_granted']:
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
         language_selector(location="main", key="aef_language_selector_login")
-        # st.image("src/images/logo/logo.png", width=200) 
+        render_company_logo(width=150)
         st.title("🔐 " + t("login.title"))
         st.markdown(t("login.welcome"))
         st.info(t("login.info"))
@@ -93,7 +113,10 @@ if not st.session_state.get("app_mode"):
 
 # 3. Language and Navigation Definition
 language_selector(location="sidebar", key="aef_language_selector_sidebar")
-st.sidebar.caption(t("mode.active") + ": " + (t("mode.cooperative.option") if st.session_state.get("app_mode") == "cooperative" else t("mode.single.option")))
+with st.sidebar:
+    render_company_logo(width=92)
+active_mode_label = {"single": t("mode.single.option"), "cooperative": t("mode.cooperative.option"), "preassessment": t("mode.preassessment.option")}.get(st.session_state.get("app_mode"), t("mode.single.option"))
+st.sidebar.caption(t("mode.active") + ": " + active_mode_label)
 if st.sidebar.button(t("mode.change")):
     st.session_state["app_mode"] = None
     st.session_state["setup_complete"] = False
@@ -106,14 +129,20 @@ surveillance_label = t("nav.surveillance")
 recommendations_label = t("nav.recommendations")
 what_if_label = t("nav.what_if")
 report_label = t("nav.report")
-menu_data = [
-    {'icon': "fa fa-map-marker", 'label': site_setup_label},
-    {'icon': "fas fa-satellite", 'label': dashboard_label},
-    {'icon': "fa fa-chart-line", 'label': surveillance_label},
-    {'icon': "fa fa-compass", 'label': recommendations_label},
-    {'icon': "fa fa-flask", 'label': what_if_label},
-    {'icon': "fa fa-file-pdf", 'label': report_label},
-]
+preassessment_label = t("nav.preassessment")
+if st.session_state.get("app_mode") == "preassessment":
+    menu_data = [
+        {'icon': "fa fa-search-location", 'label': preassessment_label},
+    ]
+else:
+    menu_data = [
+        {'icon': "fa fa-map-marker", 'label': site_setup_label},
+        {'icon': "fas fa-satellite", 'label': dashboard_label},
+        {'icon': "fa fa-chart-line", 'label': surveillance_label},
+        {'icon': "fa fa-compass", 'label': recommendations_label},
+        {'icon': "fa fa-flask", 'label': what_if_label},
+        {'icon': "fa fa-file-pdf", 'label': report_label},
+    ]
 
 over_theme = {'txc_inactive': '#FFFFFF', 'menu_background': '#2C3E50'}
 
@@ -148,7 +177,10 @@ menu_id = hc.nav_bar(
 )
 
 # 4. Routing Logic
-if menu_id == site_setup_label:
+if menu_id == preassessment_label:
+    preassessment.app()
+
+elif menu_id == site_setup_label:
     setup_page.app()
 
 elif menu_id == dashboard_label:

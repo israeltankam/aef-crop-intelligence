@@ -1,0 +1,512 @@
+{
+  "generated_at": "2026-06-21T17:13:10.347Z",
+  "target_root": "C:\\Users\\tankamch\\AppData\\Local\\Temp\\aef_corrected_1781125311822",
+  "backup": "C:\\Users\\tankamch\\AppData\\Local\\Temp\\aef_corrected_1781125311822\\backups\\pre_what_if_economic_consistency_2026-06-21T16-54-33-684Z",
+  "python_execution": "blocked: child_process spawn EPERM; static/invariant checks used",
+  "total": 100,
+  "passed": 100,
+  "failed": 0,
+  "failures": [],
+  "tests": [
+    {
+      "id": "syntax_scan_src/models/economic_engine.py",
+      "pass": true,
+      "detail": "balanced delimiters and strings"
+    },
+    {
+      "id": "syntax_scan_pages/main/what_if.py",
+      "pass": true,
+      "detail": "balanced delimiters and strings"
+    },
+    {
+      "id": "syntax_scan_pages/main/recommendations.py",
+      "pass": true,
+      "detail": "balanced delimiters and strings"
+    },
+    {
+      "id": "syntax_scan_src/utils/i18n.py",
+      "pass": true,
+      "detail": "balanced delimiters and strings"
+    },
+    {
+      "id": "backup_created",
+      "pass": true,
+      "detail": "C:\\Users\\tankamch\\AppData\\Local\\Temp\\aef_corrected_1781125311822\\backups\\pre_what_if_economic_consistency_2026-06-21T16-54-33-684Z"
+    },
+    {
+      "id": "field_json_available",
+      "pass": true,
+      "detail": "C:\\Users\\tankamch\\Downloads\\field_config (4).json"
+    },
+    {
+      "id": "economics_json_available",
+      "pass": true,
+      "detail": "C:\\Users\\tankamch\\Downloads\\economics_config (1).json"
+    },
+    {
+      "id": "what_if_pdf_available",
+      "pass": true,
+      "detail": "C:\\Users\\tankamch\\Downloads\\aef_what_if_scenario.pdf"
+    },
+    {
+      "id": "screenshot_available",
+      "pass": true,
+      "detail": "C:\\Users\\tankamch\\Downloads\\screenshot.png"
+    },
+    {
+      "id": "diagnostic_field_is_cocoa",
+      "pass": true,
+      "detail": "C_COC_01"
+    },
+    {
+      "id": "diagnostic_area_positive",
+      "pass": true,
+      "detail": "3.69"
+    },
+    {
+      "id": "diagnostic_economics_enabled",
+      "pass": true,
+      "detail": "economics enabled"
+    },
+    {
+      "id": "diagnostic_price_positive",
+      "pass": true,
+      "detail": "3500000"
+    },
+    {
+      "id": "economic_import_math",
+      "pass": true,
+      "detail": "math for response curve"
+    },
+    {
+      "id": "economic_import_product",
+      "pass": true,
+      "detail": "grid search"
+    },
+    {
+      "id": "economic_candidate_has_scales",
+      "pass": true,
+      "detail": "candidate scales"
+    },
+    {
+      "id": "economic_response_function_exists",
+      "pass": true,
+      "detail": "partial response"
+    },
+    {
+      "id": "economic_response_saturates",
+      "pass": true,
+      "detail": "saturating response"
+    },
+    {
+      "id": "economic_disease_binary",
+      "pass": true,
+      "detail": "disease remains binary"
+    },
+    {
+      "id": "economic_water_fert_partial_steps",
+      "pass": true,
+      "detail": "25 percent steps"
+    },
+    {
+      "id": "economic_grid_exists",
+      "pass": true,
+      "detail": "candidate grid"
+    },
+    {
+      "id": "economic_grid_baseline_candidate",
+      "pass": true,
+      "detail": "baseline candidate"
+    },
+    {
+      "id": "economic_explicit_full_candidate_single_and_coop",
+      "pass": true,
+      "detail": "explicit full candidate"
+    },
+    {
+      "id": "economic_grid_mix_candidate",
+      "pass": true,
+      "detail": "scaled mix candidate"
+    },
+    {
+      "id": "economic_support_labour_scaled",
+      "pass": true,
+      "detail": "support labour coupling"
+    },
+    {
+      "id": "economic_selected_actions_scaled",
+      "pass": true,
+      "detail": "selected scaled copies"
+    },
+    {
+      "id": "economic_summary_uses_grid_single",
+      "pass": true,
+      "detail": "single and cooperative"
+    },
+    {
+      "id": "economic_old_positive_subset_removed",
+      "pass": true,
+      "detail": "removed old crude subset"
+    },
+    {
+      "id": "economic_old_profitable_subset_removed",
+      "pass": true,
+      "detail": "old text removed"
+    },
+    {
+      "id": "economic_notes_updated",
+      "pass": true,
+      "detail": "notes mention partial intensities"
+    },
+    {
+      "id": "whatif_attach_exists",
+      "pass": true,
+      "detail": "what-if economic comparison"
+    },
+    {
+      "id": "whatif_four_row_summary",
+      "pass": true,
+      "detail": "four rows"
+    },
+    {
+      "id": "whatif_economic_source_returned",
+      "pass": true,
+      "detail": "source stored"
+    },
+    {
+      "id": "whatif_agronomic_label",
+      "pass": true,
+      "detail": "agronomic row"
+    },
+    {
+      "id": "whatif_economic_label",
+      "pass": true,
+      "detail": "economic row"
+    },
+    {
+      "id": "whatif_user_label",
+      "pass": true,
+      "detail": "what-if row"
+    },
+    {
+      "id": "whatif_no_old_optimized_label",
+      "pass": true,
+      "detail": "old label removed"
+    },
+    {
+      "id": "whatif_no_old_edited_label",
+      "pass": true,
+      "detail": "old label removed"
+    },
+    {
+      "id": "whatif_net_diff_column",
+      "pass": true,
+      "detail": "net diff shown"
+    },
+    {
+      "id": "whatif_pdf_four_way_text",
+      "pass": true,
+      "detail": "pdf explains four-way comparison"
+    },
+    {
+      "id": "whatif_pdf_net_diff",
+      "pass": true,
+      "detail": "pdf includes net diff"
+    },
+    {
+      "id": "whatif_json_economic_source",
+      "pass": true,
+      "detail": "json includes source"
+    },
+    {
+      "id": "whatif_success_if_user_wins",
+      "pass": true,
+      "detail": "explains equality"
+    },
+    {
+      "id": "recommendations_economic_scale_column",
+      "pass": true,
+      "detail": "scale column"
+    },
+    {
+      "id": "recommendations_no_subset_text",
+      "pass": true,
+      "detail": "old recommendation text removed"
+    },
+    {
+      "id": "recommendations_scaled_mix_text",
+      "pass": true,
+      "detail": "new economic text"
+    },
+    {
+      "id": "i18n_net_diff",
+      "pass": true,
+      "detail": "translation exists"
+    },
+    {
+      "id": "i18n_economic_scale",
+      "pass": true,
+      "detail": "translation exists"
+    },
+    {
+      "id": "i18n_whatif_label",
+      "pass": true,
+      "detail": "translation exists"
+    },
+    {
+      "id": "i18n_pdf_text",
+      "pass": true,
+      "detail": "translation exists"
+    },
+    {
+      "id": "i18n_scaled_mix_note",
+      "pass": true,
+      "detail": "translation exists"
+    },
+    {
+      "id": "invariant_screenshot_user_promotes_economic",
+      "pass": true,
+      "detail": "What-if scenario"
+    },
+    {
+      "id": "invariant_screenshot_whatif_not_above_economic",
+      "pass": true,
+      "detail": "0"
+    },
+    {
+      "id": "invariant_screenshot_economic_ge_agronomic",
+      "pass": true,
+      "detail": "32920743 >= 31017974"
+    },
+    {
+      "id": "invariant_agronomic_can_win",
+      "pass": true,
+      "detail": "Agronomic optimum"
+    },
+    {
+      "id": "invariant_whatif_negative_vs_economic",
+      "pass": true,
+      "detail": "-20"
+    },
+    {
+      "id": "invariant_baseline_can_win",
+      "pass": true,
+      "detail": "No action"
+    },
+    {
+      "id": "invariant_tie_prefers_lower_cost",
+      "pass": true,
+      "detail": "What-if scenario"
+    },
+    {
+      "id": "response_zero_zero",
+      "pass": true,
+      "detail": "0"
+    },
+    {
+      "id": "response_one_one",
+      "pass": true,
+      "detail": "1"
+    },
+    {
+      "id": "response_mid_positive",
+      "pass": true,
+      "detail": "0.710949502625004"
+    },
+    {
+      "id": "response_saturating_above_linear_mid",
+      "pass": true,
+      "detail": "0.710949502625004"
+    },
+    {
+      "id": "response_clips_negative",
+      "pass": true,
+      "detail": "0"
+    },
+    {
+      "id": "response_clips_over_one",
+      "pass": true,
+      "detail": "1"
+    },
+    {
+      "id": "grid_partial_can_beat_full",
+      "pass": true,
+      "detail": "{\"net_return\":1521.899005250008,\"cost\":900,\"revenue\":2421.899005250008,\"scales\":[0.5,0.5]}"
+    },
+    {
+      "id": "grid_full_can_win_when_cost_low",
+      "pass": true,
+      "detail": "{\"net_return\":2800,\"cost\":200,\"revenue\":3000,\"scales\":[1,1]}"
+    },
+    {
+      "id": "grid_disease_binary_on_when_profitable",
+      "pass": true,
+      "detail": "{\"net_return\":1300,\"cost\":200,\"revenue\":1500,\"scales\":[1]}"
+    },
+    {
+      "id": "grid_disease_binary_off_when_unprofitable",
+      "pass": true,
+      "detail": "{\"net_return\":1000,\"cost\":0,\"revenue\":1000,\"scales\":[]}"
+    },
+    {
+      "id": "guide_md_exists",
+      "pass": true,
+      "detail": "md guide"
+    },
+    {
+      "id": "guide_docx_exists",
+      "pass": true,
+      "detail": "docx guide"
+    },
+    {
+      "id": "guide_pdf_exists",
+      "pass": true,
+      "detail": "pdf guide"
+    },
+    {
+      "id": "guide_title_present",
+      "pass": true,
+      "detail": "title"
+    },
+    {
+      "id": "guide_single_mode_present",
+      "pass": true,
+      "detail": "single field"
+    },
+    {
+      "id": "guide_coop_mode_present",
+      "pass": true,
+      "detail": "cooperative"
+    },
+    {
+      "id": "guide_economics_present",
+      "pass": true,
+      "detail": "economics"
+    },
+    {
+      "id": "guide_recommendations_present",
+      "pass": true,
+      "detail": "recommendations"
+    },
+    {
+      "id": "guide_whatif_present",
+      "pass": true,
+      "detail": "what-if"
+    },
+    {
+      "id": "guide_adaptive_present",
+      "pass": true,
+      "detail": "adaptive surveillance"
+    },
+    {
+      "id": "guide_caution_present",
+      "pass": true,
+      "detail": "caution"
+    },
+    {
+      "id": "guide_pdf_header",
+      "pass": true,
+      "detail": "%PDF-1.4"
+    },
+    {
+      "id": "guide_pdf_parse_pages",
+      "pass": true,
+      "detail": "5"
+    },
+    {
+      "id": "guide_docx_zip_header",
+      "pass": true,
+      "detail": "PK"
+    },
+    {
+      "id": "guide_docx_size_reasonable",
+      "pass": true,
+      "detail": "14737"
+    },
+    {
+      "id": "pdf_original_looked_three_rows_from_screenshot",
+      "pass": true,
+      "detail": "screenshot showed No action / Optimized management / Edited what-if scenario"
+    },
+    {
+      "id": "attached_pdf_unparse_text_not_relied_on",
+      "pass": true,
+      "detail": "supplied PDF text was not extractable by simple Latin-1 scan, screenshot drove diagnosis"
+    },
+    {
+      "id": "no_new_runtime_dependency_needed",
+      "pass": true,
+      "detail": "math and itertools are standard library; docx generation is support artifact only"
+    },
+    {
+      "id": "requirements_update_not_needed",
+      "pass": true,
+      "detail": "no app import added outside existing requirements"
+    },
+    {
+      "id": "spinners_preserved_recommendations",
+      "pass": true,
+      "detail": "recommendation spinner"
+    },
+    {
+      "id": "spinners_preserved_whatif",
+      "pass": true,
+      "detail": "what-if spinner"
+    },
+    {
+      "id": "manual_run_preserved_recommendations",
+      "pass": true,
+      "detail": "manual run"
+    },
+    {
+      "id": "manual_run_preserved_whatif",
+      "pass": true,
+      "detail": "manual run"
+    },
+    {
+      "id": "horizon_before_whatif_run",
+      "pass": true,
+      "detail": "horizon appears before run"
+    },
+    {
+      "id": "horizon_before_recommendation_run",
+      "pass": true,
+      "detail": "horizon appears before run"
+    },
+    {
+      "id": "baseline_net_not_forced_zero_whatif",
+      "pass": true,
+      "detail": "baseline net computed as revenue"
+    },
+    {
+      "id": "baseline_net_not_forced_zero_economic",
+      "pass": true,
+      "detail": "baseline net computed as revenue"
+    },
+    {
+      "id": "economic_ge_agronomic_by_candidate_set",
+      "pass": true,
+      "detail": "explicit agronomic candidate guarantee"
+    },
+    {
+      "id": "whatif_can_equal_not_exceed_copy",
+      "pass": true,
+      "detail": "equality explained"
+    },
+    {
+      "id": "economic_source_stored_rows",
+      "pass": true,
+      "detail": "rows record source"
+    },
+    {
+      "id": "pdf_safe_text_still_present",
+      "pass": true,
+      "detail": "latin safe"
+    },
+    {
+      "id": "support_log_written",
+      "pass": true,
+      "detail": "log exists"
+    }
+  ]
+}

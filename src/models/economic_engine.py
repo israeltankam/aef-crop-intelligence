@@ -16,8 +16,10 @@ of intervention costs are compared with only one terminal standing-fruit value.
 """
 from __future__ import annotations
 
+import math
 from copy import deepcopy
 from datetime import date, datetime, timedelta
+from itertools import product
 from typing import Dict, Iterable, List, Tuple
 
 
@@ -502,19 +504,30 @@ def _summary_per_ha(summary: Dict[str, object], area_ha: float) -> Dict[str, obj
     return summary
 
 
-def _candidate(strategy: str, production_t: float, revenue_value: float, cost: float, selected_action_types: Iterable[str]) -> Dict[str, object]:
+def _candidate(strategy: str, production_t: float, revenue_value: float, cost: float, selected_action_types: Iterable[str], action_scales: Dict[str, float] | None = None) -> Dict[str, object]:
     """Represent one economically comparable strategy.
 
     All candidates are evaluated on the same total-net-return basis:
     net return = expected revenue - intervention cost.  This prevents the economic
     optimum from being penalised by a different formula than the agronomic plan.
+    action_scales records whether an action is kept at full intensity or at a
+    partial intensity in the cost-balanced economic plan.
     """
+    selected = {str(action_type) for action_type in (selected_action_types or []) if str(action_type)}
+    scales = {
+        str(action_type): max(0.0, min(1.0, _safe_float(scale, 0.0)))
+        for action_type, scale in (action_scales or {}).items()
+        if str(action_type)
+    }
+    if not scales:
+        scales = {action_type: 1.0 for action_type in selected}
     return {
         "strategy": strategy,
         "production_t": max(0.0, _safe_float(production_t, 0.0)),
         "revenue": max(0.0, _safe_float(revenue_value, 0.0)),
         "cost": max(0.0, _safe_float(cost, 0.0)),
-        "selected_action_types": set(selected_action_types or []),
+        "selected_action_types": selected,
+        "action_scales": scales,
     }
 
 
@@ -535,22 +548,148 @@ def _best_economic_candidate(candidates: Iterable[Dict[str, object]]) -> Dict[st
     return max(finalized, key=lambda c: (_safe_float(c.get("net_return"), 0.0), -_safe_float(c.get("cost"), 0.0)))
 
 
-def _retag_actions_for_strategy(actions: List[Dict[str, object]], selected_types: Iterable[str]) -> Tuple[List[Dict[str, object]], List[Dict[str, object]]]:
+def _response_fraction(scale: float) -> float:
+    """Return expected benefit fraction for a partial intervention intensity.
+
+    Costs are close to linear in volume or labour time, but agronomic response is
+    usually saturating: the first well-timed water/fertilizer amounts often remove
+    the worst stress, while the last increments add less marginal yield.  The
+    normalized exponential curve keeps 0 -> 0 and 1 -> 1, and gives the economic
+    optimizer a realistic lightweight way to compare partial calendars without
+    running a heavy nonlinear search on every page refresh.
+    """
+    scale = max(0.0, min(1.0, _safe_float(scale, 0.0)))
+    if scale <= 0.0:
+        return 0.0
+    if scale >= 1.0:
+        return 1.0
+    saturation = 1.8
+    return (1.0 - math.exp(-saturation * scale)) / (1.0 - math.exp(-saturation))
+
+
+def _action_scale_options(action: Dict[str, object]) -> List[float]:
+    """Candidate intensities for one action family.
+
+    Disease control remains binary because partial roguing/pruning/spraying has
+    pathogen-specific thresholds that are not safely inferred from the generic
+    UI. Water and fertilizer calendars can be cost-scaled in coarse 25% steps;
+    that is deliberately light, deterministic and fast enough for Streamlit.
+    """
+    action_type = str(action.get("type", ""))
+    if "disease" in action_type:
+        return [0.0, 1.0]
+    return [0.0, 0.25, 0.50, 0.75, 1.0]
+
+
+def _scaled_action_values(action: Dict[str, object], scale: float) -> Tuple[float, float, float]:
+    """Return cost, gross benefit and production gain at a selected intensity."""
+    scale = max(0.0, min(1.0, _safe_float(scale, 0.0)))
+    benefit_fraction = _response_fraction(scale)
+    cost = _safe_float(action.get("cost"), 0.0) * scale
+    gross = _safe_float(action.get("gross_benefit"), 0.0) * benefit_fraction
+    production = _safe_float(action.get("production_gain_t"), 0.0) * benefit_fraction
+    return cost, gross, production
+
+
+def _scaled_action_copy(action: Dict[str, object], scale: float) -> Dict[str, object]:
+    """Copy an action row using the intensity selected by the economic plan."""
+    row = dict(action)
+    cost, gross, production = _scaled_action_values(row, scale)
+    row["economic_scale"] = round(max(0.0, min(1.0, _safe_float(scale, 0.0))), 2)
+    row["cost"] = round(cost, 2)
+    row["gross_benefit"] = round(gross, 2)
+    row["production_gain_t"] = round(production, 3)
+    row["net_benefit"] = round(gross - cost, 2)
+    row["roi"] = round((gross - cost) / cost, 2) if cost > 0 else (999.0 if gross > 0 else 0.0)
+    row["economically_selected"] = row["economic_scale"] > 0.0
+    return row
+
+
+def _economic_candidate_grid(baseline_t: float, baseline_revenue: float, actions: List[Dict[str, object]]) -> List[Dict[str, object]]:
+    """Generate no-action, full agronomic and partial-intensity candidates.
+
+    The previous economic optimizer could only choose between the complete
+    agronomic plan, no action, and a crude keep/drop subset. That made the
+    economic optimum often identical to the agronomic optimum and allowed a user
+    what-if edit to beat the displayed optimum. This grid keeps the algorithm
+    lightweight while giving it enough choices to balance marginal benefit and
+    marginal cost.
+    """
+    actions = list(actions or [])
+    candidates = [_candidate("baseline", baseline_t, baseline_revenue, 0.0, [])]
+    if not actions:
+        return candidates
+
+    support_actions = [action for action in actions if "labour" in str(action.get("type", "")) or "labor" in str(action.get("type", ""))]
+    primary_actions = [action for action in actions if action not in support_actions] or actions
+    support_actions = [] if primary_actions is actions else support_actions
+
+    option_sets = [_action_scale_options(action) for action in primary_actions]
+    for scales in product(*option_sets):
+        if not any(scale > 0.0 for scale in scales):
+            continue
+        action_scales: Dict[str, float] = {}
+        selected_types = set()
+        total_cost = total_gross = total_production = 0.0
+
+        for action, scale in zip(primary_actions, scales):
+            action_type = str(action.get("type"))
+            if scale > 0.0:
+                selected_types.add(action_type)
+            action_scales[action_type] = scale
+            cost, gross, production = _scaled_action_values(action, scale)
+            total_cost += cost
+            total_gross += gross
+            total_production += production
+
+        # Shared labour/implementation rows are support costs. They scale with the
+        # strongest selected operational action so the optimizer cannot get free
+        # implementation by selecting irrigation or fertilization without labour.
+        support_scale = max(scales) if scales else 0.0
+        for action in support_actions:
+            action_type = str(action.get("type"))
+            if support_scale > 0.0:
+                selected_types.add(action_type)
+            action_scales[action_type] = support_scale
+            cost, gross, production = _scaled_action_values(action, support_scale)
+            total_cost += cost
+            total_gross += gross
+            total_production += production
+
+        all_scales = list(action_scales.values())
+        strategy = "agronomic_full" if all_scales and all(abs(scale - 1.0) < 1e-9 for scale in all_scales) else "cost_scaled_economic_mix"
+        candidates.append(_candidate(
+            strategy,
+            baseline_t + max(0.0, total_production),
+            baseline_revenue + max(0.0, total_gross),
+            total_cost,
+            selected_types,
+            action_scales,
+        ))
+    return candidates
+
+
+def _retag_actions_for_strategy(actions: List[Dict[str, object]], selected_types: Iterable[str], action_scales: Dict[str, float] | None = None) -> Tuple[List[Dict[str, object]], List[Dict[str, object]]]:
     """Return actions with their final economic keep/drop status.
 
-    Individual action rows keep their own cost/benefit estimates, but the final
-    economic decision follows the selected strategy candidate, not a second hidden
-    rule in the UI.
+    Individual action rows keep their full agronomic estimate for transparency.
+    selected_actions contains intensity-scaled copies whose summed cost and
+    benefit match the economic optimum shown in the decision summary.
     """
-    selected_types = set(selected_types or [])
+    selected_types = {str(action_type) for action_type in (selected_types or [])}
+    action_scales = action_scales or {}
     tagged: List[Dict[str, object]] = []
     selected: List[Dict[str, object]] = []
     for action in actions or []:
         row = dict(action)
-        row["economically_selected"] = row.get("type") in selected_types
+        action_type = str(row.get("type"))
+        default_scale = 1.0 if action_type in selected_types else 0.0
+        scale = max(0.0, min(1.0, _safe_float(action_scales.get(action_type), default_scale)))
+        row["economic_scale"] = round(scale, 2)
+        row["economically_selected"] = scale > 0.0
         tagged.append(row)
         if row["economically_selected"]:
-            selected.append(row)
+            selected.append(_scaled_action_copy(row, scale))
     return tagged, selected
 
 
@@ -559,7 +698,7 @@ def build_single_field_economics(config: Dict[str, object], result: Dict[str, ob
 
     The economic optimum is not a separate display formula.  It is the candidate
     with the highest expected total net return among no action, the complete
-    agronomic plan and the cost-filtered intervention subset.
+    agronomic plan and a compact grid of partial intervention intensities.
     """
     crop_params = result.get("crop_params", {}) if result else {}
     economics = normalize_economics_config(config.get("economics_config"), config, crop_params)
@@ -601,21 +740,26 @@ def build_single_field_economics(config: Dict[str, object], result: Dict[str, ob
     agronomic_cost = irr_cost + fert_cost + disease_cost
     agronomic_net = agronomic_revenue - agronomic_cost
 
-    positive_actions = [action for action in actions if _safe_float(action.get("net_benefit"), 0.0) >= 0.0]
-    subset_cost = sum(_safe_float(action.get("cost"), 0.0) for action in positive_actions)
-    subset_gross_gain = sum(_safe_float(action.get("gross_benefit"), 0.0) for action in positive_actions)
-    subset_gain_t = sum(_safe_float(action.get("production_gain_t"), 0.0) for action in positive_actions)
-    subset_revenue = baseline_revenue + max(0.0, subset_gross_gain)
-    subset_t = baseline_t + max(0.0, subset_gain_t)
-    subset_types = {str(action.get("type")) for action in positive_actions}
-
-    candidates = [
-        _candidate("baseline", baseline_t, baseline_revenue, baseline_cost, []),
-        _candidate("agronomic_full", agronomic_t, agronomic_revenue, agronomic_cost, [action.get("type") for action in actions]),
-        _candidate("positive_action_subset", subset_t, subset_revenue, subset_cost, subset_types),
-    ]
+    # Economic selection now searches a compact grid of intervention intensities.
+    # The full agronomic scenario is appended explicitly to the candidate set, so the economic
+    # optimum cannot be worse than the agronomic optimum under the same expected
+    # value assumptions, but it can choose cheaper partial calendars when they
+    # produce a better net return.
+    candidates = _economic_candidate_grid(baseline_t, baseline_revenue, actions)
+    candidates.append(_candidate(
+        "agronomic_full",
+        agronomic_t,
+        agronomic_revenue,
+        agronomic_cost,
+        [action.get("type") for action in actions],
+        {str(action.get("type")): 1.0 for action in actions},
+    ))
     economic = _best_economic_candidate(candidates)
-    actions, selected_actions = _retag_actions_for_strategy(actions, economic.get("selected_action_types", set()))
+    actions, selected_actions = _retag_actions_for_strategy(
+        actions,
+        economic.get("selected_action_types", set()),
+        economic.get("action_scales", {}),
+    )
 
     summary = {
         "area_ha": round(area, 3),
@@ -652,9 +796,9 @@ def build_single_field_economics(config: Dict[str, object], result: Dict[str, ob
         "actions": actions,
         "selected_actions": selected_actions,
         "notes": [
-            "Economic optimum uses editable prices and costs; verify local market price before investment.",
+            "Economic optimum uses editable prices, costs and partial intervention intensities; verify local market price before investment.",
             "For perennial crops, revenue is summed over the selected economic horizon using annual harvest peaks.",
-            "Economic optimum is selected by highest expected total net return among no action, full agronomic management and the profitable action subset.",
+            "Economic optimum is selected by highest expected total net return across no action, full agronomic management and partial cost-scaled intervention mixes.",
         ],
     }
 
@@ -688,21 +832,26 @@ def build_cooperative_economics(config: Dict[str, object], cooperative_result: D
     agronomic_cost = water_cost + fert_cost + labour_cost
     agronomic_net = agronomic_revenue - agronomic_cost
 
-    positive_actions = [action for action in actions if _safe_float(action.get("net_benefit"), 0.0) >= 0.0]
-    subset_cost = sum(_safe_float(action.get("cost"), 0.0) for action in positive_actions)
-    subset_gross_gain = sum(_safe_float(action.get("gross_benefit"), 0.0) for action in positive_actions)
-    subset_gain_t = sum(_safe_float(action.get("production_gain_t"), 0.0) for action in positive_actions)
-    subset_revenue = baseline_revenue + max(0.0, subset_gross_gain)
-    subset_t = baseline_t + max(0.0, subset_gain_t)
-    subset_types = {str(action.get("type")) for action in positive_actions}
-
-    candidates = [
-        _candidate("baseline", baseline_t, baseline_revenue, baseline_cost, []),
-        _candidate("agronomic_full", agronomic_t, agronomic_revenue, agronomic_cost, [action.get("type") for action in actions]),
-        _candidate("positive_action_subset", subset_t, subset_revenue, subset_cost, subset_types),
-    ]
+    # Economic selection now searches a compact grid of intervention intensities.
+    # The full agronomic calendar remains in the candidate set, so the economic
+    # optimum cannot be worse than the agronomic optimum under the same expected
+    # value assumptions, but it can choose cheaper partial calendars when they
+    # produce a better net return.
+    candidates = _economic_candidate_grid(baseline_t, baseline_revenue, actions)
+    candidates.append(_candidate(
+        "agronomic_full",
+        agronomic_t,
+        agronomic_revenue,
+        agronomic_cost,
+        [action.get("type") for action in actions],
+        {str(action.get("type")): 1.0 for action in actions},
+    ))
     economic = _best_economic_candidate(candidates)
-    actions, selected_actions = _retag_actions_for_strategy(actions, economic.get("selected_action_types", set()))
+    actions, selected_actions = _retag_actions_for_strategy(
+        actions,
+        economic.get("selected_action_types", set()),
+        economic.get("action_scales", {}),
+    )
 
     econ_summary = {
         "area_ha": round(area, 3),

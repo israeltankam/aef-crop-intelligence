@@ -33,6 +33,12 @@ class StateManager:
         'area_ha': 1.0,
         'field_design_metadata': {},
         'place_search_results': [],
+        'preassessment_field_name': 'Pre-assessment field',
+        'preassessment_field_coords': [],
+        'preassessment_area_ha': 1.0,
+        'preassessment_window_start': date.today() + timedelta(days=14),
+        'preassessment_field_metadata': {},
+        'preassessment_result': None,
 
         # Cooperative mode keeps one perimeter and many small editable parcels.
         'cooperative_name': 'My Cooperative',

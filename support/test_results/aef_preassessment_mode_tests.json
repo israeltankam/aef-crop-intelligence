@@ -1,0 +1,20 @@
+{
+  "generated_at": "2026-06-21T19:39:28Z",
+  "target_root": "C:/Users/tankamch/AppData/Local/Temp/aef_corrected_1781125311822",
+  "scope": "Pre-planting assessment mode integration",
+  "test_type": "Static structural and invariant tests. The Streamlit/Python runtime could not be launched from the current sandbox, so these tests validate file integration, route wiring, i18n coverage, report generation hooks, CSV structure, scoring invariants and user-flow guards.",
+  "total_checks": 196,
+  "passed": 196,
+  "failed": 0,
+  "key_assertions": [
+    "The mode selector contains single-field, cooperative and pre-planting assessment modes.",
+    "Pre-assessment does not run automatically when the page loads; the user must click the run button.",
+    "Long operations have explicit Streamlit spinners.",
+    "Perennial crops are limited to one assessed production cycle in this mode.",
+    "Disease risks are bounded away from impossible certainty and impossible zero risk.",
+    "The disease pressure CSV has literature-prior columns and at least 28 disease rows.",
+    "The page and PDF expose suitability score, planting-date candidates, irrigation calendar, fertilization calendar and disease pressure priors.",
+    "The new visible labels are internationalized and the user guide was updated in Markdown and HTML."
+  ],
+  "failures": []
+}

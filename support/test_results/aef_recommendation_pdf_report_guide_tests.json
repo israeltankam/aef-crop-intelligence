@@ -1,0 +1,752 @@
+{
+  "created_at": "2026-06-21T18-30-00-000Z",
+  "scope": "recommendations_pdf_final_report_logo_user_guide_what_if_cache",
+  "total_checks": 142,
+  "passed_checks": 142,
+  "failed_checks": 0,
+  "python_runtime_note": "Python/Streamlit execution was blocked in this desktop sandbox (spawn EPERM), so this file records static and invariant checks only.",
+  "structural_python_checks": [
+    {
+      "file": "pages/main/recommendations.py",
+      "bracket_ok": true,
+      "conflict_markers": false
+    },
+    {
+      "file": "pages/main/what_if.py",
+      "bracket_ok": true,
+      "conflict_markers": false
+    },
+    {
+      "file": "pages/main/report.py",
+      "bracket_ok": true,
+      "conflict_markers": false
+    },
+    {
+      "file": "src/utils/recommendation_pdf.py",
+      "bracket_ok": true,
+      "conflict_markers": false
+    },
+    {
+      "file": "src/utils/i18n.py",
+      "bracket_ok": true,
+      "conflict_markers": false
+    },
+    {
+      "file": "app.py",
+      "bracket_ok": true,
+      "conflict_markers": false
+    }
+  ],
+  "checks": [
+    {
+      "name": "file exists: pages/main/recommendations.py",
+      "ok": true,
+      "details": "28269"
+    },
+    {
+      "name": "file exists: pages/main/what_if.py",
+      "ok": true,
+      "details": "42750"
+    },
+    {
+      "name": "file exists: pages/main/report.py",
+      "ok": true,
+      "details": "79488"
+    },
+    {
+      "name": "file exists: src/utils/recommendation_pdf.py",
+      "ok": true,
+      "details": "20085"
+    },
+    {
+      "name": "file exists: src/utils/i18n.py",
+      "ok": true,
+      "details": "108227"
+    },
+    {
+      "name": "file exists: app.py",
+      "ok": true,
+      "details": "6612"
+    },
+    {
+      "name": "file exists: support/User guide.md",
+      "ok": true,
+      "details": "9302"
+    },
+    {
+      "name": "file exists: support/User guide.html",
+      "ok": true,
+      "details": "8929"
+    },
+    {
+      "name": "file exists: support/User guide bilingual.docx",
+      "ok": true,
+      "details": "53255"
+    },
+    {
+      "name": "file exists: support/User guide.pdf",
+      "ok": true,
+      "details": "12333"
+    },
+    {
+      "name": "file exists: requirements.txt",
+      "ok": true,
+      "details": "426"
+    },
+    {
+      "name": "backup folder for this change exists",
+      "ok": true,
+      "details": "pre_cacao_economic_horizon_2026-06-13T00-00-00-000Z, pre_contact_update_2026-06-11T04-07-46-748Z, pre_cooperative_mode_2026-06-12T01-30-00-000Z, pre_coop_ergonomics_precision_report_2026-06-12T13-30-00-000Z, pre_csv_scientific_review_2026-06-11T00-30-17-874Z, pre_dashboard_calendar_date_input_2026-06-13T00-00-00-000Z, pre_dashboard_setup_i18n_deep_2026-06-11T16-57-31-980Z, pre_dashboard_uncertainty_floor_2026-06-12T00-20-00-000Z, pre_economic_recommendations_2026-06-13T00-30-00-000Z, pre_full_i18n_ui_2026-06-11T14-36-47-424Z, pre_full_ux_recommendations_2026-06-12T15-00-00-000Z, pre_intermediate_roguing_2026-06-11T12-12-56-261Z, pre_language_selector_key_hotfix_2026-06-11T14-17-40-723Z, pre_language_toggle_2026-06-11T10-46-40-947Z, pre_pdf_i18n_uncertainty_fix_2026-06-12T00-00-00-000Z, pre_pdf_latin1_unicode_fix_2026-06-11T18-43-10-331Z, pre_price_source_effect_2026-06-14T00-00-00-000Z, pre_reality_check_only_revert_2026-06-11T20-15-00-000Z, pre_reality_detection_jumps_uncertainty_2026-06-11T19-44-05-347Z, pre_recommendations_integration_2026-06-12T15-45-00-000Z, pre_recommendation_calendars_2026-06-13T00-00-00-000Z, pre_recommendation_economic_logic_2026-06-14T00-00-00-000Z, pre_recommendation_pdf_report_guide_2026-06-21T17-57-58-474Z, pre_refactor_snapshot, pre_report_two_scenarios_speedup_2026-06-12T00-45-00-000Z, pre_smart_field_soil_2026-06-11T03-36-25-703Z, pre_ux_agro_coop_refinement_2026-06-12T11-15-00-000Z, pre_what_if_economic_consistency_2026-06-21T16-54-33-684Z, pre_what_if_scenarios_2026-06-14T00-00-00-000Z"
+    },
+    {
+      "name": "Scale logo exists",
+      "ok": true,
+      "details": "38309"
+    },
+    {
+      "name": "recommendations imports shared PDF builder",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "optimization is button-triggered",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "recommendations compute happens under run_requested",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "annual horizon caption present",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "perennial horizon input present",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "horizon input is inside perennial branch",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "annual horizon fixed to one cycle",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "recommendations PDF prepare button present",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "recommendations PDF spinner present",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "recommendations PDF download button present",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "technical JSON moved to expander",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "pdf signature includes 'opt_irr_schedule': plan.get('opt_irr_schedule', [])",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "pdf signature includes 'opt_fert_schedule': plan.get('opt_fert_schedule', [])",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "pdf signature includes 'opt_plan_rows': (plan.get('opt_plan', {}) or {}).get('rows', [])",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "pdf signature includes 'selected_actions': plan.get('selected_actions', [])",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "recommendation signature includes planting date",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "recommendation signature includes economics",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "recommendations page no automatic calculation message",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "annual info avoids horizon wording",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "what-if matching recommendation helper exists",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "what-if converter from recommendation plan exists",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "what-if reuse checks mode",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "what-if reuse checks crop",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "what-if reuse checks disease",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "what-if reuse checks spot_count",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "what-if reuse checks planting_date",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "what-if reuse checks horizon",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "what-if reuse checks economics",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "what-if cooperative max plot safety check",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "what-if reuse spinner present",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "what-if reuse success message present",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "what-if fallback generation button remains",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "what-if fallback spinner remains",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "what-if annual horizon caption present",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "what-if invalidates stale scenario result on reuse",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "what-if still supports scenario PDF",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "report imports recommendation PDF sections",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "report header uses Scale logo path",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "report header tries image render",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "report footer signs Scale AG",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "report title updated",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "report annual horizon caption present",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "report single stores irrigation schedule for append",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "report single stores fertilization schedule for append",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "report cooperative stores opt plan for append",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "report appends recommendation sections twice or more",
+      "ok": true,
+      "details": "3"
+    },
+    {
+      "name": "shared PDF class exists",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "shared PDF logo path exists in module",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "shared PDF header handles logo failures",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "shared PDF sanitizes oe ligature",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "shared PDF sanitizes emoji markers",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "shared PDF uses latin-1 safe output",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "shared PDF footer signs Scale AG",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "shared PDF section Decision summary",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "shared PDF section Action list",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "shared PDF section Irrigation calendar",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "shared PDF section Fertilization calendar",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "shared PDF section Disease control recommendations",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "shared PDF section Operational caution",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "shared PDF includes roguing caution",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "all PDF table widths fit portrait page",
+      "ok": true,
+      "details": "[184,184,184,184,184,184,177]"
+    },
+    {
+      "name": "PDF table truncates long cells",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "PDF tables translate headers",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "PDF filters selected horizon",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "PDF annual horizon label is crop cycle",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "i18n key exists: Annual crop horizon is fixed automatically from planting date to expected harvest.",
+      "ok": true,
+      "details": "Annual crop horizon is fixed automatically from planting date to expected harvest."
+    },
+    {
+      "name": "i18n key exists: Preparing the readable recommendations PDF...",
+      "ok": true,
+      "details": "Preparing the readable recommendations PDF..."
+    },
+    {
+      "name": "i18n key exists: Download readable recommendations PDF",
+      "ok": true,
+      "details": "Download readable recommendations PDF"
+    },
+    {
+      "name": "i18n key exists: Prepare readable recommendations PDF",
+      "ok": true,
+      "details": "Prepare readable recommendations PDF"
+    },
+    {
+      "name": "i18n key exists: Technical export",
+      "ok": true,
+      "details": "Technical export"
+    },
+    {
+      "name": "i18n key exists: Reusing optimized calendars already prepared in Recommendations...",
+      "ok": true,
+      "details": "Reusing optimized calendars already prepared in Recommendations..."
+    },
+    {
+      "name": "i18n key exists: Recommendation calendars reused for scenario editing.",
+      "ok": true,
+      "details": "Recommendation calendars reused for scenario editing."
+    },
+    {
+      "name": "i18n key exists: Annual crop scenario horizon is fixed automatically from planting date to expected harvest.",
+      "ok": true,
+      "details": "Annual crop scenario horizon is fixed automatically from planting date to expected harvest."
+    },
+    {
+      "name": "i18n key exists: Annual crop report horizon is fixed automatically from planting date to expected harvest.",
+      "ok": true,
+      "details": "Annual crop report horizon is fixed automatically from planting date to expected harvest."
+    },
+    {
+      "name": "i18n key exists: Readable recommendations dossier",
+      "ok": true,
+      "details": "Readable recommendations dossier"
+    },
+    {
+      "name": "i18n key exists: Operational caution",
+      "ok": true,
+      "details": "Operational caution"
+    },
+    {
+      "name": "i18n key exists: Recommendations report",
+      "ok": true,
+      "details": "Recommendations report"
+    },
+    {
+      "name": "i18n key exists: AEF Crop Intelligence Dossier",
+      "ok": true,
+      "details": "AEF Crop Intelligence Dossier"
+    },
+    {
+      "name": "i18n supports French",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "i18n supports English",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "i18n new operational caution French text",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "app imports os for logo path",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "app render_company_logo helper exists",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "app shows logo on login",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "app shows logo in sidebar",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "app logo rendering is guarded by exists",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "guide markdown bilingual title",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "guide markdown emoji map",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "guide includes emoji 🔐",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "guide includes emoji 🌍",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "guide includes emoji 🤝",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "guide includes emoji 🛰️",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "guide includes emoji 🧭",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "guide includes emoji 🧪",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "guide includes emoji 🗃️",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "guide includes emoji 📄",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "guide includes emoji 💾",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "guide markdown mentions recommendations PDF",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "guide markdown mentions annual automatic horizon",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "guide markdown mentions Scale AG",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "guide html exists with CSS",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "guide html bilingual",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "guide html uses logo",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "guide html visually structured cards",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "guide bilingual docx sizable",
+      "ok": true,
+      "details": "53255"
+    },
+    {
+      "name": "guide pdf exists",
+      "ok": true,
+      "details": "12333"
+    },
+    {
+      "name": "requirements already include fpdf",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "requirements include streamlit",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "no new runtime dependency needed",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "critical phrase present: Baseline / no action",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "critical phrase present: Agronomic optimum",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "critical phrase present: Economic optimum",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "critical phrase present: Market price used",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "critical phrase present: Price source",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "critical phrase present: Price confidence",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "critical phrase present: No optimized irrigation event is currently recommended for the selected horizon.",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "critical phrase present: No optimized fertilization event is currently recommended for the selected horizon.",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "critical phrase present: Confirm the disease identity in the field before choosing chemical, biological, pruning or roguing interventions.",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "critical phrase present: These recommendations support decisions; they are not guarantees.",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "critical phrase present: Configure the horizon and click Run recommendation optimization",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "critical phrase present: Maximum plots optimized for recommendations",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "critical phrase present: Maximum plots optimized for scenario testing",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "critical phrase present: Scenario settings changed. Generate the optimized starting plan again before editing.",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "critical phrase present: Simulating the edited scenario and economic return...",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "critical phrase present: Calculating agronomic and economic recommendations...",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "critical phrase present: Run recommendation optimization",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "critical phrase present: Run what-if scenario",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "critical phrase present: Decision summary",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "critical phrase present: Action list",
+      "ok": true,
+      "details": ""
+    }
+  ]
+}

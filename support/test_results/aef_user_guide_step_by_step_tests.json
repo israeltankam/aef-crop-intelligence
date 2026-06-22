@@ -1,0 +1,213 @@
+{
+  "created_at": "2026-06-21T18:31:12.910Z",
+  "scope": "step_by_step_user_guide_md_html_only",
+  "backup": "pre_user_guide_step_by_step_2026-06-21T18-26-03-589Z",
+  "total_checks": 39,
+  "passed_checks": 39,
+  "failed_checks": 0,
+  "locked_files": [
+    {
+      "file": "support/User guide.docx",
+      "deleted": false,
+      "code": "EBUSY",
+      "message": "EBUSY: resource busy or locked, unlink 'C:\\Users\\tankamch\\AppData\\Local\\Temp\\aef_corrected_1781125311822\\support\\User guide.docx'"
+    }
+  ],
+  "checks": [
+    {
+      "name": "Markdown guide exists and is long",
+      "ok": true,
+      "details": "41898"
+    },
+    {
+      "name": "HTML guide exists and is long",
+      "ok": true,
+      "details": "60175"
+    },
+    {
+      "name": "Quick map preserved",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "Forbidden maintenance phrase removed from MD",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "Forbidden maintenance phrase removed from HTML",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "No version-maintenance wording in MD",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "No version-maintenance wording in HTML",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "Guide contains beginner before-start section",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "Guide contains access step",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "Guide contains mode choice",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "Guide contains single-field geography",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "Guide contains cooperative perimeter workflow",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "Guide contains plot naming workflow",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "Guide contains crop and variety workflow",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "Guide contains annual/perennial explanation",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "Guide contains disease workflow",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "Guide contains roguing caution",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "Guide contains soil workflow",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "Guide contains economics workflow",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "Guide contains JSON save/reload workflow",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "Guide contains dashboard workflow",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "Guide contains reality check explanation",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "Guide contains uncertainty explanation",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "Guide contains recommendations workflow",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "Guide contains calendars workflow",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "Guide contains recommendation PDF workflow",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "Guide contains what-if workflow",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "Guide contains final report workflow",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "Guide contains adaptive surveillance workflow",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "Guide contains first-use path",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "Guide contains cooperative path",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "Guide contains troubleshooting",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "Guide contains cautious interpretation",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "English part included",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "HTML has table of contents",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "HTML uses Scale logo",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "HTML has responsive CSS",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "Only MD/HTML guide outputs remain except locked legacy DOCX",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "Legacy DOCX lock recorded",
+      "ok": true,
+      "details": ""
+    }
+  ]
+}

@@ -5,8 +5,8 @@
   "changed_files": [
     {
       "path": "app.py",
-      "bytes": 3912,
-      "sha256": "f986ee0a38d1708cebae86b789e14b3dda26ec4a802592a5b04cab7362b7f125"
+      "bytes": 6612,
+      "sha256": "1e79e4a5158793de3326245d91be9fd1bfce8da9ea0dbd8180db16e4662e4234"
     },
     {
       "path": "docs/CHANGELOG_AEF_REFACTOR.md",
@@ -19,9 +19,24 @@
       "sha256": "5707de87d3b7f77de5500123215a662b371ec3b98f881581ce3e72e917bd6d2c"
     },
     {
+      "path": "docs/RECOMMENDATION_PDF_REPORT_GUIDE_LOG.md",
+      "bytes": 5252,
+      "sha256": "ffcb6dd185cdd053f9d42531a72fdd3398a0a7ab74328069f693a8c21aad06b0"
+    },
+    {
       "path": "docs/SCIENTIFIC_MODELS.md",
       "bytes": 7095,
       "sha256": "a4f034434e22ead554e1f16095e226a52469606a016ae0a8ead7ff5b15af101e"
+    },
+    {
+      "path": "docs/SENTINEL_INTERNAL_PARCEL_DETECTION_LOG.md",
+      "bytes": 3286,
+      "sha256": "940ecafa469f67ad3d2ff3816d5bcbb8597ec53bcd67868c7d11ab70bea7750a"
+    },
+    {
+      "path": "docs/USER_GUIDE_STEP_BY_STEP_LOG.md",
+      "bytes": 2588,
+      "sha256": "57844ace6c9d62645c225dffab1dd669ab7cfb6e2796c14ad01b81f51357427a"
     },
     {
       "path": "pages/main/dashboard.py",
@@ -29,14 +44,19 @@
       "sha256": "986a7425747ad2282d7ce9ecc681bb6e998e41ee082ff74e3dd18b2ce0666c16"
     },
     {
+      "path": "pages/main/recommendations.py",
+      "bytes": 28269,
+      "sha256": "adbdcc06c9dee946f93d6492ba60bde646a1b4d26d7145ccd83db6e8a59e2066"
+    },
+    {
       "path": "pages/main/report.py",
-      "bytes": 53933,
-      "sha256": "aec0b3ac9c28b274f60cbe3d535d7c80984d82f79d56a1068cd19a8e2cb0f3a1"
+      "bytes": 79488,
+      "sha256": "a8d940a09777c1a1e440b4f030b5dfbb89f882455c3f4d5cc288345c8d567cc4"
     },
     {
       "path": "pages/main/setup_page.py",
-      "bytes": 56383,
-      "sha256": "46254e224f635bbb0b37f9f1a32f2a2bc9da0bdb5473c2284e3bbffb803b37e5"
+      "bytes": 121903,
+      "sha256": "e66430bae4240b200ff4e739e19158f37f5240c4a61bd631c98624ea0ff1c44f"
     },
     {
       "path": "pages/main/surveillance.py",
@@ -44,9 +64,19 @@
       "sha256": "570378e35da1fd633bf213439904b8e95ed83e597b563368bb8745f6fe012c2f"
     },
     {
+      "path": "pages/main/what_if.py",
+      "bytes": 42750,
+      "sha256": "7d4f0ccf34b721abdcac88b44a8ece0cf7c0309bad6b9cdf5999fbce40d84346"
+    },
+    {
       "path": "src/models/adaptive_calibration.py",
       "bytes": 3218,
       "sha256": "61538a2d57b84b40d197714d8fec8a793176202f1f3384882074e207acea77ba"
+    },
+    {
+      "path": "src/models/cooperative_parcel_detector.py",
+      "bytes": 11321,
+      "sha256": "429ca74ce4799e624a2a399c1d06ddbe4e7729d06a5d21e4882385027e34c242"
     },
     {
       "path": "src/models/disease_models.py",
@@ -69,14 +99,19 @@
       "sha256": "ed1765fc351defcabbbacacf7bf9a9d5fc418b5268714d332a8622b6fe3cfcf6"
     },
     {
+      "path": "src/models/sentinel_parcel_detector.py",
+      "bytes": 15563,
+      "sha256": "7677d592fea6e511a732f476f637d9a88d62f420442b13673ac41789c181de08"
+    },
+    {
       "path": "src/models/simulation_engine.py",
       "bytes": 35546,
       "sha256": "5601c67b22431319eb7a50c4132d2fca83c4cda511c0c68eaa5f25a98c186f7e"
     },
     {
       "path": "src/utils/i18n.py",
-      "bytes": 41161,
-      "sha256": "1a470fc47792fb136d0f3d5cbbc7d7840c7b93cc734aa085a804d738e15a6794"
+      "bytes": 111255,
+      "sha256": "1ca2c42b5accfde3e654fdc39c414cb19afac11ece9213f90d5702ae86d75c9c"
     },
     {
       "path": "src/utils/progress.py",
@@ -84,9 +119,14 @@
       "sha256": "cdff0a52f9f008f564859079c4fbbea559b5f98baae6036534c3ef6428539652"
     },
     {
+      "path": "src/utils/recommendation_pdf.py",
+      "bytes": 20085,
+      "sha256": "6e4535f23bcaa5fa8d07c5e792e5329f0ed874aea303b22441a69b7e53ec4e3b"
+    },
+    {
       "path": "support/refactor/refactor_manifest.json",
-      "bytes": 10679,
-      "sha256": "16c93426794cf9ebeffa6e58f1cba7008c89790610d6419da9c05aa051b56c86"
+      "bytes": 33947,
+      "sha256": "4b482dc2a350060adb763ed7c91e9bd9d64bd130e76ea4af6a7fe23129b99bee"
     },
     {
       "path": "support/test_results/aef_1000_checks.json",
@@ -129,9 +169,44 @@
       "sha256": "94a7a60920fd0008541e88432da6cda575e660cae3d891bf20022c603d38020b"
     },
     {
+      "path": "support/test_results/aef_recommendation_pdf_report_guide_tests.json",
+      "bytes": 19192,
+      "sha256": "e74ffabeee56d71241b1137ed3e6a7aef931aef34c687deabd5313842bcb85ac"
+    },
+    {
+      "path": "support/test_results/aef_sentinel_internal_parcel_detection_tests.json",
+      "bytes": 17772,
+      "sha256": "fc48fbe6af9d11c9cec27ffc3212ec3d6aa6d062f5c83dc421b0f590aa705136"
+    },
+    {
       "path": "support/test_results/aef_two_scenario_report_speedup_tests.json",
       "bytes": 1431,
       "sha256": "0fc0d9c245d79ae84a99403958063bb77d8dcfa405d8a713417402155d64e659"
+    },
+    {
+      "path": "support/test_results/aef_user_guide_step_by_step_tests.json",
+      "bytes": 4575,
+      "sha256": "e84c27cd9f97f1af6ca3469bcdc94963a68716f5a8f939db72f4fc1523785928"
+    },
+    {
+      "path": "support/User guide bilingual.docx",
+      "bytes": 53255,
+      "sha256": "32847f655612371c93910c35b331bcc75da16b80de199fbb93cc65eed876eb9d"
+    },
+    {
+      "path": "support/User guide.html",
+      "bytes": 61289,
+      "sha256": "a3dbaf4e45ecda33e41500c37de23aeb9a766711a1d278bb2c7268dc6dc92dc5"
+    },
+    {
+      "path": "support/User guide.md",
+      "bytes": 43295,
+      "sha256": "3cb81cb1d50eba476f0717d6b917daf726b7ad92c4e33775b6a57578a822cf37"
+    },
+    {
+      "path": "support/User guide.pdf",
+      "bytes": 12333,
+      "sha256": "64b73213e677bf87d19f86af7ec4903d6b2f6d8a321c3dd0be61884b4ae03747"
     },
     {
       "path": "tools/rollback_selected_changes.py",
@@ -191,7 +266,7 @@
     "backup": "backups/pre_language_toggle_2026-06-11T10-46-40-947Z",
     "note": "Language selector visible on login page and in sidebar after authentication."
   },
-  "last_updated": "2026-06-12T10:24:05.041Z",
+  "last_updated": "2026-06-22",
   "notes": [
     "Added intermediate scenario and benefit-cost roguing balance in dossier and disease scenarios.",
     "Internationalized remaining visible UI/PDF strings with display-only translations; business option values preserved.",
@@ -746,5 +821,116 @@
         "sha256": "6c6a35898206d369ee6930490200a19a8ba17b1b12e846a28c4c58be3a3641ed"
       }
     ]
-  }
+  },
+  "entries": [
+    {
+      "date": "2026-06-21",
+      "title": "What-if economic optimum consistency and user guide rewrite",
+      "backup": "C:\\Users\\tankamch\\AppData\\Local\\Temp\\aef_corrected_1781125311822\\backups\\pre_what_if_economic_consistency_2026-06-21T16-54-33-684Z",
+      "files": [
+        "src/models/economic_engine.py",
+        "pages/main/what_if.py",
+        "pages/main/recommendations.py",
+        "src/utils/i18n.py",
+        "support/User guide.md",
+        "support/User guide.docx",
+        "support/User guide.pdf",
+        "docs/WHAT_IF_ECONOMIC_REOPTIMIZATION_LOG.md",
+        "support/test_results/aef_what_if_economic_reoptimization_100_checks.json"
+      ],
+      "summary": "Separated agronomic and economic optimum in what-if outputs, added partial cost-scaled economic optimization, guaranteed what-if cannot exceed recalculated economic optimum, and rewrote the user guide.",
+      "tests": "100 static/invariant checks passed; Python/Streamlit runtime blocked by EPERM in this environment."
+    },
+    {
+      "id": "preassessment_mode_2026_06_21",
+      "date": "2026-06-21",
+      "title": "Add pre-planting assessment operating mode",
+      "summary": "Adds a third AEF mode for evaluating a not-yet-planted candidate field: suitability score, best planting date, one-cycle irrigation/fertilization calendars, literature-prior disease pressure and downloadable PDF dossier.",
+      "backup": "backups/pre_preassessment_mode_2026-06-21T19-18-30-000Z",
+      "files_added": [
+        "pages/main/preassessment.py",
+        "src/models/preassessment_engine.py",
+        "src/utils/preassessment_pdf.py",
+        "src/data/disease_pressure_literature.csv",
+        "docs/PREASSESSMENT_MODE_LOG.md",
+        "support/test_results/aef_preassessment_mode_tests.json"
+      ],
+      "files_modified": [
+        "app.py",
+        "src/models/state_manager.py",
+        "src/utils/i18n.py",
+        "support/User guide.md",
+        "support/User guide.html",
+        "support/refactor/refactor_manifest.json"
+      ],
+      "tests": {
+        "type": "static_invariant",
+        "total": 196,
+        "passed": 196,
+        "failed": 0,
+        "report": "support/test_results/aef_preassessment_mode_tests.json"
+      },
+      "requirements_changed": false,
+      "notes": "No new dependency was required. Runtime Streamlit smoke testing remains recommended after copying into the live app environment."
+    },
+    {
+      "id": "preassessment_parcel_recommendation_fix_2026_06_22",
+      "date": "2026-06-22",
+      "title": "Fix pre-assessment parcel optimization, recommendation paragraph, climate units and date labels",
+      "summary": "Rejects automatic candidate parcels on built-up/water/wetland or unknown cover, normalizes climate temperatures before scoring, makes date format explicit, and adds a final rich recommendation paragraph.",
+      "backup": "backups/preassessment_parcel_recommendation_fix_2026-06-22T00-00-00-000Z",
+      "files_modified": [
+        "pages/main/setup_page.py",
+        "pages/main/preassessment.py",
+        "src/models/preassessment_engine.py",
+        "src/utils/preassessment_pdf.py",
+        "src/utils/i18n.py",
+        "support/User guide.md",
+        "support/User guide.html",
+        "docs/PREASSESSMENT_MODE_LOG.md",
+        "support/refactor/refactor_manifest.json"
+      ],
+      "files_added": [
+        "support/test_results/aef_preassessment_parcel_recommendation_fix_tests.json"
+      ],
+      "tests": {
+        "type": "static_invariant_and_predicate_simulation",
+        "total": 117,
+        "passed": 117,
+        "failed": 0,
+        "report": "support/test_results/aef_preassessment_parcel_recommendation_fix_tests.json"
+      },
+      "requirements_changed": false,
+      "notes": "No new dependency was required. Runtime Streamlit/Earth Engine smoke testing remains recommended locally."
+    },
+    {
+      "id": "scientific_variety_disease_review_2026_06_22",
+      "date": "2026-06-22",
+      "title": "Scientific enrichment of crop varieties and disease database",
+      "summary": "Expanded crops_db.csv from 13 to 29 documented crop-variety rows, added disease-specific variety trait columns, added causal-agent/literature-basis columns to diseases_db.csv, and created a scientific review evidence CSV plus review log.",
+      "backup": "backups/pre_scientific_variety_disease_review_2026-06-22T00-00-00-000Z",
+      "files_modified": [
+        "src/data/crops_db.csv",
+        "src/data/diseases_db.csv",
+        "support/refactor/refactor_manifest.json"
+      ],
+      "files_added": [
+        "src/data/variety_scientific_review_evidence.csv",
+        "docs/SCIENTIFIC_VARIETY_DISEASE_REVIEW_LOG.md",
+        "support/test_results/aef_scientific_variety_disease_review_tests.json"
+      ],
+      "tests": {
+        "type": "static_csv_integrity_and_scientific_curation_checks",
+        "total": 220,
+        "passed": 220,
+        "failed": 0,
+        "report": "support/test_results/aef_scientific_variety_disease_review_tests.json"
+      },
+      "requirements_changed": false,
+      "notes": "No new dependency was required. Added data are conservative scientific priors; country-level seed availability and local pathogen race validation remain necessary."
+    }
+  ],
+  "updated_at": "2026-06-21T19:00:20.058Z",
+  "last_backup": "backups/pre_sentinel_internal_parcel_detection_2026-06-21T18-48-50-876Z",
+  "last_change": "scientific_variety_disease_review_2026_06_22"
 }

@@ -1,0 +1,756 @@
+{
+  "created_at": "2026-06-21T19:00:02.744Z",
+  "scope": "sentinel2_internal_cooperative_parcel_detection",
+  "backup": "backups/pre_sentinel_internal_parcel_detection_2026-06-21T18-48-50-876Z",
+  "total_checks": 149,
+  "passed_checks": 149,
+  "failed_checks": 0,
+  "python_runtime_note": "Python/Streamlit execution was not launched from this sandbox; validation is static and invariant-based.",
+  "checks": [
+    {
+      "name": "file exists src/models/sentinel_parcel_detector.py",
+      "ok": true,
+      "details": "15563"
+    },
+    {
+      "name": "file exists src/models/cooperative_parcel_detector.py",
+      "ok": true,
+      "details": "11321"
+    },
+    {
+      "name": "file exists pages/main/setup_page.py",
+      "ok": true,
+      "details": "121903"
+    },
+    {
+      "name": "file exists src/utils/i18n.py",
+      "ok": true,
+      "details": "111255"
+    },
+    {
+      "name": "file exists requirements.txt",
+      "ok": true,
+      "details": "426"
+    },
+    {
+      "name": "file exists support/User guide.md",
+      "ok": true,
+      "details": "43295"
+    },
+    {
+      "name": "file exists support/User guide.html",
+      "ok": true,
+      "details": "61289"
+    },
+    {
+      "name": "backup exists",
+      "ok": true,
+      "details": "pre_sentinel_internal_parcel_detection_2026-06-21T18-48-50-876Z"
+    },
+    {
+      "name": "sentinel module contains Sentinel-2 guided cooperative parcel delineation",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "sentinel module contains COPERNICUS/S2_SR_HARMONIZED",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "sentinel module contains ESA/WorldCover/v100",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "sentinel module contains normalizedDifference([\"B8\", \"B4\"])",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "sentinel module contains normalizedDifference([\"B8\", \"B11\"])",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "sentinel module contains Segmentation.SNIC",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "sentinel module contains reduceToVectors",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "sentinel module contains reduceRegions",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "sentinel module contains _score_confidence",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "sentinel module contains estimated_precision_label",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "sentinel module contains ftw_fallback_recommended",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "sentinel module contains requires_user_validation",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "sentinel module contains seed_spacing_pixels",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "sentinel module contains cloud",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "sentinel module contains SCL",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "sentinel module contains candidate_mask",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "sentinel module contains cultivable",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "sentinel module contains tree cover",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "sentinel module contains perennial plantations",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "sentinel module contains GeoJSON Polygon/MultiPolygon",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "sentinel module contains max(0.35, min(0.92",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "sentinel module contains perimeter_area_ha > 3000",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "sentinel module contains image_count < 2",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "sentinel module contains geometry().area",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "sentinel module contains geometry().perimeter",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "sentinel module contains date_window",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "sentinel module contains Sentinel-2 segmentation returned no usable parcel candidate",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "sentinel module contains geometric fallback was used",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "sentinel module has rich comments",
+      "ok": true,
+      "details": "40"
+    },
+    {
+      "name": "sentinel no FTW direct call",
+      "ok": true,
+      "details": "internal first"
+    },
+    {
+      "name": "sentinel returns tuple parcels metadata",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "precision high threshold exists",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "precision moderate threshold exists",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "year window uses grown canopy chance",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "snic size tied to typical parcel area",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "confidence uses NDVI mean",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "confidence uses NDVI std",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "confidence uses cultivable fraction",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "confidence uses compactness",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "setup contains from src.models.sentinel_parcel_detector import detect_sentinel2_parcels",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "setup contains def _coop_detect_parcels",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "setup contains if initialize_ee():",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "setup contains detect_sentinel2_parcels(",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "setup contains geometric_fallback",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "setup contains precision_passes=4",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "setup contains cooperative_detection_meta",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "setup contains cooperative_detection_confidence",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "setup contains cooperative_detection_notes",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "setup contains Analyzing Sentinel-2 imagery and tracing editable parcel boundaries...",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "setup contains Parcel candidates placed. Please validate boundaries on the satellite map.",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "setup contains Detection method",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "setup contains Estimated boundary precision",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "setup contains Satellite image window",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "setup contains Clear Sentinel-2 observations",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "setup contains FTW precomputed boundaries should be used as a free fallback",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "setup contains st.session_state.pop('cooperative_detection_meta'",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "setup contains Mean confidence",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "setup contains Sentinel-2 image-guided segmentation",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "setup contains Geometric fallback candidate generator",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "setup still has manual editing add plot",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "setup still has replace plot",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "setup still has map draw",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "setup still stores plot names",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "setup no pasted corruption near rectangle",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "geometric fallback confidence capped lower",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "geometric fallback comment says no image evidence",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "geometric fallback remains non-overlap",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "geometric fallback remains irregular",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "i18n has key Analyzing Sentinel-2 imagery and tracing editable parcel boundaries...",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "i18n has key Parcel candidates placed. Please validate boundaries on the satellite map.",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "i18n has key Detection method",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "i18n has key Estimated boundary precision",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "i18n has key Mean confidence",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "i18n has key Sentinel-2 image-guided segmentation",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "i18n has key Geometric fallback candidate generator",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "i18n has key Satellite image window",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "i18n has key Clear Sentinel-2 observations",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "i18n has key Boundary precision is limited. Validate or edit these polygons; FTW precomputed boundaries should be used as a free fallback when the integration is enabled.",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "i18n has key Sentinel-2 image-guided parcel candidates were generated inside the cooperative perimeter.",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "i18n has key Sentinel-2 image-guided detection was unavailable; geometric fallback was used.",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "i18n has key Not enough clear Sentinel-2 observations were available for image-guided parcel detection.",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "i18n has key Sentinel-2 image-guided parcel detection failed; geometric fallback was used.",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "i18n has key Sentinel-2 segmentation returned no usable parcel candidate; geometric fallback was used.",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "i18n has key The perimeter is too large for interactive Sentinel-2 segmentation; geometric fallback was used.",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "i18n has key The cooperative perimeter has no measurable area.",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "i18n has key No valid cooperative perimeter was provided.",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "i18n has key Automatic parcel candidates require validation on the satellite map.",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "i18n has key Sentinel-2 guided segment; validate boundary on the satellite map before using recommendations.",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "i18n has key high",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "i18n has key moderate",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "i18n has key low",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "i18n has key unknown",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "i18n has French Sentinel translation",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "i18n has French precision translation",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "i18n has French low translation",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "i18n has French moderate translation",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "guide md contains Sentinel-2 et WorldCover",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "guide md contains segmente l'image",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "guide md contains fallback geometrique",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "guide md contains precision estimee des limites",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "guide md contains FTW pre-calculees",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "guide md contains Sentinel-2 and WorldCover guided detector",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "guide md contains not a true observed boundary detection",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "guide md contains estimated boundary precision",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "guide md contains precomputed FTW boundaries as a free fallback",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "guide html contains Sentinel-2 et WorldCover",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "guide html contains fallback geometrique",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "guide html contains precomputed FTW boundaries",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "guide md remains long",
+      "ok": true,
+      "details": "43217"
+    },
+    {
+      "name": "guide html remains long",
+      "ok": true,
+      "details": "61159"
+    },
+    {
+      "name": "requirements keep earthengine api",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "no new heavy geospatial deps added",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "requirements still have scipy/numpy",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "bracket structure src/models/sentinel_parcel_detector.py",
+      "ok": true,
+      "details": "{\"ok\":true,\"openString\":false,\"stack\":[]}"
+    },
+    {
+      "name": "no merge markers src/models/sentinel_parcel_detector.py",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "bracket structure src/models/cooperative_parcel_detector.py",
+      "ok": true,
+      "details": "{\"ok\":true,\"openString\":false,\"stack\":[]}"
+    },
+    {
+      "name": "no merge markers src/models/cooperative_parcel_detector.py",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "bracket structure pages/main/setup_page.py",
+      "ok": true,
+      "details": "{\"ok\":true,\"openString\":false,\"stack\":[]}"
+    },
+    {
+      "name": "no merge markers pages/main/setup_page.py",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "bracket structure src/utils/i18n.py",
+      "ok": true,
+      "details": "{\"ok\":true,\"openString\":false,\"stack\":[]}"
+    },
+    {
+      "name": "no merge markers src/utils/i18n.py",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "spinner exists for long detection",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "low precision warning explicit",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "validation stays mandatory",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "confidence column remains visible",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "source column remains visible",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "method stored in session",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "sentinel metadata includes image count",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "sentinel metadata includes FTW recommendation flag",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "fallback metadata recommends FTW later",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "clear detected plots clears metadata",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "new module does not import streamlit",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "new module imports ee only for imagery",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "new module capped max interactive area",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "new module masks cloud classes",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "new module includes per-parcel ndvi props",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "new module names output parcels",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "setup translates method labels",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "setup translates precision label",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "setup keeps target parcel area control",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "setup detection button unchanged user location",
+      "ok": true,
+      "details": ""
+    }
+  ]
+}

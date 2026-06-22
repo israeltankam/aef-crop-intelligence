@@ -10,6 +10,7 @@ from src.models.cooperative_engine import CooperativeSimulationEngine
 from src.models.economic_engine import build_single_field_economics, build_cooperative_economics, normalize_economics_config
 from src.models.cooperative_constraints import evaluate_shared_resource_constraints
 from src.utils.i18n import tr
+from src.utils.recommendation_pdf import build_recommendations_pdf
 
 
 def _config_from_state():
@@ -121,6 +122,7 @@ def _actions_frame(actions, currency):
             tr('Net benefit'): _money(action.get('net_benefit', 0.0), currency),
             tr('Production gain'): f"{float(action.get('production_gain_t', 0.0) or 0.0):.2f} t",
             tr('ROI'): f"{float(action.get('roi', 0.0) or 0.0):.2f}",
+            tr('Economic scale'): f"{float(action.get('economic_scale', 1.0 if action.get('economically_selected') else 0.0) or 0.0) * 100:.0f}%",
             tr('Economic decision'): tr('Keep') if action.get('economically_selected') else tr('Agronomic only'),
             tr('Confidence'): tr(str(action.get('confidence', ''))),
         })
@@ -402,7 +404,7 @@ def _render_plan(plan, config, result):
         st.dataframe(_actions_frame(plan.get('actions', []), currency), use_container_width=True, hide_index=True)
         _render_recommendation_details(plan, config, result, economic=False)
     with tab_econ:
-        st.write(tr('This view shows the strategy with the highest expected total net return among no action, the full agronomic plan and the profitable action subset.'))
+        st.write(tr('This view shows the strategy with the highest expected total net return across no action, the full agronomic plan and partial cost-scaled intervention mixes.'))
         selected = plan.get('selected_actions') or [a for a in plan.get('actions', []) if a.get('economically_selected')]
         if selected:
             st.dataframe(_actions_frame(selected, currency), use_container_width=True, hide_index=True)
@@ -411,7 +413,28 @@ def _render_plan(plan, config, result):
         _render_recommendation_details(plan, config, result, economic=True)
     with tab_actions:
         st.dataframe(_actions_frame(plan.get('actions', []), currency), use_container_width=True, hide_index=True)
-        st.download_button('💾 ' + tr('Download recommendations JSON'), data=json.dumps(plan, indent=2, default=str), file_name='aef_recommendations.json', mime='application/json', use_container_width=True)
+        # Keep the downloadable farmer-facing PDF tied to the exact tables shown on screen.
+        # Schedules are included here so a refreshed calendar cannot leave a stale PDF behind.
+        pdf_signature = json.dumps({
+            'summary': plan.get('summary', {}),
+            'actions': plan.get('actions', []),
+            'selected_actions': plan.get('selected_actions', []),
+            'opt_irr_schedule': plan.get('opt_irr_schedule', []),
+            'opt_fert_schedule': plan.get('opt_fert_schedule', []),
+            'opt_plan_rows': (plan.get('opt_plan', {}) or {}).get('rows', []),
+            'mode': result.get('mode', 'single'),
+            'horizon': plan.get('summary', {}).get('economic_horizon_years'),
+        }, sort_keys=True, default=str)
+        if st.button('📄 ' + tr('Prepare readable recommendations PDF'), type='primary', use_container_width=True):
+            with st.spinner(tr('Preparing the readable recommendations PDF...')):
+                st.session_state['recommendations_pdf_bytes'] = build_recommendations_pdf(plan, config, result)
+                st.session_state['recommendations_pdf_signature'] = pdf_signature
+        if st.session_state.get('recommendations_pdf_signature') == pdf_signature and st.session_state.get('recommendations_pdf_bytes'):
+            st.download_button('📄 ' + tr('Download readable recommendations PDF'), data=st.session_state['recommendations_pdf_bytes'], file_name='aef_recommendations.pdf', mime='application/pdf', use_container_width=True)
+        else:
+            st.info(tr('Prepare the readable PDF after reviewing the recommendation tables.'))
+        with st.expander(tr('Technical export')):
+            st.download_button('💾 ' + tr('Download recommendations JSON'), data=json.dumps(plan, indent=2, default=str), file_name='aef_recommendations.json', mime='application/json', use_container_width=True)
 
 
 def app():
@@ -434,7 +457,7 @@ def app():
         st.caption(tr('For perennial crops, revenue is summed over annual harvest peaks within this horizon.'))
     else:
         horizon_years = 1
-        st.caption(tr('Annual crop recommendation horizon follows the simulated crop cycle.'))
+        st.caption(tr('Annual crop horizon is fixed automatically from planting date to expected harvest.'))
     config['economics_config']['economic_horizon_years'] = int(horizon_years)
     st.session_state['economic_horizon_years'] = int(horizon_years)
     st.session_state['economics_config'] = config['economics_config']
@@ -451,6 +474,7 @@ def app():
         'crop': config.get('selected_crop_id'),
         'disease': config.get('selected_disease_id'),
         'spot_count': len(config.get('disease_spots', []) or []),
+        'planting_date': str(config.get('planting_date')),
         'horizon': int(config['economics_config'].get('economic_horizon_years', 1)),
         'max_plots': int(max_plots),
         'economics': json.dumps(config.get('economics_config', {}), sort_keys=True, default=str),
@@ -467,4 +491,7 @@ def app():
     elif cache_key in st.session_state:
         st.warning(tr('Recommendation settings changed. Run the optimization again before using the results.'))
     else:
-        st.info(tr('Configure the horizon and click Run recommendation optimization to generate recommendations.'))
+        if str(crop_params.get('Type', 'Annual')) == 'Perennial':
+            st.info(tr('Configure the horizon and click Run recommendation optimization to generate recommendations.'))
+        else:
+            st.info(tr('Click Run recommendation optimization to generate crop-cycle recommendations.'))

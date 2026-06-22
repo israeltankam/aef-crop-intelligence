@@ -21,6 +21,7 @@ from src.models.cooperative_constraints import evaluate_shared_resource_constrai
 from src.models.economic_engine import build_single_field_economics, build_cooperative_economics
 from src.utils.diagnostic_quality import build_diagnostic_quality
 from src.utils.disease_evidence import build_disease_evidence
+from src.utils.recommendation_pdf import append_recommendation_pdf_sections
 from google.oauth2.service_account import Credentials
 import ee
 
@@ -221,7 +222,7 @@ def _economic_summary_lines(economic_plan):
         f"{tr('Market price used')}: {_money(economics.get('sale_price_per_t', 0.0), currency)} / t ({tr(str(economics.get('price_source', 'manual')))}, {confidence_pct:.0f}% {tr('confidence')})",
         f"{tr('Agronomic optimum net return')}: {_money(summary.get('agronomic_net_return', summary.get('agronomic_net_gain', 0.0)), currency)} ({_money(summary.get('agronomic_net_return_per_ha', summary.get('agronomic_net_gain_per_ha', 0.0)), currency)}/ha)",
         f"{tr('Economic optimum net return')}: {_money(summary.get('economic_net_return', summary.get('economic_net_gain', 0.0)), currency)} ({_money(summary.get('economic_net_return_per_ha', summary.get('economic_net_gain_per_ha', 0.0)), currency)}/ha)",
-        tr('Economic optimum is selected by highest expected total net return among no action, full agronomic management and the profitable action subset.'),
+        tr('Economic optimum is selected by highest expected total net return across no action, full agronomic management and partial cost-scaled intervention mixes.'),
     ]
 
 
@@ -339,16 +340,27 @@ class PDFReport(FPDF):
         return super().multi_cell(w, h, self._safe_pdf_text(txt), border, align, fill)
 
     def header(self):
-        self.set_font('Arial', 'B', 16)
-        self.cell(0, 10, tr('AlphaEarth Intelligence Dossier'), 0, 1, 'C')
-        self.set_font('Arial', 'I', 10)
-        self.cell(0, 10, f"{tr('Generated')}: {date.today()}", 0, 1, 'C')
-        self.ln(10)
+        # Sign every report page with the Scale AG logo when pyfpdf accepts the
+        # local PNG.  Logo loading is non-fatal so a PDF can still be generated on
+        # environments with stricter image handling.
+        logo_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'src', 'images', 'logo', 'logo_company', 'logo_scale.png'))
+        if os.path.exists(logo_path):
+            try:
+                self.image(logo_path, x=10, y=7, w=22)
+            except Exception:
+                pass
+        self.set_xy(36, 8)
+        self.set_font('Arial', 'B', 14)
+        self.cell(0, 7, tr('AEF Crop Intelligence Dossier'), 0, 1, 'L')
+        self.set_x(36)
+        self.set_font('Arial', 'I', 9)
+        self.cell(0, 6, f"Scale AG - {tr('Generated')}: {date.today()}", 0, 1, 'L')
+        self.ln(8)
 
     def footer(self):
         self.set_y(-15)
         self.set_font('Arial', 'I', 8)
-        self.cell(0, 10, f"{tr('Page')} {self.page_no()}", 0, 0, 'R')
+        self.cell(0, 10, f"Scale AG | AEF Crop Intelligence | {tr('Page')} {self.page_no()}", 0, 0, 'R')
 
     def chapter_title(self, label):
         self.set_font('Arial', 'B', 12)
@@ -478,6 +490,7 @@ def render_cooperative_report(res_single):
         st.session_state['economic_horizon_years'] = int(coop_horizon_years)
     else:
         coop_horizon_years = 1
+        st.caption(tr('Annual crop report horizon is fixed automatically from planting date to expected harvest.'))
 
     if st.button('📄 ' + tr('Download PDF Dossier'), type='primary'):
         config = {k: st.session_state[k] for k in StateManager.DEFAULTS.keys() if k in st.session_state}
@@ -501,6 +514,7 @@ def render_cooperative_report(res_single):
 
         with st.spinner(t('report.spinner.economics')):
             economic_plan = build_cooperative_economics(config, res_single, opt_plan)
+            economic_plan['opt_plan'] = opt_plan
 
         pdf = PDFReport()
         pdf.add_page()
@@ -558,6 +572,7 @@ def render_cooperative_report(res_single):
         pdf.chapter_body(chr(10).join(_economic_summary_lines(economic_plan)))
         _add_economic_summary_table(pdf, economic_plan)
         _add_economic_action_table(pdf, economic_plan)
+        append_recommendation_pdf_sections(pdf, economic_plan, config, res_single, title_prefix='3A. ')
 
         if opt_rows:
             top_gain = sorted(opt_rows, key=lambda row: row.get('production_gain_t', 0.0), reverse=True)[:20]
@@ -657,6 +672,7 @@ def app():
             st.session_state['economic_horizon_years'] = int(report_horizon_years)
         else:
             report_horizon_years = 1
+            st.caption(tr('Annual crop report horizon is fixed automatically from planting date to expected harvest.'))
     
     with col2:
         if st.button("📄 " + tr("Download PDF Dossier"), type="primary", use_container_width=True):
@@ -726,6 +742,9 @@ def app():
             # --- 6. BUILD ECONOMIC COMPARISON ---
             with st.spinner(t('report.spinner.economics')):
                 economic_plan = build_single_field_economics(config, res_single, opt_irr_schedule, opt_fert_schedule, scenario_summary)
+                economic_plan['opt_irr_schedule'] = opt_irr_schedule
+                economic_plan['opt_fert_schedule'] = opt_fert_schedule
+                economic_plan['scenario_summary'] = scenario_summary
 
             # --- 7. COMPILE REPORT ---
             with st.spinner(t("report.spinner.compile")):
@@ -1113,6 +1132,7 @@ def app():
                     pdf.chapter_body(chr(10).join(_economic_summary_lines(economic_plan)))
                     _add_economic_summary_table(pdf, economic_plan)
                     _add_economic_action_table(pdf, economic_plan)
+                    append_recommendation_pdf_sections(pdf, economic_plan, config, res_single, title_prefix='8. ')
                     roguing_lines = []
                     for scenario_key in ['optimized']:
                         s = scenario_summary.get(scenario_key, {})
@@ -1126,8 +1146,8 @@ def app():
                 else:
                     pdf.chapter_body(tr("Scenario comparison was unavailable for this configuration."))
 
-                # --- CHAPTER 8: RECS ---
-                pdf.chapter_title("8. " + tr("Management Recommendations"))
+                # --- CHAPTER 9: RECS ---
+                pdf.chapter_title("9. " + tr("Management Recommendations"))
                 recs = []
                 
                 if dis_info is not None:

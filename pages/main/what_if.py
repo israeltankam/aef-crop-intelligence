@@ -122,6 +122,116 @@ def _schedule_signature(config: Dict[str, object], result: Dict[str, object], ma
     }
 
 
+def _optimal_inputs_from_recommendation_plan(plan: Dict[str, object], config: Dict[str, object], result: Dict[str, object], max_plots: int = 60) -> Dict[str, object] | None:
+    """Reuse already-computed Recommendation calendars when their signature matches.
+
+    This is intentionally conservative.  Reusing a stale plan would be faster but
+    agronomically wrong, so the caller verifies crop, disease, planting date,
+    economics and cooperative plot coverage before this converter is used.
+    """
+    if not plan:
+        return None
+    crop_params = result.get("crop_params", {}) or {}
+    if result.get("mode") == "cooperative":
+        opt_plan = deepcopy(plan.get("opt_plan", {}) or {})
+        rows = list(opt_plan.get("rows", []) or [])[:int(max_plots)]
+        if not rows:
+            return None
+        opt_plan["rows"] = rows
+        irrigation_rows: List[Dict[str, object]] = []
+        fertilization_rows: List[Dict[str, object]] = []
+        for plot in rows:
+            for event in plot.get("irrigation_schedule", []) or []:
+                if not _within_horizon(event, config, crop_params):
+                    continue
+                irrigation_rows.append({
+                    "apply": True,
+                    "plot_id": plot.get("id", ""),
+                    "plot_name": plot.get("name", plot.get("id", "")),
+                    "date": _parse_date(event.get("date")) or event.get("date"),
+                    "amount_mm": round(_safe_float(event.get("amount")), 2),
+                    "reason": str(event.get("reason") or event.get("feasibility_note") or "Stress Mitigation"),
+                })
+            for event in plot.get("fertilization_schedule", []) or []:
+                if not _within_horizon(event, config, crop_params):
+                    continue
+                fertilization_rows.append({
+                    "apply": True,
+                    "plot_id": plot.get("id", ""),
+                    "plot_name": plot.get("name", plot.get("id", "")),
+                    "date": _parse_date(event.get("date")) or event.get("date"),
+                    "product": str(event.get("product") or ""),
+                    "amount_kg_ha": round(_safe_float(event.get("amount")), 2),
+                    "rationale": str(event.get("rationale") or "Nutrient stress mitigation"),
+                })
+        return {
+            "mode": "cooperative",
+            "opt_plan": opt_plan,
+            "irrigation": pd.DataFrame(irrigation_rows, columns=IRRIGATION_COLUMNS) if irrigation_rows else _empty_irrigation_df(),
+            "fertilization": pd.DataFrame(fertilization_rows, columns=FERTILIZATION_COLUMNS) if fertilization_rows else _empty_fertilization_df(),
+            "source": "recommendations",
+        }
+
+    opt_irrigation = plan.get("opt_irr_schedule", []) or []
+    opt_fertilization = plan.get("opt_fert_schedule", []) or []
+    if not opt_irrigation and not opt_fertilization:
+        return None
+    irrigation_rows = []
+    for event in opt_irrigation:
+        if _within_horizon(event, config, crop_params):
+            irrigation_rows.append({
+                "apply": True,
+                "plot_id": "single",
+                "plot_name": config.get("field_name", "Field"),
+                "date": _parse_date(event.get("date")) or event.get("date"),
+                "amount_mm": round(_safe_float(event.get("amount")), 2),
+                "reason": str(event.get("reason") or event.get("feasibility_note") or "Stress Mitigation"),
+            })
+    fertilization_rows = []
+    for event in opt_fertilization:
+        if _within_horizon(event, config, crop_params):
+            fertilization_rows.append({
+                "apply": True,
+                "plot_id": "single",
+                "plot_name": config.get("field_name", "Field"),
+                "date": _parse_date(event.get("date")) or event.get("date"),
+                "product": str(event.get("product") or ""),
+                "amount_kg_ha": round(_safe_float(event.get("amount")), 2),
+                "rationale": str(event.get("rationale") or "Nutrient stress mitigation"),
+            })
+    return {
+        "mode": "single",
+        "opt_plan": None,
+        "irrigation": pd.DataFrame(irrigation_rows, columns=IRRIGATION_COLUMNS) if irrigation_rows else _empty_irrigation_df(),
+        "fertilization": pd.DataFrame(fertilization_rows, columns=FERTILIZATION_COLUMNS) if fertilization_rows else _empty_fertilization_df(),
+        "source": "recommendations",
+    }
+
+
+def _matching_recommendation_plan(config: Dict[str, object], result: Dict[str, object], max_plots: int) -> Dict[str, object] | None:
+    """Return the cached recommendation plan only when it is safe to reuse."""
+    plan = st.session_state.get("recommendation_plan")
+    signature = st.session_state.get("recommendation_plan_signature") or {}
+    if not plan or not signature:
+        return None
+    economics_signature = json.dumps(config.get("economics_config", {}), sort_keys=True, default=str)
+    expected = {
+        "mode": result.get("mode", "single"),
+        "crop": config.get("selected_crop_id"),
+        "disease": config.get("selected_disease_id"),
+        "spot_count": len(config.get("disease_spots", []) or []),
+        "planting_date": str(config.get("planting_date")),
+        "horizon": int((config.get("economics_config", {}) or {}).get("economic_horizon_years", config.get("economic_horizon_years", 1)) or 1),
+        "economics": economics_signature,
+    }
+    for key, value in expected.items():
+        if signature.get(key) != value:
+            return None
+    if result.get("mode") == "cooperative" and int(signature.get("max_plots", 0) or 0) < int(max_plots):
+        return None
+    return plan
+
+
 def _optimal_inputs(config: Dict[str, object], result: Dict[str, object], max_plots: int = 60) -> Dict[str, object]:
     """Build editable starting calendars from the current optimized management."""
     crop_params = result.get("crop_params", {}) or {}
@@ -311,6 +421,32 @@ def _summary_row(label: str, run_result: Dict[str, object], config: Dict[str, ob
     return row
 
 
+def _attach_economic_optimum(no_action: Dict[str, object], agronomic: Dict[str, object], what_if: Dict[str, object]) -> Tuple[List[Dict[str, object]], str]:
+    """Insert a true economic optimum row into the what-if comparison.
+
+    The edited scenario is itself a candidate. If the user-edited plan is better
+    than the previously generated agronomic plan, the economic optimum row is
+    promoted to that edited result. This keeps the decision table mathematically
+    coherent: a what-if can match the recalculated economic optimum, but cannot
+    exceed it under the same price, cost and yield assumptions.
+    """
+    candidates = [dict(no_action), dict(agronomic), dict(what_if)]
+    economic_source = max(candidates, key=lambda row: (_safe_float(row.get("net_return"), 0.0), -_safe_float(row.get("cost"), 0.0)))
+    economic = dict(economic_source)
+    economic["scenario"] = "Economic optimum"
+    economic["economic_source"] = str(economic_source.get("scenario", ""))
+    baseline_net = _safe_float(no_action.get("net_return"), 0.0)
+    economic["net_delta"] = _safe_float(economic.get("net_return"), 0.0) - baseline_net
+
+    ordered = [dict(no_action), dict(agronomic), economic, dict(what_if)]
+    economic_net = _safe_float(economic.get("net_return"), 0.0)
+    source_label = str(economic_source.get("scenario", ""))
+    for row in ordered:
+        row["net_delta_economic"] = _safe_float(row.get("net_return"), 0.0) - economic_net
+        row["economic_source"] = source_label
+    return ordered, source_label
+
+
 def _display_summary(summary: List[Dict[str, object]], currency: str) -> pd.DataFrame:
     rows = []
     for row in summary:
@@ -322,6 +458,7 @@ def _display_summary(summary: List[Dict[str, object]], currency: str) -> pd.Data
             tr("Cost"): _money(row["cost"], currency),
             tr("Net return"): _money(row["net_return"], currency),
             tr("Net gain vs no action"): _money(row["net_delta"], currency),
+            tr("Net difference vs economic optimum"): _money(row.get("net_delta_economic", 0.0), currency),
             tr("Final disease incidence"): f"{row['final_incidence'] * 100:.1f}%",
         })
     df = pd.DataFrame(rows)
@@ -330,7 +467,7 @@ def _display_summary(summary: List[Dict[str, object]], currency: str) -> pd.Data
 
 
 def _run_single_scenario(config: Dict[str, object], result: Dict[str, object], irrigation_events, fertilization_events, disease_control: bool) -> Dict[str, object]:
-    """Run no-action, optimized and user-edited scenarios for one field."""
+    """Run no-action, agronomic optimum, economic optimum and user scenario."""
     engine = SimulationEngine()
     optimal_inputs = st.session_state.get("what_if_optimal_inputs", {})
     optimal_irrigation = _clean_irrigation_events(optimal_inputs.get("irrigation", _empty_irrigation_df()))
@@ -348,10 +485,11 @@ def _run_single_scenario(config: Dict[str, object], result: Dict[str, object], i
 
     no_action = _summary_row("No action", no_action_run, no_action_cfg, 0.0)
     optimal_cost = _scenario_cost(optimal_cfg, optimal_run, optimal_irrigation, optimal_fertilization, True)
-    optimal = _summary_row("Optimized management", optimal_run, optimal_cfg, optimal_cost, no_action["net_return"])
+    agronomic = _summary_row("Agronomic optimum", optimal_run, optimal_cfg, optimal_cost, no_action["net_return"])
     edited_cost = _scenario_cost(edited_cfg, edited_run, irrigation_events, fertilization_events, disease_control)
-    edited = _summary_row("Edited what-if scenario", edited_run, edited_cfg, edited_cost, no_action["net_return"])
-    return {"summary": [no_action, optimal, edited], "scenario_config": edited_cfg, "mode": "single"}
+    edited = _summary_row("What-if scenario", edited_run, edited_cfg, edited_cost, no_action["net_return"])
+    summary, economic_source = _attach_economic_optimum(no_action, agronomic, edited)
+    return {"summary": summary, "economic_source": economic_source, "scenario_config": edited_cfg, "mode": "single"}
 
 
 def _baseline_cooperative_production(result: Dict[str, object], config: Dict[str, object], coop_engine: CooperativeSimulationEngine) -> float:
@@ -449,10 +587,11 @@ def _run_cooperative_scenario(config: Dict[str, object], result: Dict[str, objec
     optimal_total = baseline_total - baseline_selected + optimal_selected
     scenario_total = baseline_total - baseline_selected + scenario_selected
     no_action = _cooperative_summary_row("No action", baseline_total, total_area, economics, 0.0, baseline_incidence)
-    optimal = _cooperative_summary_row("Optimized management", optimal_total, total_area, economics, optimal_cost, baseline_incidence, no_action["net_return"])
+    agronomic = _cooperative_summary_row("Agronomic optimum", optimal_total, total_area, economics, optimal_cost, baseline_incidence, no_action["net_return"])
     scenario_incidence = scenario_incidence_weighted / max(0.01, selected_area) if selected_area else baseline_incidence
-    edited = _cooperative_summary_row("Edited what-if scenario", scenario_total, total_area, economics, scenario_cost, scenario_incidence, no_action["net_return"])
-    return {"summary": [no_action, optimal, edited], "mode": "cooperative", "scope_note": opt_plan.get("scope_note", "")}
+    edited = _cooperative_summary_row("What-if scenario", scenario_total, total_area, economics, scenario_cost, scenario_incidence, no_action["net_return"])
+    summary, economic_source = _attach_economic_optimum(no_action, agronomic, edited)
+    return {"summary": summary, "economic_source": economic_source, "mode": "cooperative", "scope_note": opt_plan.get("scope_note", "")}
 
 
 def _safe_pdf_text(value) -> str:
@@ -482,7 +621,7 @@ def _scenario_pdf(summary: List[Dict[str, object]], irrigation_events, fertiliza
     pdf.set_font("Arial", "B", 14)
     pdf.cell(0, 9, _safe_pdf_text(tr("What-if scenario report")), ln=1)
     pdf.set_font("Arial", "", 10)
-    pdf.multi_cell(0, 6, _safe_pdf_text(tr("This report compares no action, optimized management and the edited scenario using the current deterministic digital twin.")))
+    pdf.multi_cell(0, 6, _safe_pdf_text(tr("This report compares no action, the agronomic optimum, the recalculated economic optimum and the edited what-if scenario using the current deterministic digital twin.")))
     pdf.ln(2)
     pdf.set_font("Arial", "B", 11)
     pdf.cell(0, 8, _safe_pdf_text(tr("Scenario outcomes")), ln=1)
@@ -492,6 +631,7 @@ def _scenario_pdf(summary: List[Dict[str, object]], irrigation_events, fertiliza
             f"{tr(row['scenario'])}: {row['production_t']:.2f} t | "
             f"{tr('Net return')}: {_money(row['net_return'], currency)} | "
             f"{tr('Net gain vs no action')}: {_money(row['net_delta'], currency)} | "
+            f"{tr('Net difference vs economic optimum')}: {_money(row.get('net_delta_economic', 0.0), currency)} | "
             f"{tr('Final disease incidence')}: {row['final_incidence'] * 100:.1f}%"
         )
         pdf.multi_cell(0, 5, _safe_pdf_text(line))
@@ -546,7 +686,7 @@ def _render_editors(optimal_inputs: Dict[str, object], economics: Dict[str, obje
 
 def app():
     st.title("🧪 " + tr("What-if scenarios"))
-    st.caption(tr("Edit optimized calendars and immediately compare yield and economic return against no action."))
+    st.caption(tr("Edit optimized calendars and compare yield, net return and the recalculated economic optimum."))
     if "sim_results" not in st.session_state:
         st.warning(tr("Run the dashboard simulation before opening scenario testing."))
         return
@@ -563,7 +703,7 @@ def app():
         horizon_years = st.number_input(tr("Economic analysis horizon (years)"), min_value=1, max_value=20, value=max(1, min(20, current_horizon)), step=1, key="what_if_economic_horizon_years")
     else:
         horizon_years = 1
-        st.caption(tr("Annual crop scenario horizon follows the simulated crop cycle."))
+        st.caption(tr("Annual crop scenario horizon is fixed automatically from planting date to expected harvest."))
     config["economics_config"]["economic_horizon_years"] = int(horizon_years)
     st.session_state["economic_horizon_years"] = int(horizon_years)
     st.session_state["economics_config"] = config["economics_config"]
@@ -576,14 +716,27 @@ def app():
         max_plots = 1
 
     signature = _schedule_signature(config, result, int(max_plots))
+    has_current_inputs = "what_if_optimal_inputs" in st.session_state and st.session_state.get("what_if_signature") == signature
+    if not has_current_inputs:
+        reusable_plan = _matching_recommendation_plan(config, result, int(max_plots))
+        if reusable_plan:
+            with st.spinner(tr("Reusing optimized calendars already prepared in Recommendations...")):
+                reused_inputs = _optimal_inputs_from_recommendation_plan(reusable_plan, config, result, int(max_plots))
+            if reused_inputs is not None:
+                st.session_state["what_if_optimal_inputs"] = reused_inputs
+                st.session_state["what_if_signature"] = signature
+                st.session_state.pop("what_if_last_result", None)
+                has_current_inputs = True
+                st.success(tr("Recommendation calendars reused for scenario editing."))
+
     prepare_clicked = st.button("🔄 " + tr("Generate optimized starting plan"), type="primary", use_container_width=True)
     if prepare_clicked:
         with st.spinner(tr("Preparing optimized calendars for scenario editing...")):
             st.session_state["what_if_optimal_inputs"] = _optimal_inputs(config, result, int(max_plots))
             st.session_state["what_if_signature"] = signature
             st.session_state.pop("what_if_last_result", None)
+            has_current_inputs = True
 
-    has_current_inputs = "what_if_optimal_inputs" in st.session_state and st.session_state.get("what_if_signature") == signature
     if not has_current_inputs:
         if "what_if_optimal_inputs" in st.session_state:
             st.warning(tr("Scenario settings changed. Generate the optimized starting plan again before editing."))
@@ -619,6 +772,10 @@ def app():
     if scenario:
         st.markdown("### " + tr("Scenario outcomes"))
         summary_df = _display_summary(scenario.get("summary", []), currency)
+        if scenario.get("economic_source") == "What-if scenario":
+            st.success(tr("The edited what-if scenario matches the recalculated economic optimum for this tested candidate set."))
+        else:
+            st.caption(tr("The economic optimum is recalculated from no action, the agronomic optimum and the edited scenario."))
         if scenario.get("scope_note"):
             st.caption(tr(str(scenario.get("scope_note"))))
         payload = {
@@ -626,6 +783,7 @@ def app():
             "irrigation_events": irrigation_events,
             "fertilization_events": fertilization_events,
             "disease_control": disease_control,
+            "economic_source": scenario.get("economic_source"),
         }
         st.download_button(
             "💾 " + tr("Download scenario JSON"),

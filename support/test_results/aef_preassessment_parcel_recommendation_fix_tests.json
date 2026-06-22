@@ -1,0 +1,10 @@
+{
+  "generated_at": "2026-06-22T00:00:00Z",
+  "target_root": "C:/Users/tankamch/AppData/Local/Temp/aef_corrected_1781125311822",
+  "scope": "Preassessment candidate parcel, recommendation paragraph, climate unit and date-format fixes",
+  "test_type": "Static structural, invariant and predicate-simulation checks; runtime Streamlit/Earth Engine not launched from sandbox.",
+  "total_checks": 117,
+  "passed": 117,
+  "failed": 0,
+  "failures": []
+}

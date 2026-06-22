@@ -269,7 +269,10 @@ def detect_candidate_parcels(
             idx = len(candidates) + 1
             shape_complexity = min(0.12, (len(trial) - 4) * 0.02)
             edge_penalty = 0.08 if area_ha < typical_area_ha * 0.45 else 0.0
-            conf = max(0.50, min(0.82, 0.66 + shape_complexity - edge_penalty))
+            # This fallback has no image evidence. Keep confidence deliberately
+            # modest so users do not confuse plausible geometry with observed
+            # field boundaries. Sentinel-2/FTW paths can score higher.
+            conf = max(0.38, min(0.62, 0.50 + shape_complexity - edge_penalty))
             accepted_xy.append(trial)
             total_area += area_ha
             candidates.append(ParcelCandidate(
