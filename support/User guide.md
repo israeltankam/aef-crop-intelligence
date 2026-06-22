@@ -155,17 +155,19 @@ Le mode Cooperative commence par le perimetre general, puis l'application detect
 3. Verifiez que le perimetre contient les parcelles a analyser.
 4. Lancez la detection automatique des parcelles.
 5. Attendez la fin du traitement. L'application tente d'abord une detection interne guidee par Sentinel-2 et WorldCover : elle analyse les pixels vegetes/cultivables dans le perimetre, segmente l'image et convertit les segments en polygones editables.
-6. Si Sentinel-2 est indisponible, trop nuageux, trop peu informatif ou si le perimetre est trop grand, l'application utilise un fallback geometrique. Ce fallback cree des parcelles candidates plausibles, mais il ne doit pas etre interprete comme une vraie detection de limites.
-7. Lisez la methode utilisee, la confiance moyenne et la precision estimee des limites. Une precision faible signifie que vous devez corriger les polygones avec attention et, lorsque l'integration sera activee, utiliser les limites FTW pre-calculees comme secours gratuit.
-8. Lisez la carte avec toutes les parcelles detectees.
-9. Supprimez une parcelle detectee par erreur.
-10. Redessinez une parcelle si son contour est mauvais.
-11. Ajoutez une parcelle manquante avec l'outil polygone.
-12. Donnez un nom simple a chaque parcelle, par exemple Producteur A - champ 1, Bloc Nord, Parcelle Moussa, Cacao 03.
-13. Verifiez que les noms sont comprehensibles pour l'equipe terrain.
-14. Enregistrez la configuration.
+6. Si Sentinel-2 est indisponible, trop nuageux, trop peu informatif ou si le perimetre est trop grand, l'application utilise un fallback geometrique. Ce fallback cree des parcelles candidates plausibles, irregulieres et non chevauchantes, avec une fine separation visible entre parcelles voisines au lieu de les coller dans un seul bloc artificiel.
+7. Sur la carte, les parcelles utilisent des couleurs contrastees inspirees de la lecture en quatre couleurs, plus un contour blanc. Cela aide a voir les frontieres fines meme quand la couverture vegetale semble continue.
+8. L'application affiche aussi la surface cultivee detectee, la surface non assignee/non cultivee et la fraction cultivee. Une grande surface non assignee n'est pas automatiquement une erreur : elle peut correspondre a des routes, drains, batiments, eau, jacheres ou espaces sans culture.
+9. Lisez la methode utilisee, la confiance moyenne et la precision estimee des limites. Une precision faible signifie que vous devez corriger les polygones avec attention et, lorsque l'integration sera activee, utiliser les limites FTW pre-calculees comme secours gratuit.
+10. Lisez la carte avec toutes les parcelles detectees.
+11. Supprimez une parcelle detectee par erreur.
+12. Redessinez une parcelle si son contour est mauvais.
+13. Ajoutez une parcelle manquante avec l'outil polygone.
+14. Donnez un nom simple a chaque parcelle, par exemple Producteur A - champ 1, Bloc Nord, Parcelle Moussa, Cacao 03.
+15. Verifiez que les noms sont comprehensibles pour l'equipe terrain.
+16. Enregistrez la configuration.
 
-Les parcelles detectees ne doivent pas se chevaucher. Si vous voyez un chevauchement, corrigez-le avant de continuer.
+Les parcelles detectees ne doivent pas se chevaucher. Elles ne sont pas obligees d'etre collees : une limite mince et lisible entre deux parcelles est normale et doit etre preservee. L'application ne cherche plus a remplir tout le perimetre ; les grands creux sont acceptes, mais vous devez verifier qu'ils ne correspondent pas a des parcelles oubliees. Si vous voyez un chevauchement, corrigez-le avant de continuer.
 
 ## 7. Nommer les parcelles en mode Cooperative
 
@@ -843,16 +845,18 @@ If satellite imagery becomes unavailable at high zoom, the map may switch to a m
 3. Check that the perimeter contains the plots to analyse.
 4. Run automatic plot detection.
 5. Wait for the processing to finish. The app first tries an internal Sentinel-2 and WorldCover guided detector: it analyses vegetated/cultivable pixels inside the perimeter, segments the image and converts segments into editable polygons.
-6. If Sentinel-2 is unavailable, too cloudy, not informative enough, or if the perimeter is too large, the app uses a geometric fallback. This fallback creates plausible parcel candidates, but it is not a true observed boundary detection.
-7. Read the detection method, mean confidence and estimated boundary precision. Low precision means you must edit the polygons carefully and, when enabled, use precomputed FTW boundaries as a free fallback.
-8. Review all detected plots on the map.
-9. Delete false plots.
-10. Redraw inaccurate plots.
-11. Add missing plots with the polygon tool.
-12. Give each plot a clear name.
-13. Save the configuration.
+6. If Sentinel-2 is unavailable, too cloudy, not informative enough, or if the perimeter is too large, the app uses a geometric fallback. This fallback creates plausible, irregular, non-overlapping parcel candidates and now keeps a thin visible separation between neighbouring candidates instead of packing them into one artificial block.
+7. On the map, plots use contrasting colours inspired by four-colour map reading, plus a white outline. This helps you see narrow field boundaries even when crop cover looks continuous.
+8. The app also shows detected cultivated area, unassigned/non-cultivated area and cultivated fraction. A large unassigned area is not automatically an error: it may be roads, drains, buildings, water, fallow land or spaces without crop cover.
+9. Read the detection method, mean confidence and estimated boundary precision. Low precision means you must edit the polygons carefully and, when enabled, use precomputed FTW boundaries as a free fallback.
+10. Review all detected plots on the map.
+11. Delete false plots.
+12. Redraw inaccurate plots.
+13. Add missing plots with the polygon tool.
+14. Give each plot a clear name.
+15. Save the configuration.
 
-Detected plots should not overlap. Correct any overlap before continuing.
+Detected plots should not overlap. They do not have to be glued together: a thin readable boundary between neighbouring plots is normal and should be preserved. The app no longer tries to fill the whole perimeter; large gaps are allowed, but you should check that they are not missed plots. Correct any overlap before continuing.
 
 ## 7. Name cooperative plots
 
@@ -1160,16 +1164,17 @@ For a first test:
 ## 26. Cooperative path
 
 1. Define cooperative perimeter.
-2. Detect plots.
-3. Correct plot boundaries.
-4. Name every plot.
-5. Check that plots do not overlap.
-6. Configure shared crop and variety.
-7. Adjust plot-level dates or nutrients when needed.
-8. Run cooperative dashboard.
-9. Identify highest-risk plots.
-10. Read consolidated recommendations.
-11. Export the final report.
+2. Enter the expected number of individual plots when the cooperative knows it; keep 0 only when it is unknown.
+3. Detect plots. AEF uses the expected count to tune Sentinel-2 segmentation and avoid returning a misleading excess of polygons.
+4. Correct plot boundaries.
+5. Name every plot.
+6. Check that plots do not overlap.
+7. Configure shared crop and variety.
+8. Adjust plot-level dates or nutrients when needed.
+9. Run cooperative dashboard.
+10. Identify highest-risk plots.
+11. Read consolidated recommendations.
+12. Export the final report.
 
 ## 27. Spinners and waiting messages
 
@@ -1217,3 +1222,8 @@ Les dates candidates de plantation sont affichées au format explicite **AAAA-MM
 In **Pre-planting assessment**, the **Optimize candidate parcel against satellite land cover** button now applies a stricter check before accepting an automatic boundary. If the best detected area still contains too much built-up cover, water, wetland, or unknown cover, AEF does not apply that polygon automatically. The app explains why the candidate was rejected and asks you to move the centre or draw the parcel manually on the satellite map.
 
 Planting date candidates use the explicit **YYYY-MM-DD** format. For example, `2026-07-15` means 15 July 2026. The result also ends with a **final recommendation paragraph**, summarizing the score, recommended date, main disease risk, soil-data quality and the checks to complete before investing.
+
+
+### Cooperative plot-count guidance 🤝
+
+When a cooperative already knows how many farmer plots are inside the perimeter, enter that number before automatic plot detection. AEF uses it as a strong but cautious prior: Sentinel-2 segmentation and the geometric fallback both target that non-overlapping count while still requiring map validation. If detected and expected counts differ, adjust the expected count or edit the polygons before continuing.

@@ -546,6 +546,8 @@ def render_cooperative_report(res_single):
             f"{tr('Cooperative name')}: {st.session_state.get('cooperative_name', '')}",
             f"{tr('Active plots')}: {res_single.get('parcel_count', len(parcels))}",
             f"{tr('Total active area')}: {res_single.get('total_area_ha', 0.0):.2f} ha",
+            f"{tr('Unassigned/non-cultivated area')}: {res_single.get('unassigned_area_ha', 0.0):.2f} ha",
+            f"{tr('Cultivated fraction')}: {float(res_single.get('cultivated_fraction', 0.0) or 0.0):.0%}",
             f"{tr('Average yield')}: {float(final.get('Yield', 0.0)):.2f} t/ha",
             f"{tr('Total cooperative production')}: {float(final.get('Total_Production', 0.0)):.1f} t",
             f"{tr('Disease incidence')}: {float(final.get('Incidence', 0.0))*100:.1f}%",

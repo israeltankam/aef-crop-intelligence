@@ -28,22 +28,25 @@ The phenological and physical model is unchanged.
 
 Let d_ij be the distance between plot centroids. Connectivity from plot j to plot i is:
 
-$$
-K_{ij}=expleft(-rac{d_{ij}}{ell}ight), quad K_{ii}=0
-$$
+$
+K_{ij}=\exp\left(-\frac{d_{ij}}{\ell}\right), \quad K_{ii}=0
+$
 
-where ell is the cooperative dispersal scale. Rows are normalized so that a plot receives a bounded weighted pressure from other plots.
+where ell is the cooperative dispersal scale. Rows are not normalized: absolute distance must remain meaningful, so two plots separated by a wide non-cultivated gap exert less pressure on each other than adjacent plots.
 
 ## External Infection Pressure
 
-With plot area A_j, total active area A, insect/vector pressure V, and coupling coefficient beta_c:
+With plot area A_j, total active cultivated area A, insect/vector pressure V, cooperative cultivated fraction F_c, landscape gap factor G, and coupling coefficient beta_c:
 
-$$
-P_i^{meta}(t)=eta_c max(V,0.25) sum_{j 
-e i} K_{ij},I_j(t)rac{A_j}{A}
-$$
+$
+G=\operatorname{clip}(0.25+0.75F_c,0.25,1.0)
+$
 
-This keeps pressure higher when nearby infected plots are larger or more infectious.
+$
+P_i^{meta}(t)=\beta_c\max(V,0.25)G\sum_{j \ne i} K_{ij}I_j(t)\frac{A_j}{A}
+$
+
+This keeps pressure higher when nearby infected plots are larger or more infectious, while wide non-cultivated gaps reduce coupling through both distance and the landscape gap factor G.
 
 ## Coupled Incidence
 
@@ -94,6 +97,6 @@ $$
 
 ## Pilot Validation Needs
 
-- Estimate ell and beta_c by crop, disease type, vector presence and landscape connectivity.
+- Estimate ell, beta_c and the cultivated-fraction/gap factor by crop, disease type, vector presence and landscape connectivity.
 - Compare modelled high-risk plots with field scouting observations.
 - Separate vector-borne, rain-splash, soil-reservoir and windborne diseases with disease-specific coupling priors.

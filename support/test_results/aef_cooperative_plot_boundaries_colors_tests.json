@@ -1,0 +1,510 @@
+{
+  "suite": "aef_cooperative_plot_boundaries_colors",
+  "timestamp": "2026-06-22T16:32:57.615Z",
+  "total": 100,
+  "passed": 100,
+  "failed": 0,
+  "notes": "Static and geometry micro-tests for cooperative parcel separation, visual coloring, FTW fallback preservation, and guide updates. Python/Streamlit execution unavailable in this sandbox.",
+  "tests": [
+    {
+      "name": "fallback has minimum gap helper",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "fallback uses too-close helper in acceptance loop",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "fallback no longer uses raw overlap-only acceptance",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "fallback boundary gap is size-scaled",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "fallback coverage cap leaves internal paths/gaps",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "fallback notes mention visible boundary gap",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "no new heavy geometry dependency in detector",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "FTW fallback still referenced in setup metadata",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "Sentinel FTW recommendation still confidence-gated",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "cooperative map has four-colour palette",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "cooperative map has bbox adjacency helper",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "cooperative map has plot colour map helper",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "map renders white under-stroke",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "map renders coloured fill_color",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "selected parcel remains highlighted",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "color fallback is deterministic and not Python randomized hash",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "inactive parcels skipped before drawing",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "invalid polygons skipped on map",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "labels still displayed",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "French guide mentions thin separation",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "French guide mentions four-colour display",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "French guide mentions FTW fallback",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "English guide mentions thin visible separation",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "English guide mentions four-colour map reading",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "English guide mentions FTW fallback",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "HTML guide mentions white outline in French",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "HTML guide mentions white outline in English",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "pages/main/setup_page.py parentheses balanced",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "pages/main/setup_page.py brackets balanced",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "pages/main/setup_page.py braces balanced",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "pages/main/setup_page.py no tab indentation introduced",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "pages/main/setup_page.py no unresolved merge markers",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "src/models/cooperative_parcel_detector.py parentheses balanced",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "src/models/cooperative_parcel_detector.py brackets balanced",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "src/models/cooperative_parcel_detector.py braces balanced",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "src/models/cooperative_parcel_detector.py no tab indentation introduced",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "src/models/cooperative_parcel_detector.py no unresolved merge markers",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "geometry rejects actual overlap",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "geometry rejects touching polygons",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "geometry rejects gap below threshold",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "geometry accepts gap above threshold",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "geometry accepts far polygons quickly",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "geometry handles zero gap as overlap-only",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "geometry scenario gap 1 distance 0",
+      "pass": true,
+      "detail": "expected tooClose=true"
+    },
+    {
+      "name": "geometry scenario gap 1 distance 1",
+      "pass": true,
+      "detail": "expected tooClose=false"
+    },
+    {
+      "name": "geometry scenario gap 1 distance 2",
+      "pass": true,
+      "detail": "expected tooClose=false"
+    },
+    {
+      "name": "geometry scenario gap 1 distance 3",
+      "pass": true,
+      "detail": "expected tooClose=false"
+    },
+    {
+      "name": "geometry scenario gap 1 distance 4",
+      "pass": true,
+      "detail": "expected tooClose=false"
+    },
+    {
+      "name": "geometry scenario gap 1 distance 5",
+      "pass": true,
+      "detail": "expected tooClose=false"
+    },
+    {
+      "name": "geometry scenario gap 1 distance 6",
+      "pass": true,
+      "detail": "expected tooClose=false"
+    },
+    {
+      "name": "geometry scenario gap 1 distance 7",
+      "pass": true,
+      "detail": "expected tooClose=false"
+    },
+    {
+      "name": "geometry scenario gap 1 distance 8",
+      "pass": true,
+      "detail": "expected tooClose=false"
+    },
+    {
+      "name": "geometry scenario gap 1 distance 9",
+      "pass": true,
+      "detail": "expected tooClose=false"
+    },
+    {
+      "name": "geometry scenario gap 2 distance 0",
+      "pass": true,
+      "detail": "expected tooClose=true"
+    },
+    {
+      "name": "geometry scenario gap 2 distance 1",
+      "pass": true,
+      "detail": "expected tooClose=true"
+    },
+    {
+      "name": "geometry scenario gap 2 distance 2",
+      "pass": true,
+      "detail": "expected tooClose=false"
+    },
+    {
+      "name": "geometry scenario gap 2 distance 3",
+      "pass": true,
+      "detail": "expected tooClose=false"
+    },
+    {
+      "name": "geometry scenario gap 2 distance 4",
+      "pass": true,
+      "detail": "expected tooClose=false"
+    },
+    {
+      "name": "geometry scenario gap 2 distance 5",
+      "pass": true,
+      "detail": "expected tooClose=false"
+    },
+    {
+      "name": "geometry scenario gap 2 distance 6",
+      "pass": true,
+      "detail": "expected tooClose=false"
+    },
+    {
+      "name": "geometry scenario gap 2 distance 7",
+      "pass": true,
+      "detail": "expected tooClose=false"
+    },
+    {
+      "name": "geometry scenario gap 2 distance 8",
+      "pass": true,
+      "detail": "expected tooClose=false"
+    },
+    {
+      "name": "geometry scenario gap 2 distance 9",
+      "pass": true,
+      "detail": "expected tooClose=false"
+    },
+    {
+      "name": "geometry scenario gap 3 distance 0",
+      "pass": true,
+      "detail": "expected tooClose=true"
+    },
+    {
+      "name": "geometry scenario gap 3 distance 1",
+      "pass": true,
+      "detail": "expected tooClose=true"
+    },
+    {
+      "name": "geometry scenario gap 3 distance 2",
+      "pass": true,
+      "detail": "expected tooClose=true"
+    },
+    {
+      "name": "geometry scenario gap 3 distance 3",
+      "pass": true,
+      "detail": "expected tooClose=false"
+    },
+    {
+      "name": "geometry scenario gap 3 distance 4",
+      "pass": true,
+      "detail": "expected tooClose=false"
+    },
+    {
+      "name": "geometry scenario gap 3 distance 5",
+      "pass": true,
+      "detail": "expected tooClose=false"
+    },
+    {
+      "name": "geometry scenario gap 3 distance 6",
+      "pass": true,
+      "detail": "expected tooClose=false"
+    },
+    {
+      "name": "geometry scenario gap 3 distance 7",
+      "pass": true,
+      "detail": "expected tooClose=false"
+    },
+    {
+      "name": "geometry scenario gap 3 distance 8",
+      "pass": true,
+      "detail": "expected tooClose=false"
+    },
+    {
+      "name": "geometry scenario gap 3 distance 9",
+      "pass": true,
+      "detail": "expected tooClose=false"
+    },
+    {
+      "name": "geometry scenario gap 4 distance 0",
+      "pass": true,
+      "detail": "expected tooClose=true"
+    },
+    {
+      "name": "geometry scenario gap 4 distance 1",
+      "pass": true,
+      "detail": "expected tooClose=true"
+    },
+    {
+      "name": "geometry scenario gap 4 distance 2",
+      "pass": true,
+      "detail": "expected tooClose=true"
+    },
+    {
+      "name": "geometry scenario gap 4 distance 3",
+      "pass": true,
+      "detail": "expected tooClose=true"
+    },
+    {
+      "name": "geometry scenario gap 4 distance 4",
+      "pass": true,
+      "detail": "expected tooClose=false"
+    },
+    {
+      "name": "geometry scenario gap 4 distance 5",
+      "pass": true,
+      "detail": "expected tooClose=false"
+    },
+    {
+      "name": "geometry scenario gap 4 distance 6",
+      "pass": true,
+      "detail": "expected tooClose=false"
+    },
+    {
+      "name": "geometry scenario gap 4 distance 7",
+      "pass": true,
+      "detail": "expected tooClose=false"
+    },
+    {
+      "name": "geometry scenario gap 4 distance 8",
+      "pass": true,
+      "detail": "expected tooClose=false"
+    },
+    {
+      "name": "geometry scenario gap 4 distance 9",
+      "pass": true,
+      "detail": "expected tooClose=false"
+    },
+    {
+      "name": "geometry scenario gap 5 distance 0",
+      "pass": true,
+      "detail": "expected tooClose=true"
+    },
+    {
+      "name": "geometry scenario gap 5 distance 1",
+      "pass": true,
+      "detail": "expected tooClose=true"
+    },
+    {
+      "name": "geometry scenario gap 5 distance 2",
+      "pass": true,
+      "detail": "expected tooClose=true"
+    },
+    {
+      "name": "geometry scenario gap 5 distance 3",
+      "pass": true,
+      "detail": "expected tooClose=true"
+    },
+    {
+      "name": "geometry scenario gap 5 distance 4",
+      "pass": true,
+      "detail": "expected tooClose=true"
+    },
+    {
+      "name": "geometry scenario gap 5 distance 5",
+      "pass": true,
+      "detail": "expected tooClose=false"
+    },
+    {
+      "name": "geometry scenario gap 5 distance 6",
+      "pass": true,
+      "detail": "expected tooClose=false"
+    },
+    {
+      "name": "geometry scenario gap 5 distance 7",
+      "pass": true,
+      "detail": "expected tooClose=false"
+    },
+    {
+      "name": "geometry scenario gap 5 distance 8",
+      "pass": true,
+      "detail": "expected tooClose=false"
+    },
+    {
+      "name": "geometry scenario gap 5 distance 9",
+      "pass": true,
+      "detail": "expected tooClose=false"
+    },
+    {
+      "name": "geometry scenario gap 6 distance 0",
+      "pass": true,
+      "detail": "expected tooClose=true"
+    },
+    {
+      "name": "geometry scenario gap 6 distance 1",
+      "pass": true,
+      "detail": "expected tooClose=true"
+    },
+    {
+      "name": "geometry scenario gap 6 distance 2",
+      "pass": true,
+      "detail": "expected tooClose=true"
+    },
+    {
+      "name": "geometry scenario gap 6 distance 3",
+      "pass": true,
+      "detail": "expected tooClose=true"
+    },
+    {
+      "name": "geometry scenario gap 6 distance 4",
+      "pass": true,
+      "detail": "expected tooClose=true"
+    },
+    {
+      "name": "geometry scenario gap 6 distance 5",
+      "pass": true,
+      "detail": "expected tooClose=true"
+    },
+    {
+      "name": "geometry scenario gap 6 distance 6",
+      "pass": true,
+      "detail": "expected tooClose=false"
+    }
+  ]
+}

@@ -166,8 +166,9 @@ def render_cooperative_dashboard(res):
     c1, c2, c3, c4 = st.columns(4)
     c1.metric(tr('Active plots'), res.get('parcel_count', len(parcels)))
     c2.metric(tr('Total active area'), f"{res.get('total_area_ha', 0.0):.2f} ha")
-    c3.metric(tr('Average yield'), f"{row.get('Yield', 0.0):.2f} t/ha")
+    c3.metric(tr('Unassigned/non-cultivated area'), f"{res.get('unassigned_area_ha', 0.0):.2f} ha")
     c4.metric(tr('Total cooperative production'), f"{row.get('Total_Production', 0.0):.1f} t")
+    st.caption(f"{tr('Cultivated fraction')}: {float(res.get('cultivated_fraction', 0.0) or 0.0):.0%} | {tr('Average yield')}: {row.get('Yield', 0.0):.2f} t/ha")
     st.caption(tr('The cooperative mode treats each plot as a local patch and links plots through distance-weighted infection pressure.'))
     config_snapshot = {k: st.session_state[k] for k in StateManager.DEFAULTS.keys() if k in st.session_state}
     for card in model_validity_impact_cards(res.get('growth_model'), res.get('disease_model'), bool(st.session_state.get('satellite_anomaly_date'))):

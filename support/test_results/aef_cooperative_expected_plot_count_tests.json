@@ -1,0 +1,508 @@
+{
+  "date": "2026-06-22",
+  "total": 100,
+  "passed": 100,
+  "failed": 0,
+  "tests": [
+    {
+      "name": "state default has cooperative_expected_plot_count",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "state save exports expected count",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "state load imports expected count",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "setup function accepts expected count",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "setup clamps expected count",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "setup detector max uses expected",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "setup passes expected to sentinel",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "setup passes expected to fallback",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "setup UI has expected number input",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "setup UI saves expected count",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "setup spinner has expected count message",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "setup displays expected plots",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "setup displays detected plots",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "setup displays difference",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "setup warns count mismatch",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "setup retains old unknown behavior path",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "fallback signature accepts expected",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "fallback seed includes expected",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "fallback uses count-based area",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "fallback blends typical and expected area",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "fallback hard limit uses expected",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "fallback loop stops at hard limit",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "fallback non-overlap check preserved",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "fallback still validates inside perimeter",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "fallback comments explain strong prior",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "sentinel signature accepts expected",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "sentinel helper exists",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "sentinel helper uses 92 coverage",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "sentinel max parcels clamps to expected",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "sentinel computes effective area",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "sentinel seed spacing effective",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "sentinel min area effective",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "sentinel max area effective",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "sentinel fetch limit higher when expected",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "sentinel selection key exists",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "sentinel area closeness penalty",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "sentinel selected sorted by key",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "sentinel ids reset after selection",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "sentinel metadata expected count",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "sentinel metadata delta",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "sentinel metadata effective area",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "i18n expected number fr",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "i18n helper fr",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "i18n spinner fr",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "i18n expected plots fr",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "i18n detected plots fr",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "i18n difference fr",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "i18n mismatch warning fr",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "guide md mentions expected count",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "guide md mentions Sentinel-2 segmentation",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "guide md mentions geometric fallback",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "guide html mentions expected count",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "guide html has new heading",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "log created",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "log scientific caution",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "requirements unchanged no new dependency needed",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "expected count appears in setup multiple times",
+      "ok": true,
+      "detail": "24"
+    },
+    {
+      "name": "expected count appears in sentinel multiple times",
+      "ok": true,
+      "detail": "15"
+    },
+    {
+      "name": "expected count appears in fallback multiple times",
+      "ok": true,
+      "detail": "9"
+    },
+    {
+      "name": "JSON field name appears in state at least three times",
+      "ok": true,
+      "detail": "5"
+    },
+    {
+      "name": "no typo cooperative_expected_plots_count",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "no typo expected_plot_counts",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "setup does not remove target area input",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "setup does not remove DMS coordinate workflow",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "setup does not remove generate perimeter",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "setup does not remove manual plot add",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "setup does not remove replace plot",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "setup clear still removes metadata",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "sentinel still uses WorldCover",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "sentinel still uses S2 SR Harmonized",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "sentinel still returns validation required",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "fallback still returns validation required",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "fallback still produces irregular vertices",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "fallback still sorts candidates",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "fallback area target uses effective area",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "fallback min area uses effective area",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "setup success message preserved",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "setup metadata stores expected after final parcels",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "setup metadata stores delta after final parcels",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "sentinel no raw raster download introduced",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "fallback no external dependency introduced",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "setup no external dependency introduced",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "i18n no untranslated expected key in fr block? key present",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "warning threshold uses 10 percent",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "expected input max is 1500",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "expected input allows unknown zero",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "fallback expected zero preserves max_parcels",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "sentinel expected zero preserves typical area helper",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "state load location near target area",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "guide update did not delete cooperative path",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "guide update did not delete cautious use",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "html update did not delete cooperative path",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "log lists backup",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "log lists UI feedback",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "setup balanced delimiters rough check",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "sentinel balanced delimiters rough check",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "fallback balanced delimiters rough check",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "state balanced delimiters rough check",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "i18n balanced delimiters rough check",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "guide html contains body close",
+      "ok": true,
+      "detail": ""
+    }
+  ]
+}

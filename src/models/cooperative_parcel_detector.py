@@ -8,7 +8,9 @@ framed as boundary or instance segmentation.  A full trained regional model is
 outside this app's lightweight runtime today, so this module deliberately returns
 editable *candidate parcels*.  The generator is deterministic, non-overlapping,
 more precise than the first grid pass, and produces irregular polygons rather
-than equal rectangles.  Human validation on the satellite map remains mandatory.
+than equal rectangles.  When a cooperative knows the expected number of plots,
+that count becomes a strong geometric prior for the target parcel size and
+stopping rule.  Human validation on the satellite map remains mandatory.
 """
 from __future__ import annotations
 
@@ -148,8 +150,70 @@ def _polygons_overlap_xy(a: Sequence[PointXY], b: Sequence[PointXY]) -> bool:
     return _point_in_poly_xy(a[0], b) or _point_in_poly_xy(b[0], a)
 
 
-def _seed_from_perimeter(perimeter: Sequence[LatLon], typical_area_ha: float) -> int:
-    raw = repr([(round(a, 6), round(b, 6)) for a, b in perimeter]) + "|{:.3f}".format(typical_area_ha)
+def _point_segment_distance_m(p: PointXY, a: PointXY, b: PointXY) -> float:
+    """Distance in metres from a point to a segment in local XY coordinates.
+
+    The fallback detector already works in metres.  Keeping this helper local
+    avoids adding heavy geometry dependencies while still letting us enforce the
+    narrow uncultivated boundary strips that usually separate smallholder plots.
+    """
+    ax, ay = a
+    bx, by = b
+    px, py = p
+    dx = bx - ax
+    dy = by - ay
+    length_sq = dx * dx + dy * dy
+    if length_sq <= 1e-12:
+        return math.hypot(px - ax, py - ay)
+    t = max(0.0, min(1.0, ((px - ax) * dx + (py - ay) * dy) / length_sq))
+    proj_x = ax + t * dx
+    proj_y = ay + t * dy
+    return math.hypot(px - proj_x, py - proj_y)
+
+
+def _segment_distance_m(a1: PointXY, a2: PointXY, b1: PointXY, b2: PointXY) -> float:
+    """Shortest distance between two polygon edges in metres."""
+    if _segments_intersect(a1, a2, b1, b2):
+        return 0.0
+    return min(
+        _point_segment_distance_m(a1, b1, b2),
+        _point_segment_distance_m(a2, b1, b2),
+        _point_segment_distance_m(b1, a1, a2),
+        _point_segment_distance_m(b2, a1, a2),
+    )
+
+
+def _polygons_too_close_xy(a: Sequence[PointXY], b: Sequence[PointXY], min_gap_m: float) -> bool:
+    """Reject overlapping or unrealistically glued candidate plots.
+
+    Cooperative fields are often close, but they normally keep a thin visible
+    boundary: a footpath, a ridge, a drainage line, a crop-row discontinuity or
+    another management line.  The geometric fallback has no image evidence, so it
+    should leave that boundary visible instead of tessellating the perimeter into
+    packed artificial shapes.
+    """
+    if not a or not b:
+        return False
+    if _polygons_overlap_xy(a, b):
+        return True
+    if min_gap_m <= 0 or not _bbox_overlap(a, b, gap_m=min_gap_m):
+        return False
+    aa = list(a) + [a[0]]
+    bb = list(b) + [b[0]]
+    best = float("inf")
+    for i in range(len(aa) - 1):
+        for j in range(len(bb) - 1):
+            best = min(best, _segment_distance_m(aa[i], aa[i + 1], bb[j], bb[j + 1]))
+            if best < min_gap_m:
+                return True
+    return False
+
+
+def _seed_from_perimeter(perimeter: Sequence[LatLon], typical_area_ha: float, expected_parcel_count: int = 0) -> int:
+    raw = (
+        repr([(round(a, 6), round(b, 6)) for a, b in perimeter])
+        + "|{:.3f}|{}".format(typical_area_ha, int(expected_parcel_count or 0))
+    )
     return int(hashlib.sha256(raw.encode("utf-8")).hexdigest()[:12], 16)
 
 
@@ -186,13 +250,17 @@ def detect_candidate_parcels(
     max_parcels: int = 240,
     variability: float = 0.65,
     precision_passes: int = 2,
+    expected_parcel_count: int = 0,
 ) -> List[dict]:
     """Generate non-overlapping irregular parcel candidates inside a perimeter.
 
     Precision is increased by using a denser centroid search and multiple local
     shape attempts per centroid.  Runtime is allowed to grow roughly 2-4x compared
     with the earlier grid, which is acceptable because this runs only when the
-    user explicitly asks for automatic cooperative plot candidates.
+    user explicitly asks for automatic cooperative plot candidates.  An optional
+    expected parcel count is used as a strong prior for how many plots to seek,
+    but it no longer assumes the whole perimeter is cultivated.  Large uncultivated
+    gaps are allowed and are deliberately left unassigned.
     """
     pts = list(perimeter or [])
     if len(pts) < 3:
@@ -202,6 +270,7 @@ def detect_candidate_parcels(
 
     typical_area_ha = max(0.05, float(typical_area_ha or 1.5))
     max_parcels = max(1, int(max_parcels or 240))
+    expected_parcel_count = max(0, int(expected_parcel_count or 0))
     variability = min(0.95, max(0.10, float(variability)))
     precision_passes = max(1, min(4, int(precision_passes or 2)))
 
@@ -212,15 +281,38 @@ def detect_candidate_parcels(
     min_x, max_x = min(xs), max(xs)
     min_y, max_y = min(ys), max(ys)
     perimeter_area_ha = _polygon_area_m2(poly_xy) / 10_000.0
-    target_m2 = typical_area_ha * 10_000.0
+    effective_area_ha = typical_area_ha
+    hard_limit = max_parcels
+    expected_cultivated_area_ha = 0.0
+    if expected_parcel_count > 0:
+        # The expected count is a count prior, not a mandate to fill the whole
+        # cooperative perimeter.  Smallholder cooperatives can contain wide roads,
+        # drains, fallows, settlements and uncultivated gaps between real fields.
+        expected_cultivated_area_ha = expected_parcel_count * typical_area_ha
+        coverage_guess = expected_cultivated_area_ha / max(perimeter_area_ha, 1e-6)
+        if coverage_guess < 0.72:
+            effective_area_ha = typical_area_ha
+        else:
+            count_based_area_ha = max(0.03, (perimeter_area_ha * 0.86) / expected_parcel_count)
+            effective_area_ha = max(0.03, 0.40 * count_based_area_ha + 0.60 * typical_area_ha)
+        hard_limit = min(max_parcels, expected_parcel_count)
+    target_m2 = effective_area_ha * 10_000.0
     nominal_side = math.sqrt(target_m2)
-    rng = random.Random(_seed_from_perimeter(pts, typical_area_ha))
+    rng = random.Random(_seed_from_perimeter(pts, effective_area_ha, expected_parcel_count))
 
     candidates: List[ParcelCandidate] = []
     accepted_xy: List[List[PointXY]] = []
     step = nominal_side * (0.56 / precision_passes)
-    min_area_ha = max(0.03, typical_area_ha * 0.14)
-    max_total_area_ha = perimeter_area_ha * 0.96
+    min_area_ha = max(0.02, effective_area_ha * 0.12)
+    # Leave a narrow but explicit boundary between fallback polygons.  The value
+    # scales with plot size but is capped so smallholder parcels are not erased
+    # by the constraint.  Sentinel/FTW image-guided boundaries can still be more
+    # adjacent because they come from observed imagery rather than synthetic fill.
+    boundary_gap_m = max(1.5, min(7.5, nominal_side * 0.045))
+    if expected_parcel_count > 0 and expected_cultivated_area_ha > 0:
+        max_total_area_ha = min(perimeter_area_ha * 0.86, expected_cultivated_area_ha * 1.55)
+    else:
+        max_total_area_ha = min(perimeter_area_ha * 0.78, hard_limit * effective_area_ha * 1.65)
 
     # Build a dense, deterministic cloud of potential centroids.  Sorting by a
     # random key gives organic placement without changing between clicks.
@@ -240,7 +332,7 @@ def detect_candidate_parcels(
 
     total_area = 0.0
     for cx, cy in centers:
-        if len(candidates) >= max_parcels or total_area >= max_total_area_ha:
+        if len(candidates) >= hard_limit or total_area >= max_total_area_ha:
             break
         # More attempts per centroid substantially improves coverage around
         # irregular perimeter edges and reduces accidental gaps.
@@ -259,7 +351,7 @@ def detect_candidate_parcels(
                     continue
                 if not _inside_perimeter(trial, poly_xy):
                     continue
-                if any(_polygons_overlap_xy(trial, prev) for prev in accepted_xy):
+                if any(_polygons_too_close_xy(trial, prev, boundary_gap_m) for prev in accepted_xy):
                     continue
                 accepted = (trial, area_ha)
                 break
@@ -268,11 +360,14 @@ def detect_candidate_parcels(
             trial, area_ha = accepted
             idx = len(candidates) + 1
             shape_complexity = min(0.12, (len(trial) - 4) * 0.02)
-            edge_penalty = 0.08 if area_ha < typical_area_ha * 0.45 else 0.0
+            edge_penalty = 0.08 if area_ha < effective_area_ha * 0.45 else 0.0
+            sparse_bonus = 0.03 if expected_parcel_count and expected_cultivated_area_ha and expected_cultivated_area_ha < perimeter_area_ha * 0.65 else 0.0
             # This fallback has no image evidence. Keep confidence deliberately
             # modest so users do not confuse plausible geometry with observed
-            # field boundaries. Sentinel-2/FTW paths can score higher.
-            conf = max(0.38, min(0.62, 0.50 + shape_complexity - edge_penalty))
+            # field boundaries. Sentinel-2/FTW paths can score higher.  Sparse
+            # perimeter handling earns a tiny bonus only because it avoids the
+            # known bias of filling non-cultivated gaps.
+            conf = max(0.38, min(0.62, 0.50 + shape_complexity + sparse_bonus - edge_penalty))
             accepted_xy.append(trial)
             total_area += area_ha
             candidates.append(ParcelCandidate(
@@ -284,7 +379,10 @@ def detect_candidate_parcels(
                 confidence=round(conf, 2),
                 source="non_overlapping_irregular_candidate_detector",
                 requires_validation=True,
-                notes="Non-overlapping irregular candidate generated inside perimeter; validate against the satellite map.",
+                notes=(
+                    "Non-overlapping irregular candidate generated inside perimeter with a visible boundary gap; "
+                    "validate against the satellite map."
+                ),
             ))
             break
 

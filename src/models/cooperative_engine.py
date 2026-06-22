@@ -164,7 +164,17 @@ class CooperativeSimulationEngine:
         centroids = [r['centroid'] for r in parcel_results]
         areas = np.array([max(0.01, r['area_ha']) for r in parcel_results], dtype=float)
         insect_pressure = float(config.get('insect_pressure', 1.0) or 1.0)
-        coupling_rate = float(config.get('cooperative_coupling_rate', 0.045)) * max(0.25, insect_pressure)
+        perimeter_area_ha = float(config.get('cooperative_perimeter_area_ha', 0.0) or 0.0)
+        cultivated_area_ha = float(config.get('cooperative_cultivated_area_ha', 0.0) or 0.0) or float(areas.sum())
+        cultivated_fraction = float(config.get('cooperative_cultivated_fraction', 0.0) or 0.0)
+        if cultivated_fraction <= 0.0 and perimeter_area_ha > 0:
+            cultivated_fraction = min(1.0, cultivated_area_ha / max(perimeter_area_ha, 1e-6))
+        # Large non-cultivated gaps lower the metapopulation coupling strength.
+        # We keep a floor because vectors, workers, tools, wind or water can still
+        # move inoculum across gaps, but the old row-normalized kernel erased the
+        # absolute distance effect entirely.
+        gap_factor = float(np.clip(0.25 + 0.75 * max(0.0, min(1.0, cultivated_fraction)), 0.25, 1.0))
+        coupling_rate = float(config.get('cooperative_coupling_rate', 0.045)) * max(0.25, insect_pressure) * gap_factor
         distance_scale_m = float(config.get('cooperative_dispersal_scale_m', 650.0))
 
         distances = np.zeros((len(parcel_results), len(parcel_results)), dtype=float)
@@ -174,9 +184,9 @@ class CooperativeSimulationEngine:
                     distances[i, j] = distance_m(ci, cj)
         kernel = np.exp(-distances / max(1.0, distance_scale_m))
         np.fill_diagonal(kernel, 0.0)
-        if kernel.max() > 0:
-            row_sums = np.maximum(kernel.sum(axis=1, keepdims=True), 1.0)
-            kernel = kernel / row_sums
+        # Do not row-normalize the kernel.  Absolute distance must matter: a plot
+        # separated by a wide non-cultivated gap should exert less pressure than
+        # a neighbouring plot, even if it is the only infected source.
 
         max_len = max(len(r['history']) for r in parcel_results)
         for t in range(max_len):
@@ -184,7 +194,8 @@ class CooperativeSimulationEngine:
                 float(r['history'][min(t, len(r['history']) - 1)].get('Incidence', 0.0))
                 for r in parcel_results
             ], dtype=float)
-            external = kernel.dot(incidence * areas / max(areas.sum(), 1e-6)) * coupling_rate
+            source_strength = incidence * areas / max(areas.sum(), 1e-6)
+            external = kernel.dot(source_strength) * coupling_rate
             for i, r in enumerate(parcel_results):
                 day = r['history'][min(t, len(r['history']) - 1)]
                 local_i = float(day.get('Incidence', 0.0))
@@ -192,6 +203,8 @@ class CooperativeSimulationEngine:
                 delta = max(0.0, meta_i - local_i)
                 day['Local_Incidence'] = local_i
                 day['Metapopulation_Pressure'] = float(external[i])
+                day['Metapopulation_Gap_Factor'] = gap_factor
+                day['Cooperative_Cultivated_Fraction'] = cultivated_fraction
                 day['Incidence'] = float(np.clip(meta_i, 0.0, 1.0))
                 # Conservative yield penalty from imported disease pressure.  The
                 # crop disease row controls detailed local losses; this only avoids
@@ -352,6 +365,8 @@ class CooperativeSimulationEngine:
                 'Incidence': wmean('Incidence'),
                 'Local_Incidence': wmean('Local_Incidence'),
                 'Metapopulation_Pressure': wmean('Metapopulation_Pressure'),
+                'Metapopulation_Gap_Factor': wmean('Metapopulation_Gap_Factor'),
+                'Cooperative_Cultivated_Fraction': wmean('Cooperative_Cultivated_Fraction'),
                 'Avg_Stress': wmean('Avg_Stress'),
                 'Avg_N_Stress': wmean('Avg_N_Stress'),
                 'Avg_P_Stress': wmean('Avg_P_Stress'),
@@ -360,12 +375,19 @@ class CooperativeSimulationEngine:
                 'Biomass': wmean('Biomass'),
             })
 
+        perimeter_area_ha = float(config.get('cooperative_perimeter_area_ha', 0.0) or 0.0)
+        cultivated_fraction = min(1.0, total_area / max(perimeter_area_ha, 1e-6)) if perimeter_area_ha > 0 else 0.0
+        unassigned_area_ha = max(0.0, perimeter_area_ha - total_area) if perimeter_area_ha > 0 else 0.0
+
         return {
             'mode': 'cooperative',
             'history': aggregate_history,
             'parcel_results': parcel_results,
             'parcel_count': len(parcel_results),
             'total_area_ha': total_area,
+            'perimeter_area_ha': perimeter_area_ha,
+            'unassigned_area_ha': unassigned_area_ha,
+            'cultivated_fraction': cultivated_fraction,
             'crop_params': parcel_results[0].get('crop_params', {}),
             'growth_model': parcel_results[0].get('growth_model', {}),
             'disease_model': {'family': 'cooperative_metapopulation', 'model_name': 'Distance-kernel metapopulation coupling'},

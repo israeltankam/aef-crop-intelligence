@@ -516,23 +516,28 @@ def _coop_rectangle_from_center(lat, lon, area_ha, aspect=1.35):
     return [(lat-dlat, lon-dlon), (lat-dlat, lon+dlon), (lat+dlat, lon+dlon), (lat+dlat, lon-dlon), (lat-dlat, lon-dlon)]
 
 
-def _coop_detect_parcels(perimeter, target_area_ha=1.5, max_parcels=240):
+def _coop_detect_parcels(perimeter, target_area_ha=1.5, max_parcels=240, expected_plot_count=0):
     """Detect editable parcel candidates inside a cooperative perimeter.
 
     AEF first tries its own image-guided detector: recent Sentinel-2 composites
     are segmented inside the perimeter and converted to editable polygons.  If
     Earth Engine is unavailable, cloudy, or too uncertain, the older geometric
-    candidate generator remains as a transparent fallback.  In both cases the
-    user sees a confidence estimate and must validate the map.
+    candidate generator remains as a transparent fallback.  When available, the
+    expected plot count is used as a count prior so the detector searches for the
+    right number of non-overlapping parcels instead of relying only on a rough
+    typical area.  In all cases the user sees confidence and must validate the map.
     """
+    expected_plot_count = max(0, min(1500, int(expected_plot_count or 0)))
+    detector_max_parcels = expected_plot_count if expected_plot_count else max_parcels
     detection_meta = {}
     parcels = []
     if initialize_ee():
         parcels, detection_meta = detect_sentinel2_parcels(
             perimeter,
             typical_area_ha=max(0.05, float(target_area_ha or 1.5)),
-            max_parcels=max_parcels,
+            max_parcels=detector_max_parcels,
             reference_date=date.today(),
+            expected_parcel_count=expected_plot_count,
         )
 
     if not parcels:
@@ -540,9 +545,10 @@ def _coop_detect_parcels(perimeter, target_area_ha=1.5, max_parcels=240):
         parcels = detect_candidate_parcels(
             perimeter,
             typical_area_ha=max(0.05, float(target_area_ha or 1.5)),
-            max_parcels=max_parcels,
+            max_parcels=detector_max_parcels,
             variability=0.72,
             precision_passes=4,
+            expected_parcel_count=expected_plot_count,
         )
         detection_meta = {
             'method': 'geometric_fallback',
@@ -551,6 +557,9 @@ def _coop_detect_parcels(perimeter, target_area_ha=1.5, max_parcels=240):
             'estimated_precision_label': 'low',
             'mean_confidence': round(sum(p.get('confidence', 0.45) for p in parcels) / len(parcels), 2) if parcels else 0.0,
             'parcel_count': len(parcels),
+            'expected_plot_count': expected_plot_count,
+            'detected_expected_delta': (len(parcels) - expected_plot_count) if expected_plot_count else None,
+            'large_internal_gaps_allowed': True,
             'ftw_fallback_recommended': True,
             'requires_user_validation': True,
         }
@@ -568,9 +577,23 @@ def _coop_detect_parcels(perimeter, target_area_ha=1.5, max_parcels=240):
 
     if parcels:
         mean_confidence = round(sum(p.get('confidence', 0.5) for p in parcels) / len(parcels), 2)
+        parcel_area_ha = round(sum(float(p.get('area_ha', 0.0) or 0.0) for p in parcels), 2)
+        perimeter_area_ha = max(0.0, float(st.session_state.get('cooperative_perimeter_area_ha', 0.0) or 0.0))
+        unassigned_area_ha = round(max(0.0, perimeter_area_ha - parcel_area_ha), 2) if perimeter_area_ha else 0.0
+        cultivated_fraction = round(min(1.0, parcel_area_ha / max(perimeter_area_ha, 1e-6)), 3) if perimeter_area_ha else 0.0
         detection_meta['mean_confidence'] = mean_confidence
         detection_meta['parcel_count'] = len(parcels)
+        detection_meta['active_cultivated_area_ha'] = parcel_area_ha
+        detection_meta['unassigned_area_ha'] = unassigned_area_ha
+        detection_meta['cultivated_fraction'] = cultivated_fraction
+        detection_meta['large_internal_gaps_allowed'] = True
+        if expected_plot_count:
+            detection_meta['expected_plot_count'] = expected_plot_count
+            detection_meta['detected_expected_delta'] = len(parcels) - expected_plot_count
         st.session_state['cooperative_detection_confidence'] = mean_confidence
+        st.session_state['cooperative_cultivated_area_ha'] = parcel_area_ha
+        st.session_state['cooperative_unassigned_area_ha'] = unassigned_area_ha
+        st.session_state['cooperative_cultivated_fraction'] = cultivated_fraction
         st.session_state['cooperative_detection_meta'] = detection_meta
         st.session_state['cooperative_detection_notes'] = detection_meta.get('message') or 'Automatic parcel candidates require validation on the satellite map.'
     return parcels
@@ -619,6 +642,60 @@ def _coop_apply_shared_nutrients_to_parcels():
         parcel['initial_potassium'] = round(float(st.session_state.get('initial_potassium', 100.0)) * ((1 - 0.03) ** years), 1)
 
 
+_COOP_PLOT_PALETTE = ['#2563EB', '#DC2626', '#16A34A', '#9333EA']
+
+
+def _coop_bbox_latlon(coords):
+    """Return a simple latitude/longitude bounding box for map coloring."""
+    if not coords:
+        return None
+    lats = [float(p[0]) for p in coords]
+    lons = [float(p[1]) for p in coords]
+    return (min(lats), min(lons), max(lats), max(lons))
+
+
+def _coop_bboxes_near(a, b, pad_deg=0.000035):
+    """Approximate adjacency for four-colour-style parcel display.
+
+    Exact topological coloring would require a geometry engine.  For Streamlit
+    responsiveness, this conservative bounding-box test is enough to avoid giving
+    the same colour to neighbouring candidate plots in the cooperative map.
+    """
+    if not a or not b:
+        return False
+    return not (
+        a[2] + pad_deg < b[0]
+        or b[2] + pad_deg < a[0]
+        or a[3] + pad_deg < b[1]
+        or b[3] + pad_deg < a[1]
+    )
+
+
+def _coop_plot_color_map(parcels):
+    """Assign stable, contrasting colours to active cooperative plots.
+
+    This is inspired by the four-colour theorem: neighbouring plots are greedily
+    assigned one of four high-contrast colours whenever their bounding boxes are
+    close.  The white outline rendered under each polygon remains the primary
+    visual cue for the thin boundaries between plots.
+    """
+    active = [p for p in parcels if p.get('active', True) and len(p.get('coords') or []) >= 3]
+    boxes = {p.get('id'): _coop_bbox_latlon(p.get('coords') or []) for p in active}
+    colours = {}
+    for parcel in active:
+        pid = parcel.get('id')
+        used = set()
+        for other_id, other_colour in colours.items():
+            if _coop_bboxes_near(boxes.get(pid), boxes.get(other_id)):
+                used.add(other_colour)
+        chosen = next((c for c in _COOP_PLOT_PALETTE if c not in used), None)
+        if chosen is None:
+            stable_index = sum(ord(ch) for ch in str(pid)) % len(_COOP_PLOT_PALETTE)
+            chosen = _COOP_PLOT_PALETTE[stable_index]
+        colours[pid] = chosen
+    return colours
+
+
 def _coop_draw_map(map_key, draw_mode='perimeter', selected_parcel_id=None):
     """Render cooperative perimeter, parcels and disease markers on a satellite map.
 
@@ -636,19 +713,27 @@ def _coop_draw_map(map_key, draw_mode='perimeter', selected_parcel_id=None):
     folium.TileLayer(tiles='https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', attr='Esri', name=tr('Esri Satellite'), overlay=False, control=True).add_to(m)
     if perimeter:
         folium.Polygon(locations=perimeter, color='#0057B8', weight=4, fill=True, fill_opacity=0.08, popup=tr('Cooperative perimeter')).add_to(m)
-    for parcel in _coop_normalize_parcels():
+    cooperative_parcels = _coop_normalize_parcels()
+    plot_colours = _coop_plot_color_map(cooperative_parcels)
+    for parcel in cooperative_parcels:
         if not parcel.get('active', True):
             continue
-        color = '#00A65A' if parcel.get('id') != selected_parcel_id else '#FFB000'
+        coords = parcel.get('coords') or []
+        if len(coords) < 3:
+            continue
+        color = '#FFB000' if parcel.get('id') == selected_parcel_id else plot_colours.get(parcel.get('id'), '#2563EB')
         name = str(parcel.get('name') or parcel.get('id') or tr('Parcel'))
-        folium.Polygon(locations=parcel.get('coords', []), color=color, weight=2, fill=True, fill_opacity=0.22, popup=name).add_to(m)
-        if parcel.get('coords'):
-            label_lat, label_lon = _coop_polygon_centroid(parcel.get('coords', []))
-            safe_name = name.replace('<', '').replace('>', '')[:24]
-            folium.Marker(
-                location=[label_lat, label_lon],
-                icon=folium.DivIcon(html=f"<div style='font-size:11px;font-weight:700;color:#0B3D2E;background:rgba(255,255,255,.82);border:1px solid #0B3D2E;border-radius:3px;padding:1px 4px;white-space:nowrap'>{safe_name}</div>")
-            ).add_to(m)
+        # Render a white under-stroke before the coloured polygon.  This keeps a
+        # visible boundary between close smallholder plots on satellite imagery,
+        # even when their fills touch or the canopy texture is visually similar.
+        folium.Polygon(locations=coords, color='#FFFFFF', weight=6 if parcel.get('id') == selected_parcel_id else 4, opacity=0.96, fill=False).add_to(m)
+        folium.Polygon(locations=coords, color=color, weight=3 if parcel.get('id') == selected_parcel_id else 2, fill=True, fill_color=color, fill_opacity=0.30 if parcel.get('id') == selected_parcel_id else 0.18, popup=name).add_to(m)
+        label_lat, label_lon = _coop_polygon_centroid(coords)
+        safe_name = name.replace('<', '').replace('>', '')[:24]
+        folium.Marker(
+            location=[label_lat, label_lon],
+            icon=folium.DivIcon(html=f"<div style='font-size:11px;font-weight:700;color:#111827;background:rgba(255,255,255,.88);border:1px solid {color};border-radius:3px;padding:1px 4px;white-space:nowrap'>{safe_name}</div>")
+        ).add_to(m)
     for spot in st.session_state.get('disease_spots', []) or []:
         folium.CircleMarker(location=[spot['lat'], spot['lon']], radius=5, color='crimson', fill=True, fill_opacity=0.85, popup=tr('Disease spot')).add_to(m)
     if draw_mode != 'view':
@@ -1038,7 +1123,10 @@ def render_cooperative_setup():
             stored_target = max(0.05, min(20.0, float(st.session_state.get('cooperative_target_parcel_area_ha', 1.5) or 1.5)))
             target_area = st.number_input(tr('Typical parcel size (ha)'), min_value=0.05, max_value=20.0, value=stored_target, step=0.05)
             st.session_state['cooperative_target_parcel_area_ha'] = target_area
-            st.caption(tr('Typical size guides detection; detected parcels may have different areas.'))
+            stored_expected = max(0, min(1500, int(st.session_state.get('cooperative_expected_plot_count', 0) or 0)))
+            expected_plot_count = st.number_input(tr('Expected number of plots'), min_value=0, max_value=1500, value=stored_expected, step=1)
+            st.session_state['cooperative_expected_plot_count'] = int(expected_plot_count)
+            st.caption(tr('Use 0 if unknown. When provided, AEF targets this non-overlapping plot count during detection.'))
         st.caption(f"{tr('Current center (DMS):')} {format_latlon_dms(st.session_state['center_lat'], st.session_state['center_lon'])}")
         coord_text = st.text_input(tr('Center coordinate (DMS or decimal)'), value='', placeholder='9° 27′ 46″ N 14° 8′ 45″ E', key='coop_center_coordinate_text')
         c_use_coord, c_generate_perimeter = st.columns(2)
@@ -1093,8 +1181,15 @@ def render_cooperative_setup():
         col_detect, col_clear = st.columns(2)
         with col_detect:
             if st.button(tr('Auto-detect plots inside perimeter'), disabled=not bool(st.session_state.get('cooperative_perimeter_coords')), type='primary', use_container_width=True):
-                with st.spinner(tr('Analyzing Sentinel-2 imagery and tracing editable parcel boundaries...')):
-                    st.session_state['cooperative_parcels'] = _coop_detect_parcels(st.session_state['cooperative_perimeter_coords'], target_area)
+                spinner_message = 'Analyzing Sentinel-2 imagery and tracing editable parcel boundaries...'
+                if int(st.session_state.get('cooperative_expected_plot_count', 0) or 0) > 0:
+                    spinner_message = 'Analyzing Sentinel-2 imagery and targeting the expected plot count...'
+                with st.spinner(tr(spinner_message)):
+                    st.session_state['cooperative_parcels'] = _coop_detect_parcels(
+                        st.session_state['cooperative_perimeter_coords'],
+                        target_area,
+                        expected_plot_count=st.session_state.get('cooperative_expected_plot_count', 0),
+                    )
                     st.success(tr('Parcel candidates placed. Please validate boundaries on the satellite map.'))
                     st.rerun()
         with col_clear:
@@ -1103,6 +1198,9 @@ def render_cooperative_setup():
                 st.session_state.pop('cooperative_detection_meta', None)
                 st.session_state.pop('cooperative_detection_notes', None)
                 st.session_state.pop('cooperative_detection_confidence', None)
+                st.session_state.pop('cooperative_cultivated_area_ha', None)
+                st.session_state.pop('cooperative_unassigned_area_ha', None)
+                st.session_state.pop('cooperative_cultivated_fraction', None)
                 st.rerun()
         parcels = _coop_normalize_parcels()
         if parcels:
@@ -1123,14 +1221,28 @@ def render_cooperative_setup():
                     by_id[row['id']]['active'] = bool(row.get('active', True))
             st.session_state['cooperative_parcels'] = list(by_id.values())
             quality = cooperative_parcel_quality(st.session_state['cooperative_parcels'], st.session_state.get('cooperative_perimeter_area_ha'))
+            st.session_state['cooperative_cultivated_area_ha'] = round(float(quality.get('total_area_ha', 0.0) or 0.0), 2)
+            st.session_state['cooperative_unassigned_area_ha'] = round(float(quality.get('unassigned_area_ha', 0.0) or 0.0), 2)
+            st.session_state['cooperative_cultivated_fraction'] = float(quality.get('cultivated_fraction', 0.0) or 0.0)
             area_range = f"{quality['min_area_ha']:.2f}-{quality['max_area_ha']:.2f} ha" if quality['active_count'] else 'n/a'
-            st.info(f"{tr('Active plots')}: {quality['active_count']} | {tr('Total active area')}: {quality['total_area_ha']:.2f} ha | {tr('Parcel area range')}: {area_range} | {tr('Mean detection confidence')}: {quality['mean_confidence']:.2f}")
+            st.info(f"{tr('Active plots')}: {quality['active_count']} | {tr('Total active area')}: {quality['total_area_ha']:.2f} ha | {tr('Unassigned/non-cultivated area')}: {quality['unassigned_area_ha']:.2f} ha | {tr('Cultivated fraction')}: {quality['cultivated_fraction']:.0%} | {tr('Parcel area range')}: {area_range} | {tr('Mean detection confidence')}: {quality['mean_confidence']:.2f}")
+            if quality.get('large_gap_note'):
+                st.caption(tr(quality['large_gap_note']))
             detection_meta = st.session_state.get('cooperative_detection_meta', {}) or {}
             if detection_meta:
                 method_label = tr('Sentinel-2 image-guided segmentation') if detection_meta.get('method') == 'sentinel2_snic' else tr('Geometric fallback candidate generator')
                 precision_label = tr(str(detection_meta.get('estimated_precision_label', 'unknown')))
                 mean_conf = float(detection_meta.get('mean_confidence', quality['mean_confidence']) or 0.0)
                 st.info(f"{tr('Detection method')}: {method_label} | {tr('Estimated boundary precision')}: {precision_label} | {tr('Mean confidence')}: {mean_conf:.2f}")
+                if detection_meta.get('unassigned_area_ha') is not None:
+                    st.caption(f"{tr('Detected cultivated area')}: {float(detection_meta.get('active_cultivated_area_ha', quality['total_area_ha']) or 0.0):.2f} ha | {tr('Unassigned/non-cultivated area')}: {float(detection_meta.get('unassigned_area_ha', quality.get('unassigned_area_ha', 0.0)) or 0.0):.2f} ha | {tr('Cultivated fraction')}: {float(detection_meta.get('cultivated_fraction', quality.get('cultivated_fraction', 0.0)) or 0.0):.0%}")
+                if detection_meta.get('expected_plot_count'):
+                    expected = int(detection_meta.get('expected_plot_count') or 0)
+                    detected = int(detection_meta.get('parcel_count') or len(parcels))
+                    delta = detected - expected
+                    st.caption(f"{tr('Expected plots')}: {expected} | {tr('Detected plots')}: {detected} | {tr('Difference')}: {delta:+d}")
+                    if abs(delta) > max(2, round(expected * 0.10)):
+                        st.warning(tr('Detected plot count differs from the expected count. Edit boundaries or adjust the expected count and rerun detection.'))
                 if detection_meta.get('date_window'):
                     st.caption(f"{tr('Satellite image window')}: {detection_meta.get('date_window')} | {tr('Clear Sentinel-2 observations')}: {detection_meta.get('image_count', 'n/a')}")
                 if detection_meta.get('ftw_fallback_recommended'):

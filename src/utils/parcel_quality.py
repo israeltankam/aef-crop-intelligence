@@ -26,14 +26,26 @@ def cooperative_parcel_quality(parcels: Iterable[Dict], perimeter_area_ha: Optio
         warnings.append('At least one plot is large for a smallholder cooperative; verify that separate fields were not merged.')
     if confidences and sum(1 for c in confidences if c < 0.55) / len(confidences) > 0.35:
         warnings.append('Several plot boundaries have low automatic confidence and should be checked on the satellite map.')
-    if perimeter_area_ha and perimeter_area_ha > 0 and total_area > float(perimeter_area_ha) * 1.10:
-        warnings.append('Active plot area exceeds the perimeter area by more than 10%; check overlapping or duplicated plots.')
+    cultivated_fraction = 0.0
+    unassigned_area_ha = 0.0
+    large_gap_note = ''
+    if perimeter_area_ha and perimeter_area_ha > 0:
+        perimeter = float(perimeter_area_ha)
+        cultivated_fraction = min(1.0, max(0.0, total_area / max(perimeter, 1e-6)))
+        unassigned_area_ha = max(0.0, perimeter - total_area)
+        if total_area > perimeter * 1.10:
+            warnings.append('Active plot area exceeds the perimeter area by more than 10%; check overlapping or duplicated plots.')
+        if active and cultivated_fraction < 0.65:
+            large_gap_note = 'Large non-cultivated gaps inside the perimeter are allowed. Confirm that they are roads, fallows, water, buildings or uncultivated spaces rather than missed plots.'
 
     return {
         'active_count': len(active),
         'total_area_ha': total_area,
+        'unassigned_area_ha': unassigned_area_ha,
+        'cultivated_fraction': cultivated_fraction,
         'min_area_ha': min(areas) if areas else 0.0,
         'max_area_ha': max(areas) if areas else 0.0,
         'mean_confidence': sum(confidences) / len(confidences) if confidences else 0.0,
+        'large_gap_note': large_gap_note,
         'warnings': warnings,
     }

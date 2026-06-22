@@ -5,7 +5,9 @@ This module is deliberately still an *AEF internal* detector: it does not call
 Fields of The World.  It uses open Sentinel-2 and ESA WorldCover layers already
 available through Earth Engine, then polygonizes image segments inside the user
 perimeter.  The result is not cadastral truth; it is a better, image-guided set
-of editable parcel candidates with an explicit confidence estimate.
+of editable parcel candidates with an explicit confidence estimate.  When the
+user knows the number of plots inside the perimeter, that count is used as a
+strong prior for segmentation scale and candidate selection.
 """
 from __future__ import annotations
 
@@ -164,6 +166,25 @@ def _precision_label(mean_confidence: float) -> str:
     return "low"
 
 
+def _count_guided_area_ha(perimeter_area_ha: float, typical_area_ha: float, expected_parcel_count: int) -> float:
+    """Choose a plot scale without assuming the perimeter is fully cultivated.
+
+    A known plot count tells the detector how many objects to seek, but not that
+    the whole cooperative perimeter is crop cover.  If the count multiplied by
+    the typical plot size covers only a small fraction of the perimeter, wide
+    gaps are expected and the typical size remains the dominant scale.
+    """
+    typical = max(0.05, typical_area_ha)
+    if expected_parcel_count <= 0 or perimeter_area_ha <= 0:
+        return typical
+    expected_cultivated = expected_parcel_count * typical
+    coverage_guess = expected_cultivated / max(perimeter_area_ha, 1e-6)
+    if coverage_guess < 0.72:
+        return typical
+    count_area = max(0.03, perimeter_area_ha * 0.86 / expected_parcel_count)
+    return max(0.03, 0.40 * count_area + 0.60 * typical)
+
+
 def _metadata(method: str, status: str, message: str, **extra) -> Dict[str, object]:
     meta = {"method": method, "status": status, "message": message}
     meta.update(extra)
@@ -175,13 +196,15 @@ def detect_sentinel2_parcels(
     typical_area_ha: float = 1.5,
     max_parcels: int = 240,
     reference_date=None,
+    expected_parcel_count: int = 0,
 ) -> Tuple[List[dict], Dict[str, object]]:
     """Detect editable parcel candidates from Sentinel-2 image segmentation.
 
     Workflow:
     1. Build a recent cloud-masked Sentinel-2 median composite inside the perimeter.
     2. Combine NDVI/NDMI with ESA WorldCover to focus on vegetated/cultivable pixels.
-    3. Run Earth Engine SNIC segmentation, sized from the user's typical parcel area.
+    3. Run Earth Engine SNIC segmentation, sized from typical plot area and,
+       when supplied, the expected number of plots.
     4. Polygonize segments and score them with transparent confidence proxies.
 
     If any Earth Engine step fails or the area is too large for a responsive setup
@@ -195,6 +218,9 @@ def detect_sentinel2_parcels(
 
     typical_area_ha = max(0.05, _safe_float(typical_area_ha, 1.5))
     max_parcels = max(1, int(max_parcels or 240))
+    expected_parcel_count = max(0, int(expected_parcel_count or 0))
+    if expected_parcel_count > 0:
+        max_parcels = min(max_parcels, expected_parcel_count)
     origin = _centroid(pts)
     perimeter_area_ha = _polygon_area_m2(_to_xy(pts, origin)) / 10_000.0
     if perimeter_area_ha <= 0:
@@ -205,8 +231,10 @@ def detect_sentinel2_parcels(
             "skipped",
             "The perimeter is too large for interactive Sentinel-2 segmentation; geometric fallback was used.",
             perimeter_area_ha=round(perimeter_area_ha, 2),
+            expected_plot_count=expected_parcel_count,
         )
 
+    effective_area_ha = _count_guided_area_ha(perimeter_area_ha, typical_area_ha, expected_parcel_count)
     ref = reference_date or date.today()
     if isinstance(ref, str):
         try:
@@ -254,13 +282,28 @@ def detect_sentinel2_parcels(
         )
         valid = ndvi.mask().rename("valid")
         candidate_mask = cultivable.eq(1).And(ndvi.gt(0.12).Or(worldcover.eq(40))).selfMask()
+        # Estimate how much of the perimeter is actually vegetated/cultivable.
+        # This is not cadastral truth, but it keeps downstream messages and
+        # metapopulation coupling aware that large internal gaps may be real.
+        cultivated_area_ha = 0.0
+        try:
+            area_stats = ee.Image.pixelArea().rename("area").updateMask(candidate_mask).reduceRegion(
+                reducer=ee.Reducer.sum(),
+                geometry=geom,
+                scale=10,
+                maxPixels=1e8,
+                tileScale=4,
+            ).getInfo()
+            cultivated_area_ha = max(0.0, float((area_stats or {}).get("area", 0.0) or 0.0) / 10_000.0)
+        except Exception:
+            cultivated_area_ha = 0.0
         feature_image = ee.Image.cat([ndvi, ndmi, brightness]).updateMask(candidate_mask).toFloat()
 
         # SNIC seed spacing is in pixels.  We tie it to the requested typical
         # parcel area so smallholder settings use finer segmentation than large
         # plantations without creating an unbounded number of objects.
-        typical_side_m = math.sqrt(typical_area_ha * 10_000.0)
-        seed_spacing_px = int(max(5, min(30, round((typical_side_m / 10.0) * 0.85))))
+        typical_side_m = math.sqrt(effective_area_ha * 10_000.0)
+        seed_spacing_px = int(max(4, min(30, round((typical_side_m / 10.0) * 0.85))))
         seeds = ee.Algorithms.Image.Segmentation.seedGrid(seed_spacing_px)
         snic = ee.Algorithms.Image.Segmentation.SNIC(
             image=feature_image,
@@ -286,8 +329,8 @@ def detect_sentinel2_parcels(
         )
         # Area filters remove tiny SNIC fragments and very large merged blobs.
         # They are broad because cooperative plots are not all the same size.
-        min_area = max(0.03, typical_area_ha * 0.10)
-        max_area = max(typical_area_ha * 4.5, min(10.0, perimeter_area_ha * 0.40))
+        min_area = max(0.02, effective_area_ha * 0.10)
+        max_area = max(effective_area_ha * 4.5, min(10.0, perimeter_area_ha * 0.40))
         vectors = vectors.map(lambda f: f.set({
             "area_ha": f.geometry().area(1).divide(10_000),
             "perimeter_m": f.geometry().perimeter(1),
@@ -296,7 +339,9 @@ def detect_sentinel2_parcels(
         stats_image = ee.Image.cat([ndvi, ndmi, cultivable, valid]).clip(geom)
         reducer = ee.Reducer.mean().combine(reducer2=ee.Reducer.stdDev(), sharedInputs=True)
         vectors = stats_image.reduceRegions(collection=vectors, reducer=reducer, scale=10, tileScale=4)
-        info = vectors.sort("area_ha", False).limit(max_parcels * 4).getInfo()
+        candidate_fetch_limit = max_parcels * (6 if expected_parcel_count else 4)
+        candidate_fetch_limit = max(40, min(4000, candidate_fetch_limit))
+        info = vectors.sort("area_ha", False).limit(candidate_fetch_limit).getInfo()
     except Exception as exc:
         return [], _metadata(
             "sentinel2_snic",
@@ -322,7 +367,7 @@ def detect_sentinel2_parcels(
             cultivable_mean = _safe_float(props.get("cultivable_mean"), 0.5)
             valid_mean = _safe_float(props.get("valid_mean"), 0.65)
             compact = _compactness(ring)
-            conf = _score_confidence(area_ha, typical_area_ha, ndvi_mean, ndvi_std, cultivable_mean, valid_mean, compact)
+            conf = _score_confidence(area_ha, effective_area_ha, ndvi_mean, ndvi_std, cultivable_mean, valid_mean, compact)
             idx = len(parcels) + 1
             parcels.append({
                 "id": f"P{idx:03d}",
@@ -338,10 +383,27 @@ def detect_sentinel2_parcels(
                 "ndvi_std": round(ndvi_std, 3),
                 "cultivable_fraction": round(cultivable_mean, 2),
             })
-            if len(parcels) >= max_parcels:
+            if len(parcels) >= candidate_fetch_limit:
                 break
-        if len(parcels) >= max_parcels:
+        if len(parcels) >= candidate_fetch_limit:
             break
+
+    if expected_parcel_count > 0:
+        # SNIC can over-segment a field mosaic.  Keep the count-consistent best
+        # candidates by combining confidence with area closeness to the count-
+        # guided target size; the polygons remain non-overlapping SNIC objects.
+        def _selection_key(parcel):
+            ratio = max(0.03, parcel.get("area_ha", effective_area_ha)) / max(0.03, effective_area_ha)
+            area_penalty = min(1.0, abs(math.log(max(0.05, ratio))) / math.log(4.0))
+            score = float(parcel.get("confidence", 0.5)) - 0.18 * area_penalty
+            return (-score, abs(float(parcel.get("area_ha", effective_area_ha)) - effective_area_ha), parcel.get("id", ""))
+        parcels = sorted(parcels, key=_selection_key)[:max_parcels]
+    else:
+        parcels = parcels[:max_parcels]
+
+    for idx, parcel in enumerate(parcels, start=1):
+        parcel["id"] = f"P{idx:03d}"
+        parcel["name"] = f"Parcel {idx}"
 
     if not parcels:
         return [], _metadata(
@@ -363,6 +425,14 @@ def detect_sentinel2_parcels(
         date_window=f"{start.isoformat()} to {end.isoformat()}",
         perimeter_area_ha=round(perimeter_area_ha, 2),
         parcel_count=len(parcels),
+        expected_plot_count=expected_parcel_count,
+        detected_expected_delta=(len(parcels) - expected_parcel_count) if expected_parcel_count else None,
+        count_guided_typical_area_ha=round(effective_area_ha, 3),
+        cultivated_area_ha=round(cultivated_area_ha, 2),
+        unassigned_area_ha=round(max(0.0, perimeter_area_ha - sum(float(p.get("area_ha", 0.0) or 0.0) for p in parcels)), 2),
+        cultivated_fraction=round(min(1.0, max(0.0, sum(float(p.get("area_ha", 0.0) or 0.0) for p in parcels) / max(perimeter_area_ha, 1e-6))), 3),
+        image_cultivable_fraction=round(min(1.0, max(0.0, cultivated_area_ha / max(perimeter_area_ha, 1e-6))), 3) if cultivated_area_ha else 0.0,
+        large_internal_gaps_allowed=True,
         mean_confidence=round(mean_conf, 2),
         estimated_precision_label=label,
         seed_spacing_pixels=seed_spacing_px,

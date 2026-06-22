@@ -1,0 +1,510 @@
+{
+  "suite": "aef_cooperative_cultivated_gaps",
+  "timestamp": "2026-06-22T16:53:28.103Z",
+  "total": 100,
+  "passed": 100,
+  "failed": 0,
+  "notes": "Static and algorithm micro-tests. Python py_compile could not run because child process spawning is blocked in this sandbox.",
+  "tests": [
+    {
+      "name": "fallback no longer uses 0.92 fill count prior",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "fallback expected count uses typical parcel area",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "fallback sparse coverage threshold exists",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "fallback sparse coverage keeps typical size",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "fallback max total area capped by expected cultivated area",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "fallback default total area no full perimeter fill",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "fallback doc mentions large uncultivated gaps",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "fallback confidence mentions sparse perimeter handling",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "fallback still has boundary gap checker",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "fallback still rejects too close polygons",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "sentinel count no longer uses 0.92 fill prior",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "sentinel expected count uses typical size",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "sentinel sparse coverage keeps typical scale",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "sentinel estimates cultivated area from candidate mask",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "sentinel metadata includes image cultivable fraction",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "sentinel metadata allows large gaps",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "sentinel FTW fallback preserved",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "setup stores active cultivated area",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "setup stores unassigned area",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "setup stores cultivated fraction",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "setup displays unassigned area",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "setup displays detected cultivated area",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "setup syncs state after plot editor",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "setup clear removes cultivated area state",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "state defaults include cultivated area",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "state save includes cultivated fraction",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "state load includes unassigned area",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "parcel quality returns unassigned area",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "parcel quality returns cultivated fraction",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "parcel quality large gap note is not warning",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "parcel quality still warns excessive area",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "metapop reads perimeter area",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "metapop reads cultivated area",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "metapop computes gap factor",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "metapop coupling rate multiplied by gap factor",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "metapop does not row-normalize kernel",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "metapop comment says no row-normalize",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "metapop records gap factor in history",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "metapop records cultivated fraction in history",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "cooperative result includes unassigned area",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "cooperative result includes cultivated fraction",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "dashboard displays unassigned area",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "dashboard displays cultivated fraction",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "report displays unassigned area",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "report displays cultivated fraction",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "i18n French unassigned area",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "i18n French cultivated fraction",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "i18n French large gap note",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "guide French mentions non assigned area",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "guide English mentions unassigned area",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "HTML guide French mentions non assigned area",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "HTML guide English mentions unassigned area",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "model doc says rows are not normalized",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "model doc includes gap factor equation",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "src/models/cooperative_parcel_detector.py no conflict markers",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "src/models/cooperative_parcel_detector.py no tab indentation",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "src/models/cooperative_parcel_detector.py triple double quote count even",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "src/models/sentinel_parcel_detector.py no conflict markers",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "src/models/sentinel_parcel_detector.py no tab indentation",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "src/models/sentinel_parcel_detector.py triple double quote count even",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "pages/main/setup_page.py no conflict markers",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "pages/main/setup_page.py no tab indentation",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "pages/main/setup_page.py triple double quote count even",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "src/models/cooperative_engine.py no conflict markers",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "src/models/cooperative_engine.py no tab indentation",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "src/models/cooperative_engine.py triple double quote count even",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "src/models/state_manager.py no conflict markers",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "src/models/state_manager.py no tab indentation",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "src/models/state_manager.py triple double quote count even",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "src/utils/parcel_quality.py no conflict markers",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "src/utils/parcel_quality.py no tab indentation",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "src/utils/parcel_quality.py triple double quote count even",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "src/utils/i18n.py no conflict markers",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "src/utils/i18n.py no tab indentation",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "src/utils/i18n.py triple double quote count even",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "pages/main/dashboard.py no conflict markers",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "pages/main/dashboard.py no tab indentation",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "pages/main/dashboard.py triple double quote count even",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "pages/main/report.py no conflict markers",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "pages/main/report.py no tab indentation",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "pages/main/report.py triple double quote count even",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "prior sparse 100ha 10 plots 1ha keeps 1ha",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "prior sparse 80ha 20 plots 1.5ha keeps 1.5ha",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "prior dense 10ha 8 plots 1ha blends count area",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "prior dense 20ha 15 plots 1.2ha stays near typical",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "prior no expected keeps typical",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "max total sparse not full perimeter",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "max total no expected capped below perimeter",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "gap factor floor",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "gap factor half cultivated",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "gap factor full cultivated",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "pressure declines with distance",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "pressure declines with gaps",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "far sparse pressure very small",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "coverage scenario perimeter 20",
+      "pass": true,
+      "detail": "eff=1.1786666666666668"
+    },
+    {
+      "name": "coverage scenario perimeter 30",
+      "pass": true,
+      "detail": "eff=1.2"
+    },
+    {
+      "name": "coverage scenario perimeter 40",
+      "pass": true,
+      "detail": "eff=1.2"
+    },
+    {
+      "name": "coverage scenario perimeter 50",
+      "pass": true,
+      "detail": "eff=1.2"
+    },
+    {
+      "name": "coverage scenario perimeter 60",
+      "pass": true,
+      "detail": "eff=1.2"
+    },
+    {
+      "name": "coverage scenario perimeter 70",
+      "pass": true,
+      "detail": "eff=1.2"
+    }
+  ]
+}

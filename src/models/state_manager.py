@@ -46,10 +46,14 @@ class StateManager:
         'cooperative_parcels': [],
         'cooperative_perimeter_area_ha': 100.0,
         'cooperative_target_parcel_area_ha': 1.5,
+        'cooperative_expected_plot_count': 0,
         'cooperative_crop_mode': 'shared',
         'cooperative_management_mode': 'per_parcel',
         'cooperative_detection_confidence': 0.0,
         'cooperative_detection_notes': '',
+        'cooperative_cultivated_area_ha': 0.0,
+        'cooperative_unassigned_area_ha': 0.0,
+        'cooperative_cultivated_fraction': 0.0,
         'focused_cooperative_plot_id': None,
         'cooperative_report_water_limit_m3': 0.0,
         'cooperative_report_fertilizer_limit_kg': 0.0,
@@ -181,10 +185,14 @@ class StateManager:
             'cooperative_parcels': st.session_state.get('cooperative_parcels', []),
             'cooperative_perimeter_area_ha': st.session_state.get('cooperative_perimeter_area_ha', 100.0),
             'cooperative_target_parcel_area_ha': st.session_state.get('cooperative_target_parcel_area_ha', 1.5),
+            'cooperative_expected_plot_count': st.session_state.get('cooperative_expected_plot_count', 0),
             'cooperative_crop_mode': st.session_state.get('cooperative_crop_mode', 'shared'),
             'cooperative_management_mode': st.session_state.get('cooperative_management_mode', 'per_parcel'),
             'cooperative_detection_confidence': st.session_state.get('cooperative_detection_confidence', 0.0),
             'cooperative_detection_notes': st.session_state.get('cooperative_detection_notes', ''),
+            'cooperative_cultivated_area_ha': st.session_state.get('cooperative_cultivated_area_ha', 0.0),
+            'cooperative_unassigned_area_ha': st.session_state.get('cooperative_unassigned_area_ha', 0.0),
+            'cooperative_cultivated_fraction': st.session_state.get('cooperative_cultivated_fraction', 0.0),
             'focused_cooperative_plot_id': st.session_state.get('focused_cooperative_plot_id'),
             'cooperative_report_water_limit_m3': st.session_state.get('cooperative_report_water_limit_m3', 0.0),
             'cooperative_report_fertilizer_limit_kg': st.session_state.get('cooperative_report_fertilizer_limit_kg', 0.0),
@@ -252,10 +260,14 @@ class StateManager:
             st.session_state['cooperative_parcels'] = data.get('cooperative_parcels', [])
             st.session_state['cooperative_perimeter_area_ha'] = data.get('cooperative_perimeter_area_ha', 100.0)
             st.session_state['cooperative_target_parcel_area_ha'] = data.get('cooperative_target_parcel_area_ha', 1.5)
+            st.session_state['cooperative_expected_plot_count'] = data.get('cooperative_expected_plot_count', 0)
             st.session_state['cooperative_crop_mode'] = data.get('cooperative_crop_mode', 'shared')
             st.session_state['cooperative_management_mode'] = data.get('cooperative_management_mode', 'per_parcel')
             st.session_state['cooperative_detection_confidence'] = data.get('cooperative_detection_confidence', 0.0)
             st.session_state['cooperative_detection_notes'] = data.get('cooperative_detection_notes', '')
+            st.session_state['cooperative_cultivated_area_ha'] = data.get('cooperative_cultivated_area_ha', 0.0)
+            st.session_state['cooperative_unassigned_area_ha'] = data.get('cooperative_unassigned_area_ha', 0.0)
+            st.session_state['cooperative_cultivated_fraction'] = data.get('cooperative_cultivated_fraction', 0.0)
             st.session_state['focused_cooperative_plot_id'] = data.get('focused_cooperative_plot_id')
             st.session_state['cooperative_report_water_limit_m3'] = data.get('cooperative_report_water_limit_m3', 0.0)
             st.session_state['cooperative_report_fertilizer_limit_kg'] = data.get('cooperative_report_fertilizer_limit_kg', 0.0)
